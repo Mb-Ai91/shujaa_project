@@ -20,3 +20,8 @@ only-include = ["agents", "apps", "core", "adapters", "crew.jsonc", "tools", "kn
 [tool.crewai]
 type = "crew"
 definition = "crew.jsonc"
+
+[dependency-groups]
+dev = [
+    "pytest>=8,<9",
+]

@@ -1,0 +1,73 @@
+from __future__ import annotations
+
+import os
+
+import pytest
+
+from apps.api.app import app
+from core.manager.service import ShujaaManager
+
+
+@pytest.fixture
+def client(monkeypatch):
+    monkeypatch.setenv("SHUJAA_API_KEY", "test-secret-key")
+    app.config["TESTING"] = True
+
+    with app.test_client() as test_client:
+        yield test_client
+
+
+def test_health_endpoint(client):
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.get_json() == {
+        "service": "shujaa-api",
+        "status": "healthy",
+    }
+
+
+def test_task_requires_api_key(client):
+    response = client.post(
+        "/shujaa-task",
+        json={"command": "test"},
+    )
+
+    assert response.status_code == 401
+    assert response.get_json()["message"] == "Unauthorized."
+
+
+def test_task_rejects_invalid_json(client):
+    response = client.post(
+        "/shujaa-task",
+        headers={"X-Shujaa-Key": "test-secret-key"},
+        data="not-json",
+        content_type="text/plain",
+    )
+
+    assert response.status_code == 400
+    assert response.get_json()["message"] == "Invalid JSON payload."
+
+
+def test_task_rejects_missing_command(client):
+    response = client.post(
+        "/shujaa-task",
+        headers={"X-Shujaa-Key": "test-secret-key"},
+        json={},
+    )
+
+    assert response.status_code == 400
+    assert response.get_json()["message"] == "Command must be a string."
+
+
+def test_manager_accepts_valid_command():
+    class FakeRunner:
+        def start(self, topic: str) -> int:
+            assert topic == "test task"
+            return 12345
+
+    manager = ShujaaManager(crew_runner=FakeRunner())
+    result = manager.submit(" test task ")
+
+    assert result["status"] == "accepted"
+    assert result["process_id"] == 12345
