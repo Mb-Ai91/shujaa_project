@@ -61,10 +61,16 @@ def test_task_rejects_missing_command(client):
 
 
 def test_manager_accepts_valid_command():
+    class FakeProcess:
+        pid = 12345
+
+        def wait(self) -> int:
+            return 0
+
     class FakeRunner:
-        def start(self, topic: str) -> int:
+        def start(self, topic: str) -> FakeProcess:
             assert topic == "test task"
-            return 12345
+            return FakeProcess()
 
     manager = ShujaaManager(crew_runner=FakeRunner())
     result = manager.submit(" test task ")
