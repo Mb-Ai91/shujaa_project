@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from threading import Thread
+from threading import Event, Thread
 from uuid import uuid4
 
 from adapters.crewai.runner import CrewAIRunner
@@ -8,7 +8,7 @@ from core.tasks.store import TaskRecord, TaskStore
 
 
 class ShujaaManager:
-    """الطبقة المركزية لاستقبال المهام ومتابعة حالتها."""
+    """المدير المركزي لاستقبال المهام ومتابعة حالتها."""
 
     MAX_COMMAND_LENGTH = 4000
 
@@ -38,36 +38,27 @@ class ShujaaManager:
             TaskRecord(
                 task_id=task_id,
                 command=command,
-                status="starting",
+                status="queued",
             )
         )
 
-        try:
-            process = self.crew_runner.start(command)
-        except Exception as error:
-            self.task_store.update(
-                task_id,
-                status="failed",
-                error=str(error),
-            )
-            raise RuntimeError("Unable to start task execution.") from error
-
-        self.task_store.update(
-            task_id,
-            status="running",
-            process_id=process.pid,
-        )
+        started = Event()
 
         Thread(
-            target=self._watch_process,
-            args=(task_id, process),
+            target=self._execute_task,
+            args=(task_id, command, started),
             daemon=True,
         ).start()
+
+        # انتظار قصير فقط لمساعدة الاختبارات، دون تعطيل طلب n8n.
+        started.wait(timeout=0.1)
+
+        task = self.task_store.get(task_id)
 
         return {
             "status": "accepted",
             "task_id": task_id,
-            "process_id": process.pid,
+            "process_id": task.process_id if task else None,
             "message": "Shujaa accepted the task.",
         }
 
@@ -75,8 +66,23 @@ class ShujaaManager:
         task = self.task_store.get(task_id)
         return task.to_dict() if task else None
 
-    def _watch_process(self, task_id: str, process: object) -> None:
+    def _execute_task(
+        self,
+        task_id: str,
+        command: str,
+        started: Event,
+    ) -> None:
         try:
+            process = self.crew_runner.start(command)
+
+            self.task_store.update(
+                task_id,
+                status="running",
+                process_id=process.pid,
+            )
+
+            started.set()
+
             return_code = process.wait()
 
             self.task_store.update(
@@ -84,9 +90,11 @@ class ShujaaManager:
                 status="completed" if return_code == 0 else "failed",
                 error=None if return_code == 0 else f"Exit code: {return_code}",
             )
+
         except Exception as error:
             self.task_store.update(
                 task_id,
                 status="failed",
                 error=str(error),
             )
+            started.set()
