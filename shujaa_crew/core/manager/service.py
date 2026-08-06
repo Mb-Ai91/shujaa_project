@@ -13,20 +13,20 @@ class ShujaaManager:
 
     def submit(self, command: object) -> dict[str, object]:
         if not isinstance(command, str):
-            raise ValueError("يجب أن يكون الأمر نصاً.")
+            raise ValueError("Command must be a string.")
 
         command = command.strip()
 
         if not command:
-            raise ValueError("الأمر فارغ.")
+            raise ValueError("Command is required.")
 
         if len(command) > self.MAX_COMMAND_LENGTH:
-            raise ValueError("الأمر أطول من الحد المسموح.")
+            raise ValueError("Command exceeds the allowed length.")
 
         process_id = self.crew_runner.start(command)
 
         return {
             "status": "accepted",
             "process_id": process_id,
-            "message": "استلم المدير شجاع المهمة ووجّهها للتنفيذ.",
+            "message": "Shujaa accepted the task and forwarded it for execution.",
         }
