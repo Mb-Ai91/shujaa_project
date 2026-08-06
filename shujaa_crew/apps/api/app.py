@@ -52,8 +52,7 @@ def handle_task():
         }), 400
 
     try:
-        result = manager.submit(data.get("command"))
-        return jsonify(result), 202
+        return jsonify(manager.submit(data.get("command"))), 202
 
     except ValueError as error:
         return jsonify({
@@ -66,6 +65,25 @@ def handle_task():
             "status": "error",
             "message": str(error),
         }), 500
+
+
+@app.get("/tasks/<task_id>")
+def get_task(task_id: str):
+    if not is_authorized():
+        return jsonify({
+            "status": "error",
+            "message": "Unauthorized.",
+        }), 401
+
+    task = manager.get_task(task_id)
+
+    if task is None:
+        return jsonify({
+            "status": "error",
+            "message": "Task not found.",
+        }), 404
+
+    return jsonify(task), 200
 
 
 if __name__ == "__main__":
