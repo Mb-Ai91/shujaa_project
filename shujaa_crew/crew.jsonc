@@ -1,0 +1,23 @@
+{
+  "name": "shujaa_crew",
+  "process": "hierarchical",
+  "manager_llm":"gemini/gemini-3.5-flash",
+  "agents": [
+    "senior_data_researcher",
+    "senior_content_writer"
+  ],
+  "tasks": [
+    {
+      "name": "research_task",
+      "agent": "senior_data_researcher",
+      "description": "Use your extensive internal knowledge base to gather comprehensive facts, details, and core concepts about: {topic}.",
+      "expected_output": "A detailed list of accurate facts and numbers about the topic."
+    },
+    {
+      "name": "writing_task",
+      "agent": "senior_content_writer",
+      "description": "Based on the research provided, write a professional and engaging Arabic article about {topic}.",
+      "expected_output": "A complete, well-formatted article in Arabic, ready for publishing."
+    }
+  ]
+}
