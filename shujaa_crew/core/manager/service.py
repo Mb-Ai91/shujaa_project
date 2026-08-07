@@ -151,6 +151,27 @@ class ShujaaManager:
                             "LLM quota exhausted: "
                             "RESOURCE_EXHAUSTED (429)."
                         )
+                    else:
+                        meaningful_lines = [
+                            line.strip()
+                            for line in recent_log.splitlines()
+                            if line.strip()
+                            and any(
+                                keyword in line.lower()
+                                for keyword in (
+                                    "error",
+                                    "failed",
+                                    "exception",
+                                    "missing required input",
+                                    "connection reset",
+                                    "socket hang up",
+                                )
+                            )
+                        ]
+
+                        if meaningful_lines:
+                            error_message = meaningful_lines[-1][:500]
+
                 except OSError:
                     pass
 
