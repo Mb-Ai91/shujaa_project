@@ -165,3 +165,25 @@ def test_cancelled_task_is_not_overwritten_after_process_exit():
     assert final_task is not None
     assert final_task["status"] == "cancelled"
     assert final_task["error"] == "Task cancelled by user."
+
+
+def test_cancel_uses_sigkill_if_process_group_survives(monkeypatch):
+    import signal
+    import core.manager.service as service_module
+
+    sent_signals = []
+
+    def fake_killpg(process_group_id, sig):
+        sent_signals.append((process_group_id, sig))
+
+    monkeypatch.setattr(service_module.os, "killpg", fake_killpg)
+
+    manager = ShujaaManager()
+    manager.TERMINATION_GRACE_SECONDS = 0
+
+    manager._terminate_process_group_by_id(12345)
+
+    assert sent_signals == [
+        (12345, signal.SIGTERM),
+        (12345, signal.SIGKILL),
+    ]

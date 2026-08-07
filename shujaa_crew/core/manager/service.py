@@ -206,17 +206,16 @@ class ShujaaManager:
         if task.status not in {"queued", "running"}:
             raise ValueError("Task is not cancellable.")
 
-        if task.process_group_id is not None:
-            try:
-                os.killpg(task.process_group_id, signal.SIGTERM)
-            except ProcessLookupError:
-                pass
-
         self.task_store.update(
             task_id,
             status="cancelled",
             error="Task cancelled by user.",
         )
+
+        if task.process_group_id is not None:
+            self._terminate_process_group_by_id(
+                task.process_group_id
+            )
 
         self.process_registry.remove(task_id)
 
@@ -226,6 +225,35 @@ class ShujaaManager:
             "task_id": task_id,
             "status": "cancelled",
         }
+
+    def _terminate_process_group_by_id(
+        self,
+        process_group_id: int,
+    ) -> None:
+        import time
+
+        try:
+            os.killpg(process_group_id, signal.SIGTERM)
+        except ProcessLookupError:
+            return
+
+        deadline = (
+            time.monotonic()
+            + self.TERMINATION_GRACE_SECONDS
+        )
+
+        while time.monotonic() < deadline:
+            try:
+                os.killpg(process_group_id, 0)
+            except ProcessLookupError:
+                return
+
+            time.sleep(0.1)
+
+        try:
+            os.killpg(process_group_id, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
 
     def cleanup_registered_processes(self) -> None:
         """إنهاء عمليات CrewAI المسجلة المتبقية من جلسة سابقة."""
