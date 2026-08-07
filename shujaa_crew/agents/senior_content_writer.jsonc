@@ -1,5 +1,12 @@
 {
   "role": "Senior Content Writer",
   "goal": "Transform raw data into an engaging and SEO-friendly Arabic and English article",
-  "backstory": "You are a brilliant writer known for turning complex data into captivating stories. You format text beautifully."
+  "backstory": "You are a brilliant writer known for turning complex data into captivating stories. You format text beautifully.",
+
+  "verbose": false,
+  "allow_delegation": false,
+  "max_iter": 3,
+  "memory": false,
+  "respect_context_window": true,
+  "max_retry_limit": 1
 }

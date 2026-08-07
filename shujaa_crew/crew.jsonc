@@ -1,7 +1,6 @@
 {
   "name": "shujaa_crew",
-  "process": "hierarchical",
-  "manager_llm":"gemini/gemini-3.5-flash",
+  "process": "sequential",
   "agents": [
     "senior_data_researcher",
     "senior_content_writer"

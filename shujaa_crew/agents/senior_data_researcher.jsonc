@@ -61,7 +61,7 @@
     "allow_delegation": false,
 
     // Maximum reasoning iterations per task (prevents infinite loops)
-    // "max_iter": 25,
+    "max_iter": 4,
 
     // Maximum tokens for agent's response generation
     // "max_tokens": null,
@@ -73,19 +73,19 @@
     // "max_rpm": null,
 
     // Enable agent-level memory (persists across tasks)
-    // "memory": false,
+    "memory": false,
 
     // Cache tool results to avoid duplicate calls
     // "cache": true,
 
     // Auto-summarize context when it exceeds the LLM's context window
-    // "respect_context_window": true,
+    "respect_context_window": true,
 
     // Maximum retries on execution errors
-    // "max_retry_limit": 2,
+    "max_retry_limit": 1,
 
     // Enable step-by-step planning before task execution
-    "planning": true
+    "planning": false
 
     // Include system prompt in LLM calls
     // "use_system_prompt": true
