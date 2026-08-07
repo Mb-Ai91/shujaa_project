@@ -127,6 +127,12 @@ class ShujaaManager:
                 self.process_registry.remove(task_id)
                 return
 
+            current_task = self.task_store.get(task_id)
+
+            if current_task and current_task.status == "cancelled":
+                self.process_registry.remove(task_id)
+                return
+
             if return_code == 0:
                 self.task_store.update(
                     task_id,

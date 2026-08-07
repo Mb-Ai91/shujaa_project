@@ -130,3 +130,38 @@ def test_manager_cancels_running_task():
 
     assert cancelled["status"] == "cancelled"
     assert cancelled["error"] == "Task cancelled by user."
+
+
+def test_cancelled_task_is_not_overwritten_after_process_exit():
+    import threading
+    import time
+
+    release_process = threading.Event()
+
+    class FakeProcess:
+        pid = 987654321
+
+        def wait(self, timeout=None):
+            release_process.wait(timeout=1)
+            return 1
+
+    class FakeRunner:
+        def start(self, topic: str):
+            return FakeProcess()
+
+    manager = ShujaaManager(crew_runner=FakeRunner())
+
+    result = manager.submit("test cancellation race")
+    task_id = result["task_id"]
+
+    cancelled = manager.cancel_task(task_id)
+    assert cancelled["status"] == "cancelled"
+
+    release_process.set()
+    time.sleep(0.1)
+
+    final_task = manager.get_task(task_id)
+
+    assert final_task is not None
+    assert final_task["status"] == "cancelled"
+    assert final_task["error"] == "Task cancelled by user."
