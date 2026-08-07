@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import os
+import signal
+import subprocess
 from threading import Event, Thread
 from uuid import uuid4
 
@@ -11,6 +14,8 @@ class ShujaaManager:
     """المدير المركزي لاستقبال المهام ومتابعة حالتها."""
 
     MAX_COMMAND_LENGTH = 4000
+    TASK_TIMEOUT_SECONDS = 120
+    TERMINATION_GRACE_SECONDS = 5
 
     def __init__(
         self,
@@ -50,7 +55,6 @@ class ShujaaManager:
             daemon=True,
         ).start()
 
-        # انتظار قصير فقط لمساعدة الاختبارات، دون تعطيل طلب n8n.
         started.wait(timeout=0.1)
 
         task = self.task_store.get(task_id)
@@ -75,15 +79,43 @@ class ShujaaManager:
         try:
             process = self.crew_runner.start(command)
 
+            try:
+                process_group_id = os.getpgid(process.pid)
+            except ProcessLookupError:
+                # دعم العمليات الوهمية في الاختبارات.
+                process_group_id = process.pid
+
             self.task_store.update(
                 task_id,
                 status="running",
                 process_id=process.pid,
+                process_group_id=process_group_id,
             )
 
             started.set()
 
-            return_code = process.wait()
+            try:
+                return_code = process.wait(
+                    timeout=self.TASK_TIMEOUT_SECONDS
+                )
+            except TypeError:
+                # دعم المشغلات الوهمية في الاختبارات.
+                return_code = process.wait()
+            except subprocess.TimeoutExpired:
+                self._terminate_process_group(
+                    process,
+                    process_group_id,
+                )
+
+                self.task_store.update(
+                    task_id,
+                    status="timed_out",
+                    error=(
+                        f"Task exceeded "
+                        f"{self.TASK_TIMEOUT_SECONDS} seconds."
+                    ),
+                )
+                return
 
             self.task_store.update(
                 task_id,
@@ -98,3 +130,23 @@ class ShujaaManager:
                 error=str(error),
             )
             started.set()
+
+    def _terminate_process_group(
+        self,
+        process: subprocess.Popen[str],
+        process_group_id: int,
+    ) -> None:
+        try:
+            os.killpg(process_group_id, signal.SIGTERM)
+
+            try:
+                process.wait(timeout=self.TERMINATION_GRACE_SECONDS)
+                return
+            except subprocess.TimeoutExpired:
+                pass
+
+            os.killpg(process_group_id, signal.SIGKILL)
+            process.wait()
+
+        except ProcessLookupError:
+            return

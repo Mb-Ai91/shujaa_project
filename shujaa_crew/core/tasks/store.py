@@ -10,6 +10,7 @@ class TaskRecord:
     command: str
     status: str
     process_id: int | None = None
+    process_group_id: int | None = None
     error: str | None = None
 
     def to_dict(self) -> dict[str, object]:
@@ -37,6 +38,7 @@ class TaskStore:
         *,
         status: str,
         process_id: int | None = None,
+        process_group_id: int | None = None,
         error: str | None = None,
     ) -> None:
         with self._lock:
@@ -49,6 +51,9 @@ class TaskStore:
 
             if process_id is not None:
                 task.process_id = process_id
+
+            if process_group_id is not None:
+                task.process_group_id = process_group_id
 
             if error is not None:
                 task.error = error
