@@ -68,6 +68,26 @@ def handle_task():
         }), 500
 
 
+@app.post("/tasks/<task_id>/cancel")
+def cancel_task(task_id: str):
+    if not is_authorized():
+        return jsonify({
+            "status": "error",
+            "message": "Unauthorized.",
+        }), 401
+
+    try:
+        return jsonify(manager.cancel_task(task_id)), 200
+    except ValueError as error:
+        message = str(error)
+        status_code = 404 if message == "Task not found." else 409
+
+        return jsonify({
+            "status": "error",
+            "message": message,
+        }), status_code
+
+
 @app.get("/tasks/<task_id>")
 def get_task(task_id: str):
     if not is_authorized():

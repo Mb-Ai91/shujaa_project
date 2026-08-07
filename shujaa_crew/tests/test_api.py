@@ -77,3 +77,33 @@ def test_manager_accepts_valid_command():
 
     assert result["status"] == "accepted"
     assert result["process_id"] == 12345
+
+
+def test_cancel_task_endpoint(monkeypatch):
+    class FakeManager:
+        def cancel_task(self, task_id: str):
+            assert task_id == "task-123"
+            return {
+                "task_id": task_id,
+                "status": "cancelled",
+                "error": "Task cancelled by user.",
+            }
+
+    import apps.api.app as api_module
+
+    monkeypatch.setattr(api_module, "manager", FakeManager())
+
+    client = api_module.app.test_client()
+    api_key = __import__("os").getenv("SHUJAA_API_KEY")
+
+    response = client.post(
+        "/tasks/task-123/cancel",
+        headers={"X-Shujaa-Key": api_key},
+    )
+
+    assert response.status_code == 200
+
+    data = response.get_json()
+
+    assert data["status"] == "cancelled"
+    assert data["task_id"] == "task-123"

@@ -191,6 +191,36 @@ class ShujaaManager:
             )
             started.set()
 
+    def cancel_task(self, task_id: str) -> dict[str, object]:
+        task = self.task_store.get(task_id)
+
+        if task is None:
+            raise ValueError("Task not found.")
+
+        if task.status not in {"queued", "running"}:
+            raise ValueError("Task is not cancellable.")
+
+        if task.process_group_id is not None:
+            try:
+                os.killpg(task.process_group_id, signal.SIGTERM)
+            except ProcessLookupError:
+                pass
+
+        self.task_store.update(
+            task_id,
+            status="cancelled",
+            error="Task cancelled by user.",
+        )
+
+        self.process_registry.remove(task_id)
+
+        updated = self.task_store.get(task_id)
+
+        return updated.to_dict() if updated else {
+            "task_id": task_id,
+            "status": "cancelled",
+        }
+
     def cleanup_registered_processes(self) -> None:
         """إنهاء عمليات CrewAI المسجلة المتبقية من جلسة سابقة."""
 
