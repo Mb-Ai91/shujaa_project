@@ -7,6 +7,8 @@ import os
 from dotenv import load_dotenv
 from flask import Flask, jsonify, request
 
+from adapters.crewai.runner import CrewAIRunner
+from adapters.mock.runner import MockRunner
 from core.manager.service import ShujaaManager
 
 
@@ -15,7 +17,18 @@ load_dotenv()
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024
 
-manager = ShujaaManager()
+runner_name = os.getenv("SHUJAA_RUNNER", "crewai").strip().lower()
+
+if runner_name == "mock":
+    runner = MockRunner()
+elif runner_name == "crewai":
+    runner = CrewAIRunner()
+else:
+    raise RuntimeError(
+        f"Unsupported SHUJAA_RUNNER: {runner_name}"
+    )
+
+manager = ShujaaManager(crew_runner=runner)
 
 
 def is_authorized() -> bool:
