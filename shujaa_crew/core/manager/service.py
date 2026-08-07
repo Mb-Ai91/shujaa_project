@@ -127,11 +127,38 @@ class ShujaaManager:
                 self.process_registry.remove(task_id)
                 return
 
-            self.task_store.update(
-                task_id,
-                status="completed" if return_code == 0 else "failed",
-                error=None if return_code == 0 else f"Exit code: {return_code}",
-            )
+            if return_code == 0:
+                self.task_store.update(
+                    task_id,
+                    status="completed",
+                    error=None,
+                )
+            else:
+                error_message = f"Exit code: {return_code}"
+
+                try:
+                    log_text = self.crew_runner.log_path.read_text(
+                        encoding="utf-8",
+                        errors="ignore",
+                    )
+                    recent_log = log_text[-12000:]
+
+                    if (
+                        "RESOURCE_EXHAUSTED" in recent_log
+                        or "429" in recent_log
+                    ):
+                        error_message = (
+                            "LLM quota exhausted: "
+                            "RESOURCE_EXHAUSTED (429)."
+                        )
+                except OSError:
+                    pass
+
+                self.task_store.update(
+                    task_id,
+                    status="failed",
+                    error=error_message,
+                )
 
             self.process_registry.remove(task_id)
 
