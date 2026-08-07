@@ -7,6 +7,7 @@ from threading import Event, Thread
 from uuid import uuid4
 
 from adapters.crewai.runner import CrewAIRunner
+from core.runtime.process_registry import ProcessRegistry
 from core.tasks.store import TaskRecord, TaskStore
 
 
@@ -21,9 +22,11 @@ class ShujaaManager:
         self,
         crew_runner: CrewAIRunner | None = None,
         task_store: TaskStore | None = None,
+        process_registry: ProcessRegistry | None = None,
     ) -> None:
         self.crew_runner = crew_runner or CrewAIRunner()
         self.task_store = task_store or TaskStore()
+        self.process_registry = process_registry or ProcessRegistry()
 
     def submit(self, command: object) -> dict[str, object]:
         if not isinstance(command, str):
@@ -85,6 +88,12 @@ class ShujaaManager:
                 # دعم العمليات الوهمية في الاختبارات.
                 process_group_id = process.pid
 
+            self.process_registry.register(
+                task_id,
+                process.pid,
+                process_group_id,
+            )
+
             self.task_store.update(
                 task_id,
                 status="running",
@@ -115,6 +124,7 @@ class ShujaaManager:
                         f"{self.TASK_TIMEOUT_SECONDS} seconds."
                     ),
                 )
+                self.process_registry.remove(task_id)
                 return
 
             self.task_store.update(
@@ -123,6 +133,8 @@ class ShujaaManager:
                 error=None if return_code == 0 else f"Exit code: {return_code}",
             )
 
+            self.process_registry.remove(task_id)
+
         except Exception as error:
             self.task_store.update(
                 task_id,
@@ -130,6 +142,41 @@ class ShujaaManager:
                 error=str(error),
             )
             started.set()
+
+    def cleanup_registered_processes(self) -> None:
+        """إنهاء عمليات CrewAI المسجلة المتبقية من جلسة سابقة."""
+
+        for task_id, info in self.process_registry.all().items():
+            pid = info.get("pid")
+            pgid = info.get("pgid")
+
+            if not isinstance(pid, int) or not isinstance(pgid, int):
+                self.process_registry.remove(task_id)
+                continue
+
+            cmdline_path = f"/proc/{pid}/cmdline"
+
+            try:
+                with open(cmdline_path, "rb") as file:
+                    cmdline = file.read().replace(b"\x00", b" ").decode(
+                        "utf-8",
+                        errors="ignore",
+                    )
+            except OSError:
+                self.process_registry.remove(task_id)
+                continue
+
+            # لا نقتل العملية إلا إذا كانت CrewAI فعلاً.
+            if "crewai" not in cmdline.lower():
+                self.process_registry.remove(task_id)
+                continue
+
+            try:
+                os.killpg(pgid, signal.SIGTERM)
+            except ProcessLookupError:
+                pass
+
+            self.process_registry.remove(task_id)
 
     def _terminate_process_group(
         self,

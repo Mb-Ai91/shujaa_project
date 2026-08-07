@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import atexit
 import hmac
 import os
 
@@ -87,4 +88,10 @@ def get_task(task_id: str):
 
 
 if __name__ == "__main__":
+    # تنظيف أي عمليات CrewAI متبقية من جلسة سابقة.
+    manager.cleanup_registered_processes()
+
+    # تنظيف العمليات المسجلة عند الإغلاق الطبيعي.
+    atexit.register(manager.cleanup_registered_processes)
+
     app.run(host="0.0.0.0", port=5000, debug=False)
