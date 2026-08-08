@@ -8,7 +8,8 @@ from uuid import uuid4
 
 from adapters.crewai.runner import CrewAIRunner
 from core.runtime.process_registry import ProcessRegistry
-from core.tasks.store import TaskRecord, TaskStore
+from core.tasks.contracts import TaskStoreProtocol
+from core.tasks.store import InMemoryTaskStore, TaskRecord
 
 
 class ShujaaManager:
@@ -21,11 +22,11 @@ class ShujaaManager:
     def __init__(
         self,
         crew_runner: CrewAIRunner | None = None,
-        task_store: TaskStore | None = None,
+        task_store: TaskStoreProtocol | None = None,
         process_registry: ProcessRegistry | None = None,
     ) -> None:
         self.crew_runner = crew_runner or CrewAIRunner()
-        self.task_store = task_store or TaskStore()
+        self.task_store = task_store or InMemoryTaskStore()
         self.process_registry = process_registry or ProcessRegistry()
 
     def submit(self, command: object) -> dict[str, object]:

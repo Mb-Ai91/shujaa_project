@@ -9,7 +9,9 @@ from flask import Flask, jsonify, request
 
 from adapters.crewai.runner import CrewAIRunner
 from adapters.mock.runner import MockRunner
+from adapters.storage.sqlite_task_store import SQLiteTaskStore
 from core.manager.service import ShujaaManager
+from core.tasks.store import InMemoryTaskStore
 
 
 load_dotenv()
@@ -28,7 +30,24 @@ else:
         f"Unsupported SHUJAA_RUNNER: {runner_name}"
     )
 
-manager = ShujaaManager(crew_runner=runner)
+task_store_name = os.getenv(
+    "SHUJAA_TASK_STORE",
+    "memory",
+).strip().lower()
+
+if task_store_name == "memory":
+    task_store = InMemoryTaskStore()
+elif task_store_name == "sqlite":
+    task_store = SQLiteTaskStore()
+else:
+    raise RuntimeError(
+        f"Unsupported SHUJAA_TASK_STORE: {task_store_name}"
+    )
+
+manager = ShujaaManager(
+    crew_runner=runner,
+    task_store=task_store,
+)
 
 
 def is_authorized() -> bool:

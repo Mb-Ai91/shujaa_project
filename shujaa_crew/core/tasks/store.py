@@ -18,7 +18,7 @@ class TaskRecord:
         return asdict(self)
 
 
-class TaskStore:
+class InMemoryTaskStore:
     """مخزن مؤقت لحالات المهام داخل الذاكرة."""
 
     def __init__(self) -> None:
@@ -62,3 +62,7 @@ class TaskStore:
 
             if result is not None:
                 task.result = result
+
+
+# توافق مؤقت مع الاسم القديم أثناء الانتقال المعماري.
+TaskStore = InMemoryTaskStore
