@@ -2,8 +2,12 @@ from __future__ import annotations
 
 import json
 import os
+import tempfile
 from pathlib import Path
 from threading import Lock
+
+_LOCKS_GUARD = Lock()
+_PATH_LOCKS: dict[str, Lock] = {}
 
 
 class ProcessRegistry:
@@ -12,8 +16,16 @@ class ProcessRegistry:
     def __init__(self, path: Path | None = None) -> None:
         project_dir = Path(__file__).resolve().parents[2]
         self.path = path or project_dir / ".runtime" / "processes.json"
-        self._lock = Lock()
+        self.path = self.path.resolve()
         self.path.parent.mkdir(parents=True, exist_ok=True)
+
+        path_key = str(self.path)
+
+        with _LOCKS_GUARD:
+            self._lock = _PATH_LOCKS.setdefault(
+                path_key,
+                Lock(),
+            )
 
     def _read(self) -> dict[str, dict[str, int]]:
         if not self.path.exists():
@@ -27,12 +39,27 @@ class ProcessRegistry:
         return data if isinstance(data, dict) else {}
 
     def _write(self, data: dict[str, dict[str, int]]) -> None:
-        temp_path = self.path.with_suffix(".tmp")
-        temp_path.write_text(
-            json.dumps(data, indent=2),
-            encoding="utf-8",
+        file_descriptor, temp_name = tempfile.mkstemp(
+            prefix="processes-",
+            suffix=".tmp",
+            dir=self.path.parent,
         )
-        os.replace(temp_path, self.path)
+        temp_path = Path(temp_name)
+
+        try:
+            with os.fdopen(
+                file_descriptor,
+                "w",
+                encoding="utf-8",
+            ) as file:
+                json.dump(data, file, indent=2)
+
+            os.replace(temp_path, self.path)
+        finally:
+            try:
+                temp_path.unlink()
+            except FileNotFoundError:
+                pass
 
     def register(self, task_id: str, pid: int, pgid: int) -> None:
         with self._lock:
