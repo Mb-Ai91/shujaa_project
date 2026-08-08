@@ -47,6 +47,9 @@ def test_manager_reports_llm_quota_exhausted(tmp_path):
         def start(self, topic: str):
             return FakeProcess()
 
+        def get_error(self, return_code: int) -> str:
+            return "LLM quota exhausted: RESOURCE_EXHAUSTED (429)."
+
     manager = ShujaaManager(crew_runner=FakeRunner())
 
     result = manager.submit("test task")
@@ -82,6 +85,9 @@ def test_manager_reports_meaningful_general_error(tmp_path):
 
         def start(self, topic: str):
             return FakeProcess()
+
+        def get_error(self, return_code: int) -> str:
+            return "Final error: external service failed"
 
     manager = ShujaaManager(crew_runner=FakeRunner())
 
@@ -178,7 +184,14 @@ def test_cancel_uses_sigkill_if_process_group_survives(monkeypatch):
 
     monkeypatch.setattr(service_module.os, "killpg", fake_killpg)
 
-    manager = ShujaaManager()
+    class FakeRunner:
+        def start(self, topic: str):
+            raise NotImplementedError
+
+        def get_error(self, return_code: int) -> str:
+            return f"Exit code: {return_code}"
+
+    manager = ShujaaManager(crew_runner=FakeRunner())
     manager.TERMINATION_GRACE_SECONDS = 0
 
     manager._terminate_process_group_by_id(12345)

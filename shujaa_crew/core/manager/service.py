@@ -6,8 +6,8 @@ import subprocess
 from threading import Event, Thread
 from uuid import uuid4
 
-from adapters.crewai.runner import CrewAIRunner
 from core.runtime.process_registry import ProcessRegistry
+from core.runtime.runner_contract import RunnerProtocol
 from core.tasks.contracts import TaskStoreProtocol
 from core.tasks.store import InMemoryTaskStore, TaskRecord
 
@@ -21,11 +21,11 @@ class ShujaaManager:
 
     def __init__(
         self,
-        crew_runner: CrewAIRunner | None = None,
+        crew_runner: RunnerProtocol,
         task_store: TaskStoreProtocol | None = None,
         process_registry: ProcessRegistry | None = None,
     ) -> None:
-        self.crew_runner = crew_runner or CrewAIRunner()
+        self.crew_runner = crew_runner
         self.task_store = task_store or InMemoryTaskStore()
         self.process_registry = process_registry or ProcessRegistry()
 
@@ -152,46 +152,16 @@ class ShujaaManager:
                     result=result,
                 )
             else:
-                error_message = f"Exit code: {return_code}"
+                error_reader = getattr(
+                    self.crew_runner,
+                    "get_error",
+                    None,
+                )
 
-                try:
-                    log_text = self.crew_runner.log_path.read_text(
-                        encoding="utf-8",
-                        errors="ignore",
-                    )
-                    recent_log = log_text[-12000:]
-
-                    if (
-                        "RESOURCE_EXHAUSTED" in recent_log
-                        or "429" in recent_log
-                    ):
-                        error_message = (
-                            "LLM quota exhausted: "
-                            "RESOURCE_EXHAUSTED (429)."
-                        )
-                    else:
-                        meaningful_lines = [
-                            line.strip()
-                            for line in recent_log.splitlines()
-                            if line.strip()
-                            and any(
-                                keyword in line.lower()
-                                for keyword in (
-                                    "error",
-                                    "failed",
-                                    "exception",
-                                    "missing required input",
-                                    "connection reset",
-                                    "socket hang up",
-                                )
-                            )
-                        ]
-
-                        if meaningful_lines:
-                            error_message = meaningful_lines[-1][:500]
-
-                except OSError:
-                    pass
+                if callable(error_reader):
+                    error_message = error_reader(return_code)
+                else:
+                    error_message = f"Exit code: {return_code}"
 
                 self.task_store.update(
                     task_id,

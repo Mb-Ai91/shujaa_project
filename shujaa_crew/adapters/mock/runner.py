@@ -28,6 +28,22 @@ class MockRunner:
     ) -> str:
         return "Mock task completed"
 
+    def get_error(self, return_code: int) -> str:
+        try:
+            log_text = self.log_path.read_text(
+                encoding="utf-8",
+                errors="ignore",
+            )
+        except OSError:
+            return f"Exit code: {return_code}"
+
+        recent_log = log_text[-12000:]
+
+        if "Mock task failed" in recent_log:
+            return "Mock task failed"
+
+        return f"Exit code: {return_code}"
+
     def start(self, topic: str) -> subprocess.Popen[str]:
         log_file: TextIO = self.log_path.open(
             "a",

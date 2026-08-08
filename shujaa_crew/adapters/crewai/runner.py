@@ -39,3 +39,41 @@ class CrewAIRunner:
             log_file.close()
 
         return process
+
+    def get_error(self, return_code: int) -> str:
+        error_message = f"Exit code: {return_code}"
+
+        try:
+            log_text = self.log_path.read_text(
+                encoding="utf-8",
+                errors="ignore",
+            )
+        except OSError:
+            return error_message
+
+        recent_log = log_text[-12000:]
+
+        if "RESOURCE_EXHAUSTED" in recent_log or "429" in recent_log:
+            return "LLM quota exhausted: RESOURCE_EXHAUSTED (429)."
+
+        meaningful_lines = [
+            line.strip()
+            for line in recent_log.splitlines()
+            if line.strip()
+            and any(
+                keyword in line.lower()
+                for keyword in (
+                    "error",
+                    "failed",
+                    "exception",
+                    "missing required input",
+                    "connection reset",
+                    "socket hang up",
+                )
+            )
+        ]
+
+        if meaningful_lines:
+            return meaningful_lines[-1][:500]
+
+        return error_message
