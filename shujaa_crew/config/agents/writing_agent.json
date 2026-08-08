@@ -1,0 +1,11 @@
+{
+  "agent_id": "writing-agent",
+  "name": "Writing Agent",
+  "description": "Temporary writing agent used during the current development stage.",
+  "capabilities": [
+    "writing",
+    "content-generation",
+    "summarization"
+  ],
+  "enabled": true
+}

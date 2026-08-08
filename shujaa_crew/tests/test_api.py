@@ -107,3 +107,23 @@ def test_cancel_task_endpoint(monkeypatch):
 
     assert data["status"] == "cancelled"
     assert data["task_id"] == "task-123"
+
+
+def test_agents_endpoint_requires_api_key(client):
+    response = client.get("/agents")
+
+    assert response.status_code == 401
+
+
+def test_agents_endpoint_returns_list(client):
+    import os
+
+    response = client.get(
+        "/agents",
+        headers={
+            "X-Shujaa-Key": os.getenv("SHUJAA_API_KEY"),
+        },
+    )
+
+    assert response.status_code == 200
+    assert isinstance(response.get_json(), list)

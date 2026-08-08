@@ -10,6 +10,7 @@ from flask import Flask, jsonify, request
 from adapters.crewai.runner import CrewAIRunner
 from adapters.mock.runner import MockRunner
 from adapters.storage.sqlite_task_store import SQLiteTaskStore
+from core.agents.bootstrap import build_agent_registry
 from core.manager.service import ShujaaManager
 from core.tasks.store import InMemoryTaskStore
 
@@ -44,6 +45,10 @@ else:
         f"Unsupported SHUJAA_TASK_STORE: {task_store_name}"
     )
 
+agent_registry = build_agent_registry(
+    "config/agents"
+)
+
 manager = ShujaaManager(
     crew_runner=runner,
     task_store=task_store,
@@ -58,6 +63,26 @@ def is_authorized() -> bool:
         return False
 
     return hmac.compare_digest(provided_key, expected_key)
+
+
+@app.get("/agents")
+def list_agents():
+    if not is_authorized():
+        return jsonify({
+            "status": "error",
+            "message": "Unauthorized.",
+        }), 401
+
+    return jsonify([
+        {
+            "agent_id": agent.agent_id,
+            "name": agent.name,
+            "description": agent.description,
+            "capabilities": list(agent.capabilities),
+            "enabled": agent.enabled,
+        }
+        for agent in agent_registry.list()
+    ]), 200
 
 
 @app.get("/health")

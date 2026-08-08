@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from core.agents.contracts import AgentRegistryProtocol
-from core.agents.executor_contract import AgentExecutorProtocol
+from core.agents.executor_registry import AgentExecutorRegistry
 
 
 class AgentService:
@@ -10,10 +10,10 @@ class AgentService:
     def __init__(
         self,
         registry: AgentRegistryProtocol,
-        executor: AgentExecutorProtocol,
+        executor_registry: AgentExecutorRegistry,
     ) -> None:
         self.registry = registry
-        self.executor = executor
+        self.executor_registry = executor_registry
 
     def execute_by_id(
         self,
@@ -28,7 +28,14 @@ class AgentService:
         if not agent.enabled:
             raise ValueError(f"Agent is disabled: {agent_id}")
 
-        return self.executor.execute(agent, task)
+        executor = self.executor_registry.get(agent.agent_id)
+
+        if executor is None:
+            raise ValueError(
+                f"No executor registered for agent: {agent.agent_id}"
+            )
+
+        return executor.execute(agent, task)
 
     def execute_by_capability(
         self,
@@ -42,4 +49,12 @@ class AgentService:
                 f"No enabled agent supports capability: {capability}"
             )
 
-        return self.executor.execute(agents[0], task)
+        for agent in agents:
+            executor = self.executor_registry.get(agent.agent_id)
+
+            if executor is not None:
+                return executor.execute(agent, task)
+
+        raise ValueError(
+            f"No executor registered for capability: {capability}"
+        )

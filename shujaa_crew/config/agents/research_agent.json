@@ -1,0 +1,11 @@
+{
+  "agent_id": "research-agent",
+  "name": "Research Agent",
+  "description": "Temporary research agent used during the current development stage.",
+  "capabilities": [
+    "research",
+    "analysis",
+    "information-gathering"
+  ],
+  "enabled": true
+}
