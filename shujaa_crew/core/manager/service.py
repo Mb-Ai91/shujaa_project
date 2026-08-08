@@ -134,10 +134,21 @@ class ShujaaManager:
                 return
 
             if return_code == 0:
+                result = None
+                result_reader = getattr(
+                    self.crew_runner,
+                    "get_result",
+                    None,
+                )
+
+                if callable(result_reader):
+                    result = result_reader(process)
+
                 self.task_store.update(
                     task_id,
                     status="completed",
                     error=None,
+                    result=result,
                 )
             else:
                 error_message = f"Exit code: {return_code}"

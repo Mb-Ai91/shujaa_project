@@ -187,3 +187,68 @@ def test_cancel_uses_sigkill_if_process_group_survives(monkeypatch):
         (12345, signal.SIGTERM),
         (12345, signal.SIGKILL),
     ]
+
+
+def test_task_store_updates_result():
+    from core.tasks.store import TaskRecord, TaskStore
+
+    store = TaskStore()
+
+    store.create(
+        TaskRecord(
+            task_id="result-test",
+            command="test",
+            status="running",
+        )
+    )
+
+    store.update(
+        "result-test",
+        status="completed",
+        result="Mock final result",
+    )
+
+    task = store.get("result-test")
+
+    assert task is not None
+    assert task.status == "completed"
+    assert task.result == "Mock final result"
+    assert task.to_dict()["result"] == "Mock final result"
+
+
+def test_manager_stores_completed_runner_result():
+    import time
+
+    class ResultProcess:
+        pid = 987654320
+
+        def wait(self, timeout=None):
+            return 0
+
+    class ResultRunner:
+        def start(self, topic: str):
+            assert topic == "test result"
+            return ResultProcess()
+
+        def get_result(self, process):
+            return "Mock task completed"
+
+    manager = ShujaaManager(crew_runner=ResultRunner())
+
+    submitted = manager.submit("test result")
+    task_id = submitted["task_id"]
+
+    deadline = time.monotonic() + 1.0
+    task = None
+
+    while time.monotonic() < deadline:
+        task = manager.get_task(task_id)
+
+        if task is not None and task["status"] == "completed":
+            break
+
+        time.sleep(0.01)
+
+    assert task is not None
+    assert task["status"] == "completed"
+    assert task["result"] == "Mock task completed"

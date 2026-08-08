@@ -22,6 +22,12 @@ class MockRunner:
             exist_ok=True,
         )
 
+    def get_result(
+        self,
+        process: subprocess.Popen[str],
+    ) -> str:
+        return "Mock task completed"
+
     def start(self, topic: str) -> subprocess.Popen[str]:
         log_file: TextIO = self.log_path.open(
             "a",
