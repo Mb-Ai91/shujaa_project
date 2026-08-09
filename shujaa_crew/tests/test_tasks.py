@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from core.manager.service import ShujaaManager
 from core.work.models import ExecutionStatus
 
@@ -624,3 +626,124 @@ def test_manager_executes_agent_without_using_runner():
     assert execution.task_id == result["task_id"]
     assert execution.executor_id == "research-agent"
     assert execution.status == ExecutionStatus.COMPLETED
+
+
+def test_manager_passes_required_capability_to_dispatcher():
+    from core.work.dispatcher import DispatchDecision
+
+    class RecordingDispatcher:
+        def __init__(self):
+            self.request = None
+
+        def dispatch(self, request):
+            self.request = request
+            return DispatchDecision(
+                executor_id="runner-test",
+                runtime_id="process-runner",
+            )
+
+    dispatcher = RecordingDispatcher()
+
+    manager = ShujaaManager(
+        crew_runner=FakeRunner(),
+        execution_dispatcher=dispatcher,
+    )
+
+    manager.submit(
+        "research this",
+        required_capability="research",
+    )
+
+    assert dispatcher.request is not None
+    assert dispatcher.request.required_capability == "research"
+
+
+def test_manager_executes_agent_by_required_capability():
+    import time
+
+    from core.agents.executor_registry import AgentExecutorRegistry
+    from core.agents.models import AgentDefinition
+    from core.agents.registry import InMemoryAgentRegistry
+
+    class ForbiddenRunner:
+        def start(self, topic: str):
+            raise AssertionError(
+                "Runner must not execute capability-routed task."
+            )
+
+    class FakeAgentExecutor:
+        def execute(self, agent, task):
+            return f"{agent.agent_id}:{task}"
+
+    agent_registry = InMemoryAgentRegistry()
+    agent_registry.register(
+        AgentDefinition(
+            agent_id="analysis-agent",
+            name="Analysis Agent",
+            description="Analyzes information.",
+            capabilities=("analysis",),
+        )
+    )
+
+    executor_registry = AgentExecutorRegistry()
+    executor_registry.register(
+        "analysis-agent",
+        FakeAgentExecutor(),
+    )
+
+    manager = ShujaaManager(
+        crew_runner=ForbiddenRunner(),
+        agent_registry=agent_registry,
+        agent_executor_registry=executor_registry,
+    )
+
+    submitted = manager.submit(
+        "analyze this",
+        required_capability="analysis",
+    )
+
+    deadline = time.monotonic() + 1.0
+    task = None
+
+    while time.monotonic() < deadline:
+        task = manager.get_task(submitted["task_id"])
+
+        if task is not None and task["status"] == "completed":
+            break
+
+        time.sleep(0.01)
+
+    assert task is not None
+    assert task["status"] == "completed"
+    assert task["result"] == "analysis-agent:analyze this"
+
+
+def test_manager_rejects_agent_without_executor():
+    from core.agents.executor_registry import AgentExecutorRegistry
+    from core.agents.models import AgentDefinition
+    from core.agents.registry import InMemoryAgentRegistry
+
+    agent_registry = InMemoryAgentRegistry()
+    agent_registry.register(
+        AgentDefinition(
+            agent_id="agent-without-executor",
+            name="Agent",
+            description="No executor.",
+            capabilities=("test",),
+        )
+    )
+
+    manager = ShujaaManager(
+        crew_runner=FakeRunner(),
+        agent_registry=agent_registry,
+        agent_executor_registry=AgentExecutorRegistry(),
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="No executor registered for capability: test",
+    ):
+        manager.submit(
+            "test task",
+            required_capability="test",
+        )

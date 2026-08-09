@@ -3,6 +3,7 @@ from __future__ import annotations
 import atexit
 import hmac
 import os
+import time
 
 from dotenv import load_dotenv
 from flask import Flask, jsonify, request
@@ -13,7 +14,6 @@ from adapters.mock.runner import MockRunner
 from adapters.storage.sqlite_task_store import SQLiteTaskStore
 from core.agents.bootstrap import build_agent_registry
 from core.agents.executor_registry import AgentExecutorRegistry
-from core.agents.service import AgentService
 from core.manager.service import ShujaaManager
 from core.tasks.store import InMemoryTaskStore
 
@@ -60,14 +60,11 @@ for agent in agent_registry.list():
         build_agent_executor(agent),
     )
 
-agent_service = AgentService(
-    registry=agent_registry,
-    executor_registry=agent_executor_registry,
-)
-
 manager = ShujaaManager(
     crew_runner=runner,
     task_store=task_store,
+    agent_registry=agent_registry,
+    agent_executor_registry=agent_executor_registry,
 )
 
 
@@ -106,9 +103,9 @@ def execute_agent(agent_id: str):
         }), 400
 
     try:
-        result = agent_service.execute_by_id(
-            agent_id,
+        submitted = manager.submit(
             task,
+            requested_agent_id=agent_id,
         )
     except ValueError as error:
         message = str(error)
@@ -123,10 +120,49 @@ def execute_agent(agent_id: str):
             "message": message,
         }), status_code
 
+    task_id = submitted["task_id"]
+    deadline = time.monotonic() + manager.TASK_TIMEOUT_SECONDS
+
+    while time.monotonic() < deadline:
+        tracked = manager.get_task(task_id)
+
+        if tracked is not None and tracked["status"] in {
+            "completed",
+            "failed",
+            "timed_out",
+            "cancelled",
+        }:
+            break
+
+        time.sleep(0.01)
+    else:
+        return jsonify({
+            "status": "error",
+            "message": "Agent execution did not finish in time.",
+            "work_id": submitted["work_id"],
+            "task_id": task_id,
+            "execution_id": submitted["execution_id"],
+        }), 504
+
+    if tracked["status"] != "completed":
+        return jsonify({
+            "status": "error",
+            "message": tracked.get("error") or (
+                f"Agent execution ended with "
+                f"status: {tracked['status']}"
+            ),
+            "work_id": submitted["work_id"],
+            "task_id": task_id,
+            "execution_id": submitted["execution_id"],
+        }), 400
+
     return jsonify({
         "status": "completed",
         "agent_id": agent_id,
-        "result": result,
+        "result": tracked["result"],
+        "work_id": submitted["work_id"],
+        "task_id": task_id,
+        "execution_id": submitted["execution_id"],
     }), 200
 
 

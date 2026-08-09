@@ -162,3 +162,63 @@ def test_default_dispatcher_rejects_unknown_requested_agent():
                 requested_agent_id="missing-agent",
             )
         )
+
+
+def test_default_dispatcher_selects_runnable_agent_by_capability():
+    from core.agents.executor_registry import AgentExecutorRegistry
+    from core.agents.models import AgentDefinition
+    from core.agents.registry import InMemoryAgentRegistry
+    from core.work.dispatcher import (
+        DefaultExecutionDispatcher,
+        DispatchRequest,
+    )
+
+    class FakeExecutor:
+        def execute(self, agent, task):
+            return "done"
+
+    registry = InMemoryAgentRegistry()
+
+    registry.register(
+        AgentDefinition(
+            agent_id="unavailable-agent",
+            name="Unavailable",
+            description="Has no registered executor.",
+            capabilities=("research",),
+        )
+    )
+
+    registry.register(
+        AgentDefinition(
+            agent_id="runnable-agent",
+            name="Runnable",
+            description="Has a registered executor.",
+            capabilities=("Research",),
+        )
+    )
+
+    executor_registry = AgentExecutorRegistry()
+    executor_registry.register(
+        "runnable-agent",
+        FakeExecutor(),
+    )
+
+    dispatcher = DefaultExecutionDispatcher(
+        agent_registry=registry,
+        agent_executor_registry=executor_registry,
+    )
+
+    decision = dispatcher.dispatch(
+        DispatchRequest(
+            work_id="work-1",
+            task_id="task-1",
+            execution_id="exec-1",
+            command="research this",
+            required_capability=" RESEARCH ",
+        )
+    )
+
+    assert decision.agent_id == "runnable-agent"
+    assert decision.executor_id == "runnable-agent"
+    assert decision.runtime_id == "agent-executor"
+    assert decision.metadata["selection"] == "capability"

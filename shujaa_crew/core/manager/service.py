@@ -66,6 +66,7 @@ class ShujaaManager:
             execution_dispatcher
             or DefaultExecutionDispatcher(
                 agent_registry=agent_registry,
+                agent_executor_registry=agent_executor_registry,
             )
         )
         self.agent_registry = agent_registry
@@ -76,6 +77,7 @@ class ShujaaManager:
         command: object,
         *,
         requested_agent_id: str | None = None,
+        required_capability: str | None = None,
     ) -> dict[str, object]:
         if not isinstance(command, str):
             raise ValueError("Command must be a string.")
@@ -123,6 +125,7 @@ class ShujaaManager:
                 execution_id=execution_id,
                 command=command,
                 requested_agent_id=requested_agent_id,
+                required_capability=required_capability,
             )
         )
 

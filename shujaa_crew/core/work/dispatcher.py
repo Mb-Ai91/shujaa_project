@@ -4,6 +4,9 @@ from dataclasses import dataclass, field
 from typing import Any, Protocol
 
 from core.agents.contracts import AgentRegistryProtocol
+from core.agents.executor_registry_contract import (
+    AgentExecutorRegistryProtocol,
+)
 
 
 @dataclass(frozen=True)
@@ -49,10 +52,14 @@ class DefaultExecutionDispatcher:
         executor_id: str = "runner-default",
         runtime_id: str = "process-runner",
         agent_registry: AgentRegistryProtocol | None = None,
+        agent_executor_registry: (
+            AgentExecutorRegistryProtocol | None
+        ) = None,
     ) -> None:
         self.executor_id = executor_id
         self.runtime_id = runtime_id
         self.agent_registry = agent_registry
+        self.agent_executor_registry = agent_executor_registry
 
     def dispatch(
         self,
@@ -87,6 +94,54 @@ class DefaultExecutionDispatcher:
                     "route": "agent-executor",
                     "executor_type": agent.executor,
                 },
+            )
+
+        if request.required_capability is not None:
+            if self.agent_registry is None:
+                raise ValueError(
+                    "Agent registry is required for "
+                    "capability routing."
+                )
+
+            if self.agent_executor_registry is None:
+                raise ValueError(
+                    "Agent executor registry is required for "
+                    "capability routing."
+                )
+
+            agents = self.agent_registry.find_by_capability(
+                request.required_capability
+            )
+
+            if not agents:
+                raise ValueError(
+                    "No enabled agent supports capability: "
+                    f"{request.required_capability}"
+                )
+
+            for agent in agents:
+                executor = self.agent_executor_registry.get(
+                    agent.agent_id
+                )
+
+                if executor is not None:
+                    return DispatchDecision(
+                        executor_id=agent.agent_id,
+                        agent_id=agent.agent_id,
+                        runtime_id="agent-executor",
+                        metadata={
+                            "route": "agent-executor",
+                            "selection": "capability",
+                            "required_capability": (
+                                request.required_capability
+                            ),
+                            "executor_type": agent.executor,
+                        },
+                    )
+
+            raise ValueError(
+                "No executor registered for capability: "
+                f"{request.required_capability}"
             )
 
         return DispatchDecision(
