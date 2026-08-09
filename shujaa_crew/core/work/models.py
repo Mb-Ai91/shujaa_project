@@ -21,6 +21,7 @@ def new_execution_id() -> str:
 
 class WorkStatus(StrEnum):
     QUEUED = "queued"
+    PENDING_APPROVAL = "pending_approval"
     RUNNING = "running"
     PAUSED = "paused"
     BLOCKED = "blocked"
@@ -52,6 +53,7 @@ class Work:
 @dataclass(frozen=True)
 class Execution:
     execution_id: str
+    work_id: str
     task_id: str
     status: ExecutionStatus = ExecutionStatus.QUEUED
     executor_id: str | None = None
