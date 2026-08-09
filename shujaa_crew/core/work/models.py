@@ -46,6 +46,15 @@ class Work:
     request: str
     status: WorkStatus = WorkStatus.QUEUED
     priority: int = 0
+    progress: float = 0.0
+    queue_position: int | None = None
+    parent_work_id: str | None = None
+    dependency_work_ids: tuple[str, ...] = ()
+    result: str | None = None
+    artifact_refs: tuple[str, ...] = ()
+    deadline_at: datetime | None = None
+    sla_seconds: int | None = None
+    event_refs: tuple[str, ...] = ()
     metadata: dict[str, Any] = field(default_factory=dict)
     created_at: datetime = field(default_factory=utc_now)
 
