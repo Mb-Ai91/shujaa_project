@@ -127,3 +127,53 @@ def test_agents_endpoint_returns_list(client):
 
     assert response.status_code == 200
     assert isinstance(response.get_json(), list)
+
+
+def test_execute_agent_requires_api_key(client):
+    response = client.post(
+        "/agents/research-agent/execute",
+        json={"task": "test"},
+    )
+
+    assert response.status_code == 401
+
+
+def test_execute_agent_returns_mock_result(client):
+    import os
+
+    response = client.post(
+        "/agents/research-agent/execute",
+        headers={
+            "X-Shujaa-Key": os.getenv("SHUJAA_API_KEY"),
+        },
+        json={
+            "task": "research this topic",
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.get_json()
+
+    assert data["status"] == "completed"
+    assert data["agent_id"] == "research-agent"
+    assert data["result"] == (
+        "Mock execution completed by "
+        "research-agent: research this topic"
+    )
+
+
+def test_execute_unknown_agent_returns_404(client):
+    import os
+
+    response = client.post(
+        "/agents/missing-agent/execute",
+        headers={
+            "X-Shujaa-Key": os.getenv("SHUJAA_API_KEY"),
+        },
+        json={
+            "task": "test",
+        },
+    )
+
+    assert response.status_code == 404

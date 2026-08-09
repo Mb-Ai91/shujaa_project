@@ -7,5 +7,9 @@
     "analysis",
     "information-gathering"
   ],
-  "enabled": true
+  "enabled": true,
+  "executor": "mock",
+  "executor_config": {
+    "crewai_agent": "senior_data_researcher"
+  }
 }

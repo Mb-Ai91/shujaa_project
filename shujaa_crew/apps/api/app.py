@@ -7,10 +7,13 @@ import os
 from dotenv import load_dotenv
 from flask import Flask, jsonify, request
 
+from adapters.agents.factory import build_agent_executor
 from adapters.crewai.runner import CrewAIRunner
 from adapters.mock.runner import MockRunner
 from adapters.storage.sqlite_task_store import SQLiteTaskStore
 from core.agents.bootstrap import build_agent_registry
+from core.agents.executor_registry import AgentExecutorRegistry
+from core.agents.service import AgentService
 from core.manager.service import ShujaaManager
 from core.tasks.store import InMemoryTaskStore
 
@@ -49,6 +52,19 @@ agent_registry = build_agent_registry(
     "config/agents"
 )
 
+agent_executor_registry = AgentExecutorRegistry()
+
+for agent in agent_registry.list():
+    agent_executor_registry.register(
+        agent.agent_id,
+        build_agent_executor(agent),
+    )
+
+agent_service = AgentService(
+    registry=agent_registry,
+    executor_registry=agent_executor_registry,
+)
+
 manager = ShujaaManager(
     crew_runner=runner,
     task_store=task_store,
@@ -63,6 +79,55 @@ def is_authorized() -> bool:
         return False
 
     return hmac.compare_digest(provided_key, expected_key)
+
+
+@app.post("/agents/<agent_id>/execute")
+def execute_agent(agent_id: str):
+    if not is_authorized():
+        return jsonify({
+            "status": "error",
+            "message": "Unauthorized.",
+        }), 401
+
+    data = request.get_json(silent=True)
+
+    if not isinstance(data, dict):
+        return jsonify({
+            "status": "error",
+            "message": "Invalid JSON payload.",
+        }), 400
+
+    task = data.get("task")
+
+    if not isinstance(task, str):
+        return jsonify({
+            "status": "error",
+            "message": "Task must be a string.",
+        }), 400
+
+    try:
+        result = agent_service.execute_by_id(
+            agent_id,
+            task,
+        )
+    except ValueError as error:
+        message = str(error)
+
+        if message.startswith("Agent not found:"):
+            status_code = 404
+        else:
+            status_code = 400
+
+        return jsonify({
+            "status": "error",
+            "message": message,
+        }), status_code
+
+    return jsonify({
+        "status": "completed",
+        "agent_id": agent_id,
+        "result": result,
+    }), 200
 
 
 @app.get("/agents")

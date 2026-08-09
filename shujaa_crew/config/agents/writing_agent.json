@@ -7,5 +7,6 @@
     "content-generation",
     "summarization"
   ],
-  "enabled": true
+  "enabled": true,
+  "executor": "mock"
 }

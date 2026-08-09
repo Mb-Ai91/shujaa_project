@@ -80,5 +80,16 @@ class AgentConfigLoader:
                 for item in capabilities
                 if str(item).strip()
             ),
+            executor=str(
+                data.get("executor", "mock")
+            ).strip().lower(),
+            executor_config=(
+                data.get("executor_config")
+                if isinstance(
+                    data.get("executor_config"),
+                    dict,
+                )
+                else None
+            ),
             enabled=bool(data.get("enabled", True)),
         )

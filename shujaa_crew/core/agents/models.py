@@ -11,4 +11,6 @@ class AgentDefinition:
     name: str
     description: str
     capabilities: tuple[str, ...]
+    executor: str = "mock"
+    executor_config: dict[str, object] | None = None
     enabled: bool = True
