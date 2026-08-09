@@ -35,6 +35,7 @@ class SQLiteTaskStore:
                     task_id TEXT PRIMARY KEY,
                     command TEXT NOT NULL,
                     status TEXT NOT NULL,
+                    work_id TEXT,
                     process_id INTEGER,
                     process_group_id INTEGER,
                     error TEXT,
@@ -42,6 +43,18 @@ class SQLiteTaskStore:
                 )
                 """
             )
+
+            columns = {
+                row["name"]
+                for row in connection.execute(
+                    "PRAGMA table_info(tasks)"
+                ).fetchall()
+            }
+
+            if "work_id" not in columns:
+                connection.execute(
+                    "ALTER TABLE tasks ADD COLUMN work_id TEXT"
+                )
 
     def create(self, task: TaskRecord) -> None:
         with self._lock:
@@ -52,17 +65,19 @@ class SQLiteTaskStore:
                         task_id,
                         command,
                         status,
+                        work_id,
                         process_id,
                         process_group_id,
                         error,
                         result
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         task.task_id,
                         task.command,
                         task.status,
+                        task.work_id,
                         task.process_id,
                         task.process_group_id,
                         task.error,
@@ -79,6 +94,7 @@ class SQLiteTaskStore:
                         task_id,
                         command,
                         status,
+                        work_id,
                         process_id,
                         process_group_id,
                         error,
@@ -96,6 +112,7 @@ class SQLiteTaskStore:
             task_id=row["task_id"],
             command=row["command"],
             status=row["status"],
+            work_id=row["work_id"],
             process_id=row["process_id"],
             process_group_id=row["process_group_id"],
             error=row["error"],

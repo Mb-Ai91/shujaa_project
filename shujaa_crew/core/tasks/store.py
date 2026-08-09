@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from dataclasses import asdict, dataclass
 from threading import Lock
 
@@ -9,6 +7,7 @@ class TaskRecord:
     task_id: str
     command: str
     status: str
+    work_id: str | None = None
     process_id: int | None = None
     process_group_id: int | None = None
     error: str | None = None
