@@ -78,3 +78,87 @@ def test_dispatch_metadata_is_independent():
     first.metadata["source"] = "manager"
 
     assert second.metadata == {}
+
+
+def test_default_dispatcher_routes_to_current_runner():
+    from core.work.dispatcher import DefaultExecutionDispatcher
+
+    dispatcher = DefaultExecutionDispatcher()
+
+    request = DispatchRequest(
+        work_id="work-1",
+        task_id="task-1",
+        execution_id="exec-1",
+        command="Run current task.",
+    )
+
+    decision = dispatcher.dispatch(request)
+
+    assert decision.executor_id == "runner-default"
+    assert decision.runtime_id == "process-runner"
+    assert decision.agent_id is None
+    assert decision.workflow_id is None
+    assert decision.tool_id is None
+    assert decision.metadata["route"] == "default-runner"
+
+
+def test_default_dispatcher_routes_requested_agent():
+    from core.agents.models import AgentDefinition
+    from core.agents.registry import InMemoryAgentRegistry
+    from core.work.dispatcher import DefaultExecutionDispatcher
+
+    registry = InMemoryAgentRegistry()
+    registry.register(
+        AgentDefinition(
+            agent_id="research-agent",
+            name="Research Agent",
+            description="Researches information.",
+            capabilities=("research",),
+            executor="mock",
+        )
+    )
+
+    dispatcher = DefaultExecutionDispatcher(
+        agent_registry=registry,
+    )
+
+    decision = dispatcher.dispatch(
+        DispatchRequest(
+            work_id="work-1",
+            task_id="task-1",
+            execution_id="exec-1",
+            command="Research this.",
+            requested_agent_id="research-agent",
+        )
+    )
+
+    assert decision.agent_id == "research-agent"
+    assert decision.executor_id == "research-agent"
+    assert decision.runtime_id == "agent-executor"
+    assert decision.metadata["route"] == "agent-executor"
+    assert decision.metadata["executor_type"] == "mock"
+
+
+def test_default_dispatcher_rejects_unknown_requested_agent():
+    import pytest
+
+    from core.agents.registry import InMemoryAgentRegistry
+    from core.work.dispatcher import DefaultExecutionDispatcher
+
+    dispatcher = DefaultExecutionDispatcher(
+        agent_registry=InMemoryAgentRegistry(),
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="Agent not found:",
+    ):
+        dispatcher.dispatch(
+            DispatchRequest(
+                work_id="work-1",
+                task_id="task-1",
+                execution_id="exec-1",
+                command="Research this.",
+                requested_agent_id="missing-agent",
+            )
+        )

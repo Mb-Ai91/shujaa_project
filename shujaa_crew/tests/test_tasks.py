@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from core.manager.service import ShujaaManager
+from core.work.models import ExecutionStatus
 
 
 class FakeProcess:
@@ -265,3 +266,361 @@ def test_manager_stores_completed_runner_result():
     assert task is not None
     assert task["status"] == "completed"
     assert task["result"] == "Mock task completed"
+
+
+def test_manager_creates_work_before_task():
+    manager = ShujaaManager(crew_runner=FakeRunner())
+
+    result = manager.submit("test task")
+
+    work_id = result["work_id"]
+    task = manager.get_task(result["task_id"])
+    work = manager.work_registry.get(work_id)
+
+    assert isinstance(work_id, str)
+    assert work_id.startswith("work-")
+    assert work is not None
+    assert work.request == "test task"
+
+    assert task is not None
+    assert task["work_id"] == work_id
+
+
+def test_manager_creates_execution_before_runner():
+    manager = ShujaaManager(crew_runner=FakeRunner())
+
+    result = manager.submit("test task")
+
+    execution_id = result["execution_id"]
+    execution = manager.execution_registry.get(execution_id)
+
+    assert isinstance(execution_id, str)
+    assert execution_id.startswith("exec-")
+    assert execution is not None
+    assert execution.work_id == result["work_id"]
+    assert execution.task_id == result["task_id"]
+
+
+def test_manager_routes_execution_through_dispatcher():
+    from core.work.dispatcher import DispatchDecision
+
+    class RecordingDispatcher:
+        def __init__(self):
+            self.request = None
+
+        def dispatch(self, request):
+            self.request = request
+            return DispatchDecision(
+                executor_id="runner-test",
+                runtime_id="test-runtime",
+            )
+
+    dispatcher = RecordingDispatcher()
+
+    manager = ShujaaManager(
+        crew_runner=FakeRunner(),
+        execution_dispatcher=dispatcher,
+    )
+
+    result = manager.submit("test task")
+
+    assert dispatcher.request is not None
+    assert dispatcher.request.work_id == result["work_id"]
+    assert dispatcher.request.task_id == result["task_id"]
+    assert dispatcher.request.execution_id == result["execution_id"]
+
+    execution = manager.execution_registry.get(
+        result["execution_id"]
+    )
+
+    assert execution is not None
+    assert execution.executor_id == "runner-test"
+
+
+def test_manager_marks_execution_completed():
+    import time
+
+    manager = ShujaaManager(crew_runner=FakeRunner())
+
+    result = manager.submit("test task")
+
+    deadline = time.monotonic() + 1.0
+    execution = None
+
+    while time.monotonic() < deadline:
+        execution = manager.execution_registry.get(
+            result["execution_id"]
+        )
+
+        if (
+            execution is not None
+            and execution.status.value == "completed"
+        ):
+            break
+
+        time.sleep(0.01)
+
+    assert execution is not None
+    assert execution.status.value == "completed"
+
+
+def test_manager_marks_execution_failed():
+    import time
+
+    class FailedProcess:
+        pid = 12345
+
+        def wait(self, timeout=None):
+            return 1
+
+    class FailedRunner:
+        def start(self, topic: str):
+            return FailedProcess()
+
+        def get_error(self, return_code: int) -> str:
+            return "Test failure"
+
+    manager = ShujaaManager(crew_runner=FailedRunner())
+
+    result = manager.submit("test failure")
+
+    deadline = time.monotonic() + 1.0
+    execution = None
+
+    while time.monotonic() < deadline:
+        execution = manager.execution_registry.get(
+            result["execution_id"]
+        )
+
+        if (
+            execution is not None
+            and execution.status.value == "failed"
+        ):
+            break
+
+        time.sleep(0.01)
+
+    assert execution is not None
+    assert execution.status.value == "failed"
+
+
+def test_manager_marks_execution_cancelled():
+    import threading
+    import time
+
+    release_process = threading.Event()
+
+    class SlowProcess:
+        pid = 987654321
+
+        def wait(self, timeout=None):
+            release_process.wait(timeout=1)
+            return 1
+
+    class SlowRunner:
+        def start(self, topic: str):
+            return SlowProcess()
+
+    manager = ShujaaManager(crew_runner=SlowRunner())
+
+    result = manager.submit("cancel execution")
+    task_id = result["task_id"]
+    execution_id = result["execution_id"]
+
+    manager.cancel_task(task_id)
+
+    release_process.set()
+
+    deadline = time.monotonic() + 1.0
+    execution = None
+
+    while time.monotonic() < deadline:
+        execution = manager.execution_registry.get(execution_id)
+
+        if (
+            execution is not None
+            and execution.status.value == "cancelled"
+        ):
+            break
+
+        time.sleep(0.01)
+
+    assert execution is not None
+    assert execution.status.value == "cancelled"
+
+
+def test_manager_marks_execution_timed_out(monkeypatch):
+    import subprocess
+    import time
+
+    class TimeoutProcess:
+        pid = 987654322
+
+        def wait(self, timeout=None):
+            raise subprocess.TimeoutExpired(
+                cmd="test",
+                timeout=timeout,
+            )
+
+    class TimeoutRunner:
+        def start(self, topic: str):
+            return TimeoutProcess()
+
+    manager = ShujaaManager(crew_runner=TimeoutRunner())
+
+    monkeypatch.setattr(
+        manager,
+        "_terminate_process_group",
+        lambda process, process_group_id: None,
+    )
+
+    result = manager.submit("timeout execution")
+
+    deadline = time.monotonic() + 1.0
+    execution = None
+
+    while time.monotonic() < deadline:
+        execution = manager.execution_registry.get(
+            result["execution_id"]
+        )
+
+        if (
+            execution is not None
+            and execution.status.value == "timed_out"
+        ):
+            break
+
+        time.sleep(0.01)
+
+    assert execution is not None
+    assert execution.status.value == "timed_out"
+
+
+def test_manager_passes_requested_agent_to_dispatcher():
+    from core.work.dispatcher import DispatchDecision
+
+    class RecordingDispatcher:
+        def __init__(self):
+            self.request = None
+
+        def dispatch(self, request):
+            self.request = request
+            return DispatchDecision(
+                executor_id="research-agent",
+                agent_id="research-agent",
+                runtime_id="agent-executor",
+            )
+
+    dispatcher = RecordingDispatcher()
+
+    manager = ShujaaManager(
+        crew_runner=FakeRunner(),
+        execution_dispatcher=dispatcher,
+    )
+
+    result = manager.submit(
+        "test task",
+        requested_agent_id="research-agent",
+    )
+
+    assert dispatcher.request is not None
+    assert (
+        dispatcher.request.requested_agent_id
+        == "research-agent"
+    )
+
+    execution = manager.execution_registry.get(
+        result["execution_id"]
+    )
+
+    assert execution is not None
+    assert execution.executor_id == "research-agent"
+
+
+def test_manager_accepts_agent_runtime_dependencies():
+    from core.agents.executor_registry import AgentExecutorRegistry
+    from core.agents.registry import InMemoryAgentRegistry
+
+    agent_registry = InMemoryAgentRegistry()
+    executor_registry = AgentExecutorRegistry()
+
+    manager = ShujaaManager(
+        crew_runner=FakeRunner(),
+        agent_registry=agent_registry,
+        agent_executor_registry=executor_registry,
+    )
+
+    assert manager.agent_registry is agent_registry
+    assert manager.agent_executor_registry is executor_registry
+
+
+def test_manager_executes_agent_without_using_runner():
+    import time
+
+    from core.agents.executor_registry import AgentExecutorRegistry
+    from core.agents.models import AgentDefinition
+    from core.agents.registry import InMemoryAgentRegistry
+
+    class ForbiddenRunner:
+        def start(self, topic: str):
+            raise AssertionError(
+                "Runner must not execute an agent-routed task."
+            )
+
+    class FakeAgentExecutor:
+        def execute(self, agent, task):
+            return f"{agent.agent_id}:{task}"
+
+    agent_registry = InMemoryAgentRegistry()
+
+    agent_registry.register(
+        AgentDefinition(
+            agent_id="research-agent",
+            name="Research Agent",
+            description="Researches information.",
+            capabilities=("research",),
+            executor="mock",
+        )
+    )
+
+    executor_registry = AgentExecutorRegistry()
+    executor_registry.register(
+        "research-agent",
+        FakeAgentExecutor(),
+    )
+
+    manager = ShujaaManager(
+        crew_runner=ForbiddenRunner(),
+        agent_registry=agent_registry,
+        agent_executor_registry=executor_registry,
+    )
+
+    result = manager.submit(
+        "research this",
+        requested_agent_id="research-agent",
+    )
+
+    deadline = time.monotonic() + 1.0
+    task = None
+
+    while time.monotonic() < deadline:
+        task = manager.get_task(result["task_id"])
+
+        if task is not None and task["status"] == "completed":
+            break
+
+        time.sleep(0.01)
+
+    execution = manager.execution_registry.get(
+        result["execution_id"]
+    )
+
+    assert task is not None
+    assert task["status"] == "completed"
+    assert task["result"] == "research-agent:research this"
+
+    assert execution is not None
+    assert execution.work_id == result["work_id"]
+    assert execution.task_id == result["task_id"]
+    assert execution.executor_id == "research-agent"
+    assert execution.status == ExecutionStatus.COMPLETED
