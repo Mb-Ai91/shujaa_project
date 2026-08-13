@@ -72,6 +72,74 @@ class ShujaaManager:
         self.agent_registry = agent_registry
         self.agent_executor_registry = agent_executor_registry
 
+    _TERMINAL_EXECUTION_STATUSES = frozenset(
+        {
+            ExecutionStatus.COMPLETED,
+            ExecutionStatus.FAILED,
+            ExecutionStatus.CANCELLED,
+            ExecutionStatus.TIMED_OUT,
+        }
+    )
+
+    _ALLOWED_EXECUTION_TRANSITIONS = {
+        ExecutionStatus.QUEUED: frozenset(
+            {
+                ExecutionStatus.RUNNING,
+                ExecutionStatus.FAILED,
+            }
+        ),
+        ExecutionStatus.RUNNING: (
+            _TERMINAL_EXECUTION_STATUSES
+        ),
+    }
+
+    def _transition_execution(
+        self,
+        execution_id: str,
+        *,
+        target_status: ExecutionStatus,
+        operation_id: str,
+    ):
+        """Authorize semantics, then request an atomic commit."""
+        execution = self.execution_registry.get(execution_id)
+
+        if execution is None:
+            raise ValueError(
+                f"Execution does not exist: {execution_id}"
+            )
+
+        allowed_targets = (
+            self._ALLOWED_EXECUTION_TRANSITIONS.get(
+                execution.status,
+                frozenset(),
+            )
+        )
+
+        is_terminal_observation = (
+            execution.status
+            in self._TERMINAL_EXECUTION_STATUSES
+            and target_status
+            in self._TERMINAL_EXECUTION_STATUSES
+        )
+
+        if (
+            target_status not in allowed_targets
+            and not is_terminal_observation
+        ):
+            raise ValueError(
+                "Invalid execution transition: "
+                f"{execution.status.value} -> "
+                f"{target_status.value}"
+            )
+
+        return self.execution_registry.transition(
+            execution_id,
+            target_status=target_status,
+            expected_version=execution.state_version,
+            operation_id=operation_id,
+            source="manager_lifecycle_authority",
+        )
+
     def submit(
         self,
         command: object,
@@ -213,15 +281,11 @@ class ShujaaManager:
                 process_group_id=process_group_id,
             )
 
-            execution = self.execution_registry.get(execution_id)
-
-            if execution is not None:
-                self.execution_registry.save(
-                    replace(
-                        execution,
-                        status=ExecutionStatus.RUNNING,
-                    )
-                )
+            self._transition_execution(
+                execution_id,
+                target_status=ExecutionStatus.RUNNING,
+                operation_id=f"{execution_id}:running",
+            )
 
             started.set()
 
@@ -247,15 +311,11 @@ class ShujaaManager:
                     ),
                 )
 
-                execution = self.execution_registry.get(execution_id)
-
-                if execution is not None:
-                    self.execution_registry.save(
-                        replace(
-                            execution,
-                            status=ExecutionStatus.TIMED_OUT,
-                        )
-                    )
+                self._transition_execution(
+                    execution_id,
+                    target_status=ExecutionStatus.TIMED_OUT,
+                    operation_id=f"{execution_id}:timed_out",
+                )
 
                 self.process_registry.remove(task_id)
                 return
@@ -263,15 +323,11 @@ class ShujaaManager:
             current_task = self.task_store.get(task_id)
 
             if current_task and current_task.status == "cancelled":
-                execution = self.execution_registry.get(execution_id)
-
-                if execution is not None:
-                    self.execution_registry.save(
-                        replace(
-                            execution,
-                            status=ExecutionStatus.CANCELLED,
-                        )
-                    )
+                self._transition_execution(
+                    execution_id,
+                    target_status=ExecutionStatus.CANCELLED,
+                    operation_id=f"{execution_id}:cancelled",
+                )
 
                 self.process_registry.remove(task_id)
                 return
@@ -294,15 +350,11 @@ class ShujaaManager:
                     result=result,
                 )
 
-                execution = self.execution_registry.get(execution_id)
-
-                if execution is not None:
-                    self.execution_registry.save(
-                        replace(
-                            execution,
-                            status=ExecutionStatus.COMPLETED,
-                        )
-                    )
+                self._transition_execution(
+                    execution_id,
+                    target_status=ExecutionStatus.COMPLETED,
+                    operation_id=f"{execution_id}:completed",
+                )
             else:
                 error_reader = getattr(
                     self.crew_runner,
@@ -321,15 +373,11 @@ class ShujaaManager:
                     error=error_message,
                 )
 
-                execution = self.execution_registry.get(execution_id)
-
-                if execution is not None:
-                    self.execution_registry.save(
-                        replace(
-                            execution,
-                            status=ExecutionStatus.FAILED,
-                        )
-                    )
+                self._transition_execution(
+                    execution_id,
+                    target_status=ExecutionStatus.FAILED,
+                    operation_id=f"{execution_id}:failed",
+                )
 
             self.process_registry.remove(task_id)
 
@@ -340,15 +388,11 @@ class ShujaaManager:
                 error=str(error),
             )
 
-            execution = self.execution_registry.get(execution_id)
-
-            if execution is not None:
-                self.execution_registry.save(
-                    replace(
-                        execution,
-                        status=ExecutionStatus.FAILED,
-                    )
-                )
+            self._transition_execution(
+                execution_id,
+                target_status=ExecutionStatus.FAILED,
+                operation_id=f"{execution_id}:failed",
+            )
 
             started.set()
 
@@ -400,15 +444,11 @@ class ShujaaManager:
             status="running",
         )
 
-        execution = self.execution_registry.get(execution_id)
-
-        if execution is not None:
-            self.execution_registry.save(
-                replace(
-                    execution,
-                    status=ExecutionStatus.RUNNING,
-                )
-            )
+        self._transition_execution(
+            execution_id,
+            target_status=ExecutionStatus.RUNNING,
+            operation_id=f"{execution_id}:running",
+        )
 
         started.set()
 
@@ -420,15 +460,11 @@ class ShujaaManager:
         current_task = self.task_store.get(task_id)
 
         if current_task and current_task.status == "cancelled":
-            execution = self.execution_registry.get(execution_id)
-
-            if execution is not None:
-                self.execution_registry.save(
-                    replace(
-                        execution,
-                        status=ExecutionStatus.CANCELLED,
-                    )
-                )
+            self._transition_execution(
+                execution_id,
+                target_status=ExecutionStatus.CANCELLED,
+                operation_id=f"{execution_id}:cancelled",
+            )
 
             return
 
@@ -438,15 +474,11 @@ class ShujaaManager:
             result=result,
         )
 
-        execution = self.execution_registry.get(execution_id)
-
-        if execution is not None:
-            self.execution_registry.save(
-                replace(
-                    execution,
-                    status=ExecutionStatus.COMPLETED,
-                )
-            )
+        self._transition_execution(
+            execution_id,
+            target_status=ExecutionStatus.COMPLETED,
+            operation_id=f"{execution_id}:completed",
+        )
 
     def cancel_task(self, task_id: str) -> dict[str, object]:
         task = self.task_store.get(task_id)

@@ -1,8 +1,35 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+from enum import StrEnum
 from typing import Protocol
 
-from core.work.models import Execution
+from core.work.models import Execution, ExecutionStatus
+
+
+class TransitionDisposition(StrEnum):
+    APPLIED = "applied"
+    STALE_VERSION = "stale_version"
+    IDEMPOTENT_REPLAY = "idempotent_replay"
+    CONFLICTING_TERMINAL_ATTEMPT = (
+        "conflicting_terminal_attempt"
+    )
+
+
+@dataclass(frozen=True)
+class LosingObservation:
+    operation_id: str
+    attempted_status: ExecutionStatus
+    source: str
+    rejected_at_version: int
+
+
+@dataclass(frozen=True)
+class TransitionResult:
+    applied: bool
+    disposition: TransitionDisposition
+    execution: Execution
+    observation: LosingObservation | None = None
 
 
 class ExecutionRegistryProtocol(Protocol):
@@ -21,6 +48,17 @@ class ExecutionRegistryProtocol(Protocol):
         self,
         task_id: str,
     ) -> list[Execution]:
+        ...
+
+    def transition(
+        self,
+        execution_id: str,
+        *,
+        target_status: ExecutionStatus,
+        expected_version: int,
+        operation_id: str,
+        source: str,
+    ) -> TransitionResult:
         ...
 
     def save(self, execution: Execution) -> None:

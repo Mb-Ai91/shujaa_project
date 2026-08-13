@@ -70,7 +70,7 @@ def test_execution_registry_lists_attempts_by_task():
     ]
 
 
-def test_execution_registry_saves_updated_execution():
+def test_execution_registry_saves_non_state_update():
     registry = InMemoryExecutionRegistry()
 
     execution = Execution(
@@ -83,7 +83,6 @@ def test_execution_registry_saves_updated_execution():
 
     updated = replace(
         execution,
-        status=ExecutionStatus.RUNNING,
         executor_id="runner-default",
     )
 
@@ -92,7 +91,9 @@ def test_execution_registry_saves_updated_execution():
     stored = registry.get(execution.execution_id)
 
     assert stored is not None
-    assert stored.status == ExecutionStatus.RUNNING
+    assert stored.status == ExecutionStatus.QUEUED
+    assert stored.state_version == 0
+    assert stored.terminal_operation_id is None
     assert stored.executor_id == "runner-default"
 
 
@@ -107,3 +108,38 @@ def test_execution_registry_rejects_unknown_save():
 
     with pytest.raises(ValueError):
         registry.save(execution)
+
+
+@pytest.mark.parametrize(
+    "protected_change",
+    (
+        {"status": ExecutionStatus.RUNNING},
+        {"state_version": 1},
+        {"terminal_operation_id": "terminal-operation-1"},
+    ),
+)
+def test_execution_registry_rejects_state_change_through_save(
+    protected_change,
+):
+    registry = InMemoryExecutionRegistry()
+
+    execution = Execution(
+        execution_id=new_execution_id(),
+        work_id="work-1",
+        task_id="task-1",
+    )
+
+    registry.create(execution)
+
+    bypass_attempt = replace(
+        execution,
+        **protected_change,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="State changes require transition",
+    ):
+        registry.save(bypass_attempt)
+
+    assert registry.get(execution.execution_id) == execution

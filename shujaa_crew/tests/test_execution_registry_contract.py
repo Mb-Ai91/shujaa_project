@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import inspect
+
 from core.work.execution_registry_contract import (
     ExecutionRegistryProtocol,
 )
@@ -59,3 +61,35 @@ def test_execution_registry_supports_multiple_attempts_per_task():
 
     assert executions == [first, second]
     assert registry.get(first.execution_id) == first
+
+
+def test_execution_registry_protocol_declares_atomic_transition():
+    transition = getattr(
+        ExecutionRegistryProtocol,
+        "transition",
+        None,
+    )
+
+    assert callable(transition)
+
+    signature = inspect.signature(transition)
+
+    assert tuple(signature.parameters) == (
+        "self",
+        "execution_id",
+        "target_status",
+        "expected_version",
+        "operation_id",
+        "source",
+    )
+
+    for name in (
+        "target_status",
+        "expected_version",
+        "operation_id",
+        "source",
+    ):
+        assert (
+            signature.parameters[name].kind
+            is inspect.Parameter.KEYWORD_ONLY
+        )
