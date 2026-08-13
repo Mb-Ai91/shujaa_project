@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from core.tasks.store import TaskRecord
+from core.tasks.store import UNSET, TaskRecord, UnsetValue
 
 
 class TaskStoreProtocol(Protocol):
@@ -21,7 +21,7 @@ class TaskStoreProtocol(Protocol):
         status: str,
         process_id: int | None = None,
         process_group_id: int | None = None,
-        error: str | None = None,
-        result: str | None = None,
+        error: str | None | UnsetValue = UNSET,
+        result: str | None | UnsetValue = UNSET,
     ) -> None:
         ...

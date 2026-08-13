@@ -27,6 +27,8 @@ from core.work.registry_contract import WorkRegistryProtocol
 from core.work.execution_registry import InMemoryExecutionRegistry
 from core.work.execution_registry_contract import (
     ExecutionRegistryProtocol,
+    TransitionDisposition,
+    TransitionResult,
 )
 from core.work.dispatcher import (
     DefaultExecutionDispatcher,
@@ -86,6 +88,7 @@ class ShujaaManager:
             {
                 ExecutionStatus.RUNNING,
                 ExecutionStatus.FAILED,
+                ExecutionStatus.CANCELLED,
             }
         ),
         ExecutionStatus.RUNNING: (
@@ -139,6 +142,77 @@ class ShujaaManager:
             operation_id=operation_id,
             source="manager_lifecycle_authority",
         )
+
+    def _reconcile_terminal_execution(
+        self,
+        task_id: str,
+        execution_id: str,
+        *,
+        target_status: ExecutionStatus,
+        operation_id: str,
+        error: str | None = None,
+        result: str | None = None,
+    ) -> TransitionResult:
+        """Commit an observation, then mirror the registry winner."""
+        transition = self._transition_execution(
+            execution_id,
+            target_status=target_status,
+            operation_id=operation_id,
+        )
+
+        if (
+            transition.disposition
+            == TransitionDisposition.STALE_VERSION
+            and transition.execution.status
+            not in self._TERMINAL_EXECUTION_STATUSES
+        ):
+            transition = self._transition_execution(
+                execution_id,
+                target_status=target_status,
+                operation_id=operation_id,
+            )
+
+        known_dispositions = {
+            TransitionDisposition.APPLIED,
+            TransitionDisposition.STALE_VERSION,
+            TransitionDisposition.IDEMPOTENT_REPLAY,
+            (
+                TransitionDisposition
+                .CONFLICTING_TERMINAL_ATTEMPT
+            ),
+        }
+
+        if transition.disposition not in known_dispositions:
+            raise RuntimeError(
+                "Unknown execution transition disposition: "
+                f"{transition.disposition}"
+            )
+
+        observation_won = (
+            transition.execution.status == target_status
+            and transition.disposition
+            in {
+                TransitionDisposition.APPLIED,
+                TransitionDisposition.IDEMPOTENT_REPLAY,
+            }
+        )
+        task = self.task_store.get(task_id)
+
+        if observation_won:
+            winning_error = error
+            winning_result = result
+        else:
+            winning_error = task.error if task else None
+            winning_result = task.result if task else None
+
+        self.task_store.update(
+            task_id,
+            status=transition.execution.status.value,
+            error=winning_error,
+            result=winning_result,
+        )
+
+        return transition
 
     def submit(
         self,
@@ -297,37 +371,25 @@ class ShujaaManager:
                 # دعم المشغلات الوهمية في الاختبارات.
                 return_code = process.wait()
             except subprocess.TimeoutExpired:
-                self._terminate_process_group(
-                    process,
-                    process_group_id,
-                )
-
-                self.task_store.update(
+                transition = self._reconcile_terminal_execution(
                     task_id,
-                    status="timed_out",
+                    execution_id,
+                    target_status=ExecutionStatus.TIMED_OUT,
+                    operation_id=f"{execution_id}:timed_out",
                     error=(
                         f"Task exceeded "
                         f"{self.TASK_TIMEOUT_SECONDS} seconds."
                     ),
                 )
 
-                self._transition_execution(
-                    execution_id,
-                    target_status=ExecutionStatus.TIMED_OUT,
-                    operation_id=f"{execution_id}:timed_out",
-                )
-
-                self.process_registry.remove(task_id)
-                return
-
-            current_task = self.task_store.get(task_id)
-
-            if current_task and current_task.status == "cancelled":
-                self._transition_execution(
-                    execution_id,
-                    target_status=ExecutionStatus.CANCELLED,
-                    operation_id=f"{execution_id}:cancelled",
-                )
+                if (
+                    transition.disposition
+                    == TransitionDisposition.APPLIED
+                ):
+                    self._terminate_process_group(
+                        process,
+                        process_group_id,
+                    )
 
                 self.process_registry.remove(task_id)
                 return
@@ -343,17 +405,13 @@ class ShujaaManager:
                 if callable(result_reader):
                     result = result_reader(process)
 
-                self.task_store.update(
+                self._reconcile_terminal_execution(
                     task_id,
-                    status="completed",
-                    error=None,
-                    result=result,
-                )
-
-                self._transition_execution(
                     execution_id,
                     target_status=ExecutionStatus.COMPLETED,
                     operation_id=f"{execution_id}:completed",
+                    error=None,
+                    result=result,
                 )
             else:
                 error_reader = getattr(
@@ -367,31 +425,23 @@ class ShujaaManager:
                 else:
                     error_message = f"Exit code: {return_code}"
 
-                self.task_store.update(
+                self._reconcile_terminal_execution(
                     task_id,
-                    status="failed",
-                    error=error_message,
-                )
-
-                self._transition_execution(
                     execution_id,
                     target_status=ExecutionStatus.FAILED,
                     operation_id=f"{execution_id}:failed",
+                    error=error_message,
                 )
 
             self.process_registry.remove(task_id)
 
         except Exception as error:
-            self.task_store.update(
+            self._reconcile_terminal_execution(
                 task_id,
-                status="failed",
-                error=str(error),
-            )
-
-            self._transition_execution(
                 execution_id,
                 target_status=ExecutionStatus.FAILED,
                 operation_id=f"{execution_id}:failed",
+                error=str(error),
             )
 
             started.set()
@@ -457,27 +507,12 @@ class ShujaaManager:
             command,
         )
 
-        current_task = self.task_store.get(task_id)
-
-        if current_task and current_task.status == "cancelled":
-            self._transition_execution(
-                execution_id,
-                target_status=ExecutionStatus.CANCELLED,
-                operation_id=f"{execution_id}:cancelled",
-            )
-
-            return
-
-        self.task_store.update(
+        self._reconcile_terminal_execution(
             task_id,
-            status="completed",
-            result=result,
-        )
-
-        self._transition_execution(
             execution_id,
             target_status=ExecutionStatus.COMPLETED,
             operation_id=f"{execution_id}:completed",
+            result=result,
         )
 
     def cancel_task(self, task_id: str) -> dict[str, object]:
@@ -486,27 +521,38 @@ class ShujaaManager:
         if task is None:
             raise ValueError("Task not found.")
 
-        if task.status not in {"queued", "running"}:
-            raise ValueError("Task is not cancellable.")
+        executions = self.execution_registry.list_by_task(task_id)
 
-        self.task_store.update(
+        if not executions:
+            raise ValueError("Execution not found.")
+
+        execution = max(
+            executions,
+            key=lambda candidate: candidate.created_at,
+        )
+        transition = self._reconcile_terminal_execution(
             task_id,
-            status="cancelled",
+            execution.execution_id,
+            target_status=ExecutionStatus.CANCELLED,
+            operation_id=(
+                f"{execution.execution_id}:cancelled"
+            ),
             error="Task cancelled by user.",
         )
 
-        if task.process_group_id is not None:
-            self._terminate_process_group_by_id(
-                task.process_group_id
-            )
+        if transition.disposition == TransitionDisposition.APPLIED:
+            if task.process_group_id is not None:
+                self._terminate_process_group_by_id(
+                    task.process_group_id
+                )
 
-        self.process_registry.remove(task_id)
+            self.process_registry.remove(task_id)
 
         updated = self.task_store.get(task_id)
 
         return updated.to_dict() if updated else {
             "task_id": task_id,
-            "status": "cancelled",
+            "status": transition.execution.status.value,
         }
 
     def _terminate_process_group_by_id(

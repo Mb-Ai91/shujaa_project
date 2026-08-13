@@ -4,7 +4,7 @@ import sqlite3
 from pathlib import Path
 from threading import Lock
 
-from core.tasks.store import TaskRecord
+from core.tasks.store import UNSET, TaskRecord, UnsetValue
 
 
 class SQLiteTaskStore:
@@ -126,8 +126,8 @@ class SQLiteTaskStore:
         status: str,
         process_id: int | None = None,
         process_group_id: int | None = None,
-        error: str | None = None,
-        result: str | None = None,
+        error: str | None | UnsetValue = UNSET,
+        result: str | None | UnsetValue = UNSET,
     ) -> None:
         fields = ["status = ?"]
         values: list[object] = [status]
@@ -140,11 +140,11 @@ class SQLiteTaskStore:
             fields.append("process_group_id = ?")
             values.append(process_group_id)
 
-        if error is not None:
+        if not isinstance(error, UnsetValue):
             fields.append("error = ?")
             values.append(error)
 
-        if result is not None:
+        if not isinstance(result, UnsetValue):
             fields.append("result = ?")
             values.append(result)
 

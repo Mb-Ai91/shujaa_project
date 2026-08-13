@@ -2,6 +2,13 @@ from dataclasses import asdict, dataclass
 from threading import Lock
 
 
+class UnsetValue:
+    """Marker used to distinguish omission from an explicit null."""
+
+
+UNSET = UnsetValue()
+
+
 @dataclass
 class TaskRecord:
     task_id: str
@@ -39,8 +46,8 @@ class InMemoryTaskStore:
         status: str,
         process_id: int | None = None,
         process_group_id: int | None = None,
-        error: str | None = None,
-        result: str | None = None,
+        error: str | None | UnsetValue = UNSET,
+        result: str | None | UnsetValue = UNSET,
     ) -> None:
         with self._lock:
             task = self._tasks.get(task_id)
@@ -56,10 +63,10 @@ class InMemoryTaskStore:
             if process_group_id is not None:
                 task.process_group_id = process_group_id
 
-            if error is not None:
+            if not isinstance(error, UnsetValue):
                 task.error = error
 
-            if result is not None:
+            if not isinstance(result, UnsetValue):
                 task.result = result
 
 
