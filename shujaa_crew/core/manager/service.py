@@ -12,6 +12,14 @@ from core.agents.executor_registry_contract import (
     AgentExecutorRegistryProtocol,
 )
 from core.runtime.process_registry import ProcessRegistry
+from core.runtime.process_registry_contract import (
+    CleanupDisposition,
+    CleanupResult,
+    ProcessOwnership,
+    ProcessRegistryProtocol,
+    RegistrationDisposition,
+    ReleaseDisposition,
+)
 from core.runtime.runner_contract import RunnerProtocol
 from core.tasks.contracts import TaskStoreProtocol
 from core.tasks.store import InMemoryTaskStore, TaskRecord
@@ -48,7 +56,7 @@ class ShujaaManager:
         self,
         crew_runner: RunnerProtocol,
         task_store: TaskStoreProtocol | None = None,
-        process_registry: ProcessRegistry | None = None,
+        process_registry: ProcessRegistryProtocol | None = None,
         work_registry: WorkRegistryProtocol | None = None,
         execution_registry: ExecutionRegistryProtocol | None = None,
         execution_dispatcher: ExecutionDispatcherProtocol | None = None,
@@ -309,6 +317,53 @@ class ShujaaManager:
         task = self.task_store.get(task_id)
         return task.to_dict() if task else None
 
+    @staticmethod
+    def _read_process_start_time_ticks(
+        pid: int,
+    ) -> int | None:
+        try:
+            with open(
+                f"/proc/{pid}/stat",
+                encoding="utf-8",
+            ) as file:
+                stat = file.read()
+        except FileNotFoundError:
+            return None
+        except OSError as error:
+            raise RuntimeError(
+                f"Unable to read process identity for PID {pid}."
+            ) from error
+
+        closing_parenthesis = stat.rfind(")")
+
+        if closing_parenthesis < 0:
+            raise RuntimeError(
+                f"Malformed process identity for PID {pid}."
+            )
+
+        remaining_fields = stat[
+            closing_parenthesis + 1:
+        ].split()
+
+        if len(remaining_fields) <= 19:
+            raise RuntimeError(
+                f"Malformed process identity for PID {pid}."
+            )
+
+        try:
+            start_time = int(remaining_fields[19])
+        except ValueError as error:
+            raise RuntimeError(
+                f"Malformed process identity for PID {pid}."
+            ) from error
+
+        if start_time <= 0:
+            raise RuntimeError(
+                f"Invalid process identity for PID {pid}."
+            )
+
+        return start_time
+
     def _execute_task(
         self,
         task_id: str,
@@ -318,6 +373,13 @@ class ShujaaManager:
         runtime_id: str | None,
         agent_id: str | None,
     ) -> None:
+        process = None
+        process_group_id = None
+        process_has_exited = False
+        process_owner_registered = False
+        process_termination_attempted = False
+        process_termination_succeeded = False
+
         try:
             if runtime_id == "agent-executor":
                 self._execute_agent_task(
@@ -342,11 +404,37 @@ class ShujaaManager:
                 # دعم العمليات الوهمية في الاختبارات.
                 process_group_id = process.pid
 
-            self.process_registry.register(
-                task_id,
-                process.pid,
-                process_group_id,
+            ownership = ProcessOwnership(
+                task_id=task_id,
+                execution_id=execution_id,
+                pid=process.pid,
+                pgid=process_group_id,
+                process_start_time_ticks=(
+                    self._read_process_start_time_ticks(
+                        process.pid
+                    )
+                ),
             )
+            registration = self.process_registry.register(
+                ownership
+            )
+
+            if (
+                registration.disposition
+                == RegistrationDisposition.OWNER_CONFLICT
+            ):
+                process_termination_attempted = True
+                self._terminate_process_group(
+                    process,
+                    process_group_id,
+                )
+                process_termination_succeeded = True
+                raise RuntimeError(
+                    "Process ownership conflict for task: "
+                    f"{task_id}"
+                )
+
+            process_owner_registered = True
 
             self.task_store.update(
                 task_id,
@@ -390,9 +478,14 @@ class ShujaaManager:
                         process,
                         process_group_id,
                     )
+                    self.process_registry.release(
+                        task_id,
+                        expected_execution_id=execution_id,
+                    )
 
-                self.process_registry.remove(task_id)
                 return
+
+            process_has_exited = True
 
             if return_code == 0:
                 result = None
@@ -433,9 +526,30 @@ class ShujaaManager:
                     error=error_message,
                 )
 
-            self.process_registry.remove(task_id)
+            self.process_registry.release(
+                task_id,
+                expected_execution_id=execution_id,
+            )
 
         except Exception as error:
+            if (
+                process is not None
+                and process_group_id is not None
+                and not process_has_exited
+                and not process_termination_attempted
+            ):
+                process_termination_attempted = True
+
+                try:
+                    self._terminate_process_group(
+                        process,
+                        process_group_id,
+                    )
+                except Exception:
+                    process_termination_succeeded = False
+                else:
+                    process_termination_succeeded = True
+
             self._reconcile_terminal_execution(
                 task_id,
                 execution_id,
@@ -443,6 +557,18 @@ class ShujaaManager:
                 operation_id=f"{execution_id}:failed",
                 error=str(error),
             )
+
+            if (
+                process_owner_registered
+                and (
+                    process_has_exited
+                    or process_termination_succeeded
+                )
+            ):
+                self.process_registry.release(
+                    task_id,
+                    expected_execution_id=execution_id,
+                )
 
             started.set()
 
@@ -515,6 +641,149 @@ class ShujaaManager:
             result=result,
         )
 
+    def _cleanup_process_ownership(
+        self,
+        task_id: str,
+        *,
+        expected_execution_id: str,
+    ) -> CleanupResult:
+        ownership = self.process_registry.get(task_id)
+
+        if ownership is None:
+            return CleanupResult(
+                disposition=CleanupDisposition.NOT_OWNED,
+                ownership=None,
+            )
+
+        if ownership.execution_id != expected_execution_id:
+            return CleanupResult(
+                disposition=CleanupDisposition.OWNER_MISMATCH,
+                ownership=ownership,
+            )
+
+        try:
+            current_start_time = (
+                self._read_process_start_time_ticks(
+                    ownership.pid
+                )
+            )
+        except Exception as error:
+            return CleanupResult(
+                disposition=(
+                    CleanupDisposition
+                    .IDENTITY_CHECK_FAILED_RETAINED
+                ),
+                ownership=ownership,
+                error=str(error),
+            )
+
+        if current_start_time is None:
+            release = self.process_registry.release(
+                task_id,
+                expected_execution_id=expected_execution_id,
+            )
+
+            if (
+                release.disposition
+                == ReleaseDisposition.RELEASED
+            ):
+                return CleanupResult(
+                    disposition=(
+                        CleanupDisposition
+                        .ALREADY_EXITED_AND_RELEASED
+                    ),
+                    ownership=release.ownership,
+                )
+
+            if (
+                release.disposition
+                == ReleaseDisposition.OWNER_MISMATCH
+            ):
+                return CleanupResult(
+                    disposition=(
+                        CleanupDisposition.OWNER_MISMATCH
+                    ),
+                    ownership=release.ownership,
+                )
+
+            return CleanupResult(
+                disposition=CleanupDisposition.NOT_OWNED,
+                ownership=None,
+            )
+
+        if (
+            ownership.process_start_time_ticks is None
+            or current_start_time
+            != ownership.process_start_time_ticks
+        ):
+            return CleanupResult(
+                disposition=CleanupDisposition.IDENTITY_MISMATCH,
+                ownership=ownership,
+            )
+
+        try:
+            current_process_group_id = os.getpgid(
+                ownership.pid
+            )
+        except OSError as error:
+            return CleanupResult(
+                disposition=(
+                    CleanupDisposition
+                    .IDENTITY_CHECK_FAILED_RETAINED
+                ),
+                ownership=ownership,
+                error=str(error),
+            )
+
+        if current_process_group_id != ownership.pgid:
+            return CleanupResult(
+                disposition=(
+                    CleanupDisposition.PROCESS_GROUP_MISMATCH
+                ),
+                ownership=ownership,
+            )
+
+        try:
+            self._terminate_process_group_by_id(
+                ownership.pgid
+            )
+        except Exception as error:
+            return CleanupResult(
+                disposition=(
+                    CleanupDisposition
+                    .TERMINATION_FAILED_RETAINED
+                ),
+                ownership=ownership,
+                error=str(error),
+            )
+
+        release = self.process_registry.release(
+            task_id,
+            expected_execution_id=expected_execution_id,
+        )
+
+        if release.disposition == ReleaseDisposition.RELEASED:
+            return CleanupResult(
+                disposition=(
+                    CleanupDisposition.TERMINATED_AND_RELEASED
+                ),
+                ownership=release.ownership,
+            )
+
+        if (
+            release.disposition
+            == ReleaseDisposition.OWNER_MISMATCH
+        ):
+            return CleanupResult(
+                disposition=CleanupDisposition.OWNER_MISMATCH,
+                ownership=release.ownership,
+            )
+
+        return CleanupResult(
+            disposition=CleanupDisposition.NOT_OWNED,
+            ownership=None,
+        )
+
     def cancel_task(self, task_id: str) -> dict[str, object]:
         task = self.task_store.get(task_id)
 
@@ -540,20 +809,46 @@ class ShujaaManager:
             error="Task cancelled by user.",
         )
 
-        if transition.disposition == TransitionDisposition.APPLIED:
-            if task.process_group_id is not None:
-                self._terminate_process_group_by_id(
-                    task.process_group_id
-                )
+        cleanup_result = None
 
-            self.process_registry.remove(task_id)
+        if (
+            transition.execution.status
+            == ExecutionStatus.CANCELLED
+            and transition.disposition
+            in {
+                TransitionDisposition.APPLIED,
+                TransitionDisposition.IDEMPOTENT_REPLAY,
+            }
+        ):
+            cleanup_result = self._cleanup_process_ownership(
+                task_id,
+                expected_execution_id=(
+                    execution.execution_id
+                ),
+            )
 
         updated = self.task_store.get(task_id)
 
-        return updated.to_dict() if updated else {
-            "task_id": task_id,
-            "status": transition.execution.status.value,
-        }
+        response = (
+            updated.to_dict()
+            if updated
+            else {
+                "task_id": task_id,
+                "status": transition.execution.status.value,
+            }
+        )
+        response["cleanup_disposition"] = (
+            cleanup_result.disposition.value
+            if cleanup_result
+            else None
+        )
+        response["cleanup_error"] = (
+            cleanup_result.error
+            if cleanup_result
+            else None
+        )
+
+        return response
 
     def _terminate_process_group_by_id(
         self,
@@ -582,42 +877,48 @@ class ShujaaManager:
         try:
             os.killpg(process_group_id, signal.SIGKILL)
         except ProcessLookupError:
-            pass
+            return
 
-    def cleanup_registered_processes(self) -> None:
-        """إنهاء عمليات CrewAI المسجلة المتبقية من جلسة سابقة."""
+        confirmation_deadline = (
+            time.monotonic()
+            + self.TERMINATION_GRACE_SECONDS
+        )
 
-        for task_id, info in self.process_registry.all().items():
-            pid = info.get("pid")
-            pgid = info.get("pgid")
-
-            if not isinstance(pid, int) or not isinstance(pgid, int):
-                self.process_registry.remove(task_id)
-                continue
-
-            cmdline_path = f"/proc/{pid}/cmdline"
-
+        while True:
             try:
-                with open(cmdline_path, "rb") as file:
-                    cmdline = file.read().replace(b"\x00", b" ").decode(
-                        "utf-8",
-                        errors="ignore",
-                    )
-            except OSError:
-                self.process_registry.remove(task_id)
-                continue
-
-            # لا نقتل العملية إلا إذا كانت CrewAI فعلاً.
-            if "crewai" not in cmdline.lower():
-                self.process_registry.remove(task_id)
-                continue
-
-            try:
-                os.killpg(pgid, signal.SIGTERM)
+                os.killpg(process_group_id, 0)
             except ProcessLookupError:
-                pass
+                return
 
-            self.process_registry.remove(task_id)
+            if time.monotonic() >= confirmation_deadline:
+                break
+
+            time.sleep(0.1)
+
+        raise RuntimeError(
+            "Process group survived SIGKILL: "
+            f"{process_group_id}"
+        )
+
+    def cleanup_registered_processes(
+        self,
+    ) -> dict[str, CleanupResult]:
+        """Clean ownership retained from an earlier session."""
+
+        ownerships = self.process_registry.all()
+        results: dict[str, CleanupResult] = {}
+
+        for task_id, ownership in ownerships.items():
+            results[task_id] = (
+                self._cleanup_process_ownership(
+                    task_id,
+                    expected_execution_id=(
+                        ownership.execution_id
+                    ),
+                )
+            )
+
+        return results
 
     def _terminate_process_group(
         self,

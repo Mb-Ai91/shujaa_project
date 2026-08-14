@@ -185,6 +185,9 @@ def test_cancel_uses_sigkill_if_process_group_survives(monkeypatch):
     def fake_killpg(process_group_id, sig):
         sent_signals.append((process_group_id, sig))
 
+        if len(sent_signals) == 3 and sig == 0:
+            raise ProcessLookupError
+
     monkeypatch.setattr(service_module.os, "killpg", fake_killpg)
 
     class FakeRunner:
@@ -202,6 +205,7 @@ def test_cancel_uses_sigkill_if_process_group_survives(monkeypatch):
     assert sent_signals == [
         (12345, signal.SIGTERM),
         (12345, signal.SIGKILL),
+        (12345, 0),
     ]
 
 
