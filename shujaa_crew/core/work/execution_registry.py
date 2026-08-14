@@ -64,6 +64,8 @@ class InMemoryExecutionRegistry:
         expected_version: int,
         operation_id: str,
         source: str,
+        error: str | None = None,
+        result: str | None = None,
     ) -> TransitionResult:
         """Commit a transition authorized by lifecycle authority."""
         with self._lock:
@@ -122,6 +124,16 @@ class InMemoryExecutionRegistry:
                     if target_status in _TERMINAL_STATUSES
                     else None
                 ),
+                error=(
+                    error
+                    if target_status in _TERMINAL_STATUSES
+                    else None
+                ),
+                result=(
+                    result
+                    if target_status in _TERMINAL_STATUSES
+                    else None
+                ),
             )
             self._executions[execution_id] = updated
 
@@ -153,6 +165,8 @@ class InMemoryExecutionRegistry:
                     execution.terminal_operation_id
                     != current.terminal_operation_id
                 )
+                or execution.error != current.error
+                or execution.result != current.result
             )
 
             if protected_state_changed:

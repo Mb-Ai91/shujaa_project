@@ -287,6 +287,8 @@ class _StaleOnceRegistry(InMemoryExecutionRegistry):
         expected_version,
         operation_id,
         source,
+        error=None,
+        result=None,
     ):
         if target_status == ExecutionStatus.CANCELLED:
             self.cancel_attempts += 1
@@ -319,6 +321,8 @@ class _StaleOnceRegistry(InMemoryExecutionRegistry):
             expected_version=expected_version,
             operation_id=operation_id,
             source=source,
+            error=error,
+            result=result,
         )
 
 

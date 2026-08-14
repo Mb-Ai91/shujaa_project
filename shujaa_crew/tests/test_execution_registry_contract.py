@@ -81,6 +81,8 @@ def test_execution_registry_protocol_declares_atomic_transition():
         "expected_version",
         "operation_id",
         "source",
+        "error",
+        "result",
     )
 
     for name in (
@@ -88,6 +90,8 @@ def test_execution_registry_protocol_declares_atomic_transition():
         "expected_version",
         "operation_id",
         "source",
+        "error",
+        "result",
     ):
         assert (
             signature.parameters[name].kind

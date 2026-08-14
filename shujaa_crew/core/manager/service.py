@@ -110,6 +110,8 @@ class ShujaaManager:
         *,
         target_status: ExecutionStatus,
         operation_id: str,
+        error: str | None = None,
+        result: str | None = None,
     ):
         """Authorize semantics, then request an atomic commit."""
         execution = self.execution_registry.get(execution_id)
@@ -148,6 +150,8 @@ class ShujaaManager:
             target_status=target_status,
             expected_version=execution.state_version,
             operation_id=operation_id,
+            error=error,
+            result=result,
             source="manager_lifecycle_authority",
         )
 
@@ -166,6 +170,8 @@ class ShujaaManager:
             execution_id,
             target_status=target_status,
             operation_id=operation_id,
+            error=error,
+            result=result,
         )
 
         if (
@@ -196,28 +202,11 @@ class ShujaaManager:
                 f"{transition.disposition}"
             )
 
-        observation_won = (
-            transition.execution.status == target_status
-            and transition.disposition
-            in {
-                TransitionDisposition.APPLIED,
-                TransitionDisposition.IDEMPOTENT_REPLAY,
-            }
-        )
-        task = self.task_store.get(task_id)
-
-        if observation_won:
-            winning_error = error
-            winning_result = result
-        else:
-            winning_error = task.error if task else None
-            winning_result = task.result if task else None
-
         self.task_store.update(
             task_id,
             status=transition.execution.status.value,
-            error=winning_error,
-            result=winning_result,
+            error=transition.execution.error,
+            result=transition.execution.result,
         )
 
         return transition

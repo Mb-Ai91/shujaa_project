@@ -67,6 +67,8 @@ class Execution:
     status: ExecutionStatus = ExecutionStatus.QUEUED
     state_version: int = 0
     terminal_operation_id: str | None = None
+    error: str | None = None
+    result: str | None = None
     executor_id: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
     created_at: datetime = field(default_factory=utc_now)

@@ -58,6 +58,8 @@ class ExecutionRegistryProtocol(Protocol):
         expected_version: int,
         operation_id: str,
         source: str,
+        error: str | None = None,
+        result: str | None = None,
     ) -> TransitionResult:
         ...
 
