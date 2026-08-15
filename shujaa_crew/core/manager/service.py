@@ -192,6 +192,8 @@ class ShujaaManager:
                 execution_id,
                 target_status=target_status,
                 operation_id=operation_id,
+                error=error,
+                result=result,
             )
 
         known_dispositions = {

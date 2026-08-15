@@ -176,3 +176,68 @@ def test_failure_outcome_is_bound_and_protected():
         manager.execution_registry.save(
             replace(replay.execution, error="forged error")
         )
+
+
+def test_stale_terminal_retry_preserves_error(monkeypatch):
+    from core.work.execution_registry_contract import (
+        TransitionDisposition,
+        TransitionResult,
+    )
+
+    manager, task_id, execution_id = make_manager(
+        "stale-terminal-payload"
+    )
+    original_transition = manager._transition_execution
+    attempts = 0
+
+    def stale_once(
+        current_execution_id,
+        *,
+        target_status,
+        operation_id,
+        error=None,
+        result=None,
+    ):
+        nonlocal attempts
+        attempts += 1
+
+        if attempts == 1:
+            current = manager.execution_registry.get(
+                current_execution_id
+            )
+            assert current is not None
+            return TransitionResult(
+                applied=False,
+                disposition=TransitionDisposition.STALE_VERSION,
+                execution=current,
+            )
+
+        return original_transition(
+            current_execution_id,
+            target_status=target_status,
+            operation_id=operation_id,
+            error=error,
+            result=result,
+        )
+
+    monkeypatch.setattr(
+        manager,
+        "_transition_execution",
+        stale_once,
+    )
+
+    transition = manager._reconcile_terminal_execution(
+        task_id,
+        execution_id,
+        target_status=ExecutionStatus.FAILED,
+        operation_id=f"{execution_id}:failed",
+        error="expected winning error",
+    )
+
+    task = manager.task_store.get(task_id)
+
+    assert attempts == 2
+    assert transition.execution.status == ExecutionStatus.FAILED
+    assert transition.execution.error == "expected winning error"
+    assert task is not None
+    assert task.error == "expected winning error"
