@@ -64,6 +64,7 @@ class InMemoryExecutionRegistry:
         *,
         execution_id: str,
         operation_id: str,
+        executor_id: str | None = None,
     ) -> RetryAdmissionResult:
         """Atomically persist an already-authorized retry."""
         with self._lock:
@@ -116,6 +117,7 @@ class InMemoryExecutionRegistry:
                 execution_id=execution_id,
                 work_id=source.work_id,
                 task_id=source.task_id,
+                executor_id=executor_id,
                 retry_safety=source.retry_safety,
                 attempt_number=source.attempt_number + 1,
                 previous_execution_id=source.execution_id,

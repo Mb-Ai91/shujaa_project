@@ -69,6 +69,7 @@ class ExecutionRegistryProtocol(Protocol):
         *,
         execution_id: str,
         operation_id: str,
+        executor_id: str | None = None,
     ) -> RetryAdmissionResult:
         ...
 

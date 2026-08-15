@@ -115,11 +115,13 @@ def test_execution_registry_protocol_declares_atomic_retry_admission():
         "source_execution_id",
         "execution_id",
         "operation_id",
+        "executor_id",
     )
 
     for name in (
         "execution_id",
         "operation_id",
+        "executor_id",
     ):
         assert (
             signature.parameters[name].kind

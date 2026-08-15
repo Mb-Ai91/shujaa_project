@@ -392,3 +392,201 @@ def test_manager_retry_replay_and_conflict_keep_one_attempt():
             source.task_id
         )
     ) == 2
+
+
+def test_retry_dispatch_rejection_creates_no_partial_attempt():
+    from core.tasks.store import TaskRecord
+
+    class RejectingDispatcher:
+        def __init__(self):
+            self.request = None
+
+        def dispatch(self, request):
+            self.request = request
+            raise ValueError("retry route rejected")
+
+    dispatcher = RejectingDispatcher()
+    manager = ShujaaManager(
+        crew_runner=NeverStartedRunner(),
+        execution_dispatcher=dispatcher,
+    )
+    task = TaskRecord(
+        task_id="task-retry-dispatch-rejected",
+        work_id="work-retry-dispatch-rejected",
+        command="retry this task",
+        status="failed",
+        error="original failure",
+    )
+    source = Execution(
+        execution_id="exec-retry-dispatch-source",
+        work_id=task.work_id,
+        task_id=task.task_id,
+        status=ExecutionStatus.FAILED,
+        retry_safety=RetrySafety.DECLARED_SAFE,
+        requested_agent_id="agent-original",
+        required_capability="analysis",
+    )
+    manager.task_store.create(task)
+    manager.execution_registry.create(source)
+
+    with pytest.raises(
+        ValueError,
+        match="retry route rejected",
+    ):
+        manager.retry_task(
+            source.execution_id,
+            operation_id="retry-dispatch-operation",
+        )
+
+    assert dispatcher.request is not None
+    assert dispatcher.request.work_id == source.work_id
+    assert dispatcher.request.task_id == source.task_id
+    assert (
+        dispatcher.request.execution_id
+        != source.execution_id
+    )
+    assert dispatcher.request.command == task.command
+    assert (
+        dispatcher.request.requested_agent_id
+        == source.requested_agent_id
+    )
+    assert (
+        dispatcher.request.required_capability
+        == source.required_capability
+    )
+    assert manager.execution_registry.list_by_task(
+        source.task_id
+    ) == [source]
+
+    unchanged = manager.task_store.get(task.task_id)
+
+    assert unchanged is not None
+    assert unchanged.status == "failed"
+    assert unchanged.error == "original failure"
+
+
+def test_retry_dispatch_hands_off_winning_attempt_to_runtime():
+    import time
+
+    from core.tasks.store import TaskRecord
+    from core.work.dispatcher import DispatchDecision
+
+    class RetryProcess:
+        pid = 12345
+
+        def wait(self, timeout=None):
+            return 0
+
+    class RetryRunner:
+        def __init__(self):
+            self.commands = []
+
+        def start(self, command):
+            self.commands.append(command)
+            return RetryProcess()
+
+        def get_result(self, process):
+            return "retry completed"
+
+    class RetryDispatcher:
+        def __init__(self):
+            self.request = None
+            self.calls = 0
+
+        def dispatch(self, request):
+            self.request = request
+            self.calls += 1
+            return DispatchDecision(
+                executor_id="retry-executor",
+                runtime_id="process-runner",
+            )
+
+    runner = RetryRunner()
+    dispatcher = RetryDispatcher()
+    manager = ShujaaManager(
+        crew_runner=runner,
+        execution_dispatcher=dispatcher,
+    )
+    task = TaskRecord(
+        task_id="task-retry-runtime",
+        work_id="work-retry-runtime",
+        command="retry runtime task",
+        status="failed",
+        error="original failure",
+    )
+    source = Execution(
+        execution_id="exec-retry-runtime-source",
+        work_id=task.work_id,
+        task_id=task.task_id,
+        status=ExecutionStatus.FAILED,
+        retry_safety=RetrySafety.DECLARED_SAFE,
+    )
+    manager.task_store.create(task)
+    manager.execution_registry.create(source)
+
+    admission = manager.retry_task(
+        source.execution_id,
+        operation_id="retry-runtime-operation",
+    )
+
+    assert admission.applied is True
+    assert (
+        admission.execution.executor_id
+        == "retry-executor"
+    )
+
+    deadline = time.monotonic() + 1.0
+    retry = None
+
+    while time.monotonic() < deadline:
+        retry = manager.execution_registry.get(
+            admission.execution.execution_id
+        )
+
+        if (
+            retry is not None
+            and retry.status == ExecutionStatus.COMPLETED
+        ):
+            break
+
+        time.sleep(0.01)
+
+    replay = manager.retry_task(
+        source.execution_id,
+        operation_id="retry-runtime-operation",
+    )
+    conflict = manager.retry_task(
+        source.execution_id,
+        operation_id="retry-runtime-conflict",
+    )
+
+    original = manager.execution_registry.get(
+        source.execution_id
+    )
+    updated_task = manager.task_store.get(task.task_id)
+
+    assert dispatcher.request is not None
+    assert dispatcher.calls == 1
+    assert runner.commands == ["retry runtime task"]
+    assert replay.disposition.value == "idempotent_replay"
+    assert conflict.disposition.value == "conflicting_retry"
+    assert (
+        replay.execution.execution_id
+        == admission.execution.execution_id
+    )
+    assert (
+        conflict.execution.execution_id
+        == admission.execution.execution_id
+    )
+    assert replay.execution == retry
+    assert conflict.execution == retry
+    assert original == source
+    assert retry is not None
+    assert retry.status == ExecutionStatus.COMPLETED
+    assert retry.result == "retry completed"
+    assert retry.previous_execution_id == source.execution_id
+    assert retry.attempt_number == 2
+    assert updated_task is not None
+    assert updated_task.status == "completed"
+    assert updated_task.error is None
+    assert updated_task.result == "retry completed"

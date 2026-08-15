@@ -219,13 +219,12 @@ class ShujaaManager:
 
         return transition
 
-    def admit_retry(
+    def _authorize_retry_source(
         self,
         source_execution_id: str,
         *,
         operation_id: str,
-    ) -> RetryAdmissionResult:
-        """Authorize and atomically admit a retry attempt."""
+    ) -> Execution:
         source = self.execution_registry.get(
             source_execution_id
         )
@@ -258,11 +257,121 @@ class ShujaaManager:
                 "Retry operation ID is required."
             )
 
+        return source
+
+    def admit_retry(
+        self,
+        source_execution_id: str,
+        *,
+        operation_id: str,
+    ) -> RetryAdmissionResult:
+        """Authorize and atomically admit a retry attempt."""
+        self._authorize_retry_source(
+            source_execution_id,
+            operation_id=operation_id,
+        )
+
         return self.execution_registry.admit_retry(
             source_execution_id,
             execution_id=new_execution_id(),
             operation_id=operation_id,
         )
+
+    def retry_task(
+        self,
+        source_execution_id: str,
+        *,
+        operation_id: str,
+    ) -> RetryAdmissionResult:
+        """Dispatch then atomically admit a retry attempt."""
+        source = self._authorize_retry_source(
+            source_execution_id,
+            operation_id=operation_id,
+        )
+
+        existing_retry = next(
+            (
+                execution
+                for execution
+                in self.execution_registry.list_by_task(
+                    source.task_id
+                )
+                if (
+                    execution.previous_execution_id
+                    == source_execution_id
+                )
+            ),
+            None,
+        )
+
+        if existing_retry is not None:
+            return self.execution_registry.admit_retry(
+                source_execution_id,
+                execution_id=new_execution_id(),
+                operation_id=operation_id,
+            )
+
+        task = self.task_store.get(source.task_id)
+
+        if task is None:
+            raise ValueError(
+                f"Task not found: {source.task_id}"
+            )
+
+        retry_execution_id = new_execution_id()
+
+        dispatch_decision = (
+            self.execution_dispatcher.dispatch(
+                DispatchRequest(
+                    work_id=source.work_id,
+                    task_id=source.task_id,
+                    execution_id=retry_execution_id,
+                    command=task.command,
+                    requested_agent_id=(
+                        source.requested_agent_id
+                    ),
+                    required_capability=(
+                        source.required_capability
+                    ),
+                )
+            )
+        )
+
+        admission = self.execution_registry.admit_retry(
+            source_execution_id,
+            execution_id=retry_execution_id,
+            operation_id=operation_id,
+            executor_id=dispatch_decision.executor_id,
+        )
+
+        if not admission.applied:
+            return admission
+
+        self.task_store.update(
+            source.task_id,
+            status="queued",
+            error=None,
+            result=None,
+        )
+
+        started = Event()
+
+        Thread(
+            target=self._execute_task,
+            args=(
+                source.task_id,
+                admission.execution.execution_id,
+                task.command,
+                started,
+                dispatch_decision.runtime_id,
+                dispatch_decision.agent_id,
+            ),
+            daemon=True,
+        ).start()
+
+        started.wait(timeout=0.1)
+
+        return admission
 
     def submit(
         self,
