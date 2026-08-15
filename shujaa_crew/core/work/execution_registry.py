@@ -5,6 +5,8 @@ from threading import Lock
 
 from core.work.execution_registry_contract import (
     LosingObservation,
+    RetryAdmissionDisposition,
+    RetryAdmissionResult,
     TransitionDisposition,
     TransitionResult,
 )
@@ -55,6 +57,85 @@ class InMemoryExecutionRegistry:
                 for execution in self._executions.values()
                 if execution.task_id == task_id
             ]
+
+    def admit_retry(
+        self,
+        source_execution_id: str,
+        *,
+        execution_id: str,
+        operation_id: str,
+    ) -> RetryAdmissionResult:
+        """Atomically persist an already-authorized retry."""
+        with self._lock:
+            source = self._executions.get(
+                source_execution_id
+            )
+
+            if source is None:
+                raise ValueError(
+                    "Source execution does not exist: "
+                    f"{source_execution_id}"
+                )
+
+            existing_retry = next(
+                (
+                    execution
+                    for execution in self._executions.values()
+                    if (
+                        execution.previous_execution_id
+                        == source_execution_id
+                    )
+                ),
+                None,
+            )
+
+            if existing_retry is not None:
+                disposition = (
+                    RetryAdmissionDisposition.IDEMPOTENT_REPLAY
+                    if (
+                        existing_retry.retry_operation_id
+                        == operation_id
+                    )
+                    else (
+                        RetryAdmissionDisposition
+                        .CONFLICTING_RETRY
+                    )
+                )
+                return RetryAdmissionResult(
+                    applied=False,
+                    disposition=disposition,
+                    execution=existing_retry,
+                )
+
+            if execution_id in self._executions:
+                raise ValueError(
+                    f"Execution already exists: {execution_id}"
+                )
+
+            retry = Execution(
+                execution_id=execution_id,
+                work_id=source.work_id,
+                task_id=source.task_id,
+                retry_safety=source.retry_safety,
+                attempt_number=source.attempt_number + 1,
+                previous_execution_id=source.execution_id,
+                retry_operation_id=operation_id,
+                requested_agent_id=(
+                    source.requested_agent_id
+                ),
+                required_capability=(
+                    source.required_capability
+                ),
+            )
+            self._executions[execution_id] = retry
+
+            return RetryAdmissionResult(
+                applied=True,
+                disposition=(
+                    RetryAdmissionDisposition.APPLIED
+                ),
+                execution=retry,
+            )
 
     def transition(
         self,
@@ -167,6 +248,30 @@ class InMemoryExecutionRegistry:
                 )
                 or execution.error != current.error
                 or execution.result != current.result
+                or (
+                    execution.retry_safety
+                    != current.retry_safety
+                )
+                or (
+                    execution.attempt_number
+                    != current.attempt_number
+                )
+                or (
+                    execution.previous_execution_id
+                    != current.previous_execution_id
+                )
+                or (
+                    execution.retry_operation_id
+                    != current.retry_operation_id
+                )
+                or (
+                    execution.requested_agent_id
+                    != current.requested_agent_id
+                )
+                or (
+                    execution.required_capability
+                    != current.required_capability
+                )
             )
 
             if protected_state_changed:

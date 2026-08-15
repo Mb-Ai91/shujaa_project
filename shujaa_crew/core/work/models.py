@@ -40,6 +40,11 @@ class ExecutionStatus(StrEnum):
     CANCELLED = "cancelled"
 
 
+class RetrySafety(StrEnum):
+    DENY = "deny"
+    DECLARED_SAFE = "declared_safe"
+
+
 @dataclass(frozen=True)
 class Work:
     work_id: str
@@ -70,5 +75,11 @@ class Execution:
     error: str | None = None
     result: str | None = None
     executor_id: str | None = None
+    retry_safety: RetrySafety = RetrySafety.DENY
+    attempt_number: int = 1
+    previous_execution_id: str | None = None
+    retry_operation_id: str | None = None
+    requested_agent_id: str | None = None
+    required_capability: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
     created_at: datetime = field(default_factory=utc_now)

@@ -16,6 +16,19 @@ class TransitionDisposition(StrEnum):
     )
 
 
+class RetryAdmissionDisposition(StrEnum):
+    APPLIED = "applied"
+    IDEMPOTENT_REPLAY = "idempotent_replay"
+    CONFLICTING_RETRY = "conflicting_retry"
+
+
+@dataclass(frozen=True)
+class RetryAdmissionResult:
+    applied: bool
+    disposition: RetryAdmissionDisposition
+    execution: Execution
+
+
 @dataclass(frozen=True)
 class LosingObservation:
     operation_id: str
@@ -48,6 +61,15 @@ class ExecutionRegistryProtocol(Protocol):
         self,
         task_id: str,
     ) -> list[Execution]:
+        ...
+
+    def admit_retry(
+        self,
+        source_execution_id: str,
+        *,
+        execution_id: str,
+        operation_id: str,
+    ) -> RetryAdmissionResult:
         ...
 
     def transition(

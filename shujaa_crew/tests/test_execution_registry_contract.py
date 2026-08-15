@@ -97,3 +97,31 @@ def test_execution_registry_protocol_declares_atomic_transition():
             signature.parameters[name].kind
             is inspect.Parameter.KEYWORD_ONLY
         )
+
+
+def test_execution_registry_protocol_declares_atomic_retry_admission():
+    admit_retry = getattr(
+        ExecutionRegistryProtocol,
+        "admit_retry",
+        None,
+    )
+
+    assert callable(admit_retry)
+
+    signature = inspect.signature(admit_retry)
+
+    assert tuple(signature.parameters) == (
+        "self",
+        "source_execution_id",
+        "execution_id",
+        "operation_id",
+    )
+
+    for name in (
+        "execution_id",
+        "operation_id",
+    ):
+        assert (
+            signature.parameters[name].kind
+            is inspect.Parameter.KEYWORD_ONLY
+        )

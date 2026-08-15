@@ -25,6 +25,7 @@ from core.tasks.store import InMemoryTaskStore, TaskRecord
 from core.work.models import (
     Execution,
     ExecutionStatus,
+    RetrySafety,
     Work,
     new_execution_id,
     new_work_id,
@@ -34,6 +35,7 @@ from core.work.registry_contract import WorkRegistryProtocol
 from core.work.execution_registry import InMemoryExecutionRegistry
 from core.work.execution_registry_contract import (
     ExecutionRegistryProtocol,
+    RetryAdmissionResult,
     TransitionDisposition,
     TransitionResult,
 )
@@ -86,6 +88,13 @@ class ShujaaManager:
             ExecutionStatus.COMPLETED,
             ExecutionStatus.FAILED,
             ExecutionStatus.CANCELLED,
+            ExecutionStatus.TIMED_OUT,
+        }
+    )
+
+    _RETRYABLE_EXECUTION_STATUSES = frozenset(
+        {
+            ExecutionStatus.FAILED,
             ExecutionStatus.TIMED_OUT,
         }
     )
@@ -210,12 +219,58 @@ class ShujaaManager:
 
         return transition
 
+    def admit_retry(
+        self,
+        source_execution_id: str,
+        *,
+        operation_id: str,
+    ) -> RetryAdmissionResult:
+        """Authorize and atomically admit a retry attempt."""
+        source = self.execution_registry.get(
+            source_execution_id
+        )
+
+        if source is None:
+            raise ValueError(
+                "Source execution does not exist: "
+                f"{source_execution_id}"
+            )
+
+        if source.retry_safety != RetrySafety.DECLARED_SAFE:
+            raise ValueError(
+                "Execution is not declared safe to retry."
+            )
+
+        if (
+            source.status
+            not in self._RETRYABLE_EXECUTION_STATUSES
+        ):
+            raise ValueError(
+                "Execution status is not retryable: "
+                f"{source.status.value}"
+            )
+
+        if (
+            not isinstance(operation_id, str)
+            or not operation_id.strip()
+        ):
+            raise ValueError(
+                "Retry operation ID is required."
+            )
+
+        return self.execution_registry.admit_retry(
+            source_execution_id,
+            execution_id=new_execution_id(),
+            operation_id=operation_id,
+        )
+
     def submit(
         self,
         command: object,
         *,
         requested_agent_id: str | None = None,
         required_capability: str | None = None,
+        retry_safety: RetrySafety = RetrySafety.DENY,
     ) -> dict[str, object]:
         if not isinstance(command, str):
             raise ValueError("Command must be a string.")
@@ -227,6 +282,11 @@ class ShujaaManager:
 
         if len(command) > self.MAX_COMMAND_LENGTH:
             raise ValueError("Command exceeds the allowed length.")
+
+        if not isinstance(retry_safety, RetrySafety):
+            raise ValueError(
+                "Retry safety must be a RetrySafety value."
+            )
 
         work_id = new_work_id()
         task_id = str(uuid4())
@@ -264,6 +324,9 @@ class ShujaaManager:
             work_id=work_id,
             task_id=task_id,
             executor_id=dispatch_decision.executor_id,
+            retry_safety=retry_safety,
+            requested_agent_id=requested_agent_id,
+            required_capability=required_capability,
         )
 
         self.execution_registry.create(execution)
