@@ -3,7 +3,6 @@ from __future__ import annotations
 import os
 import signal
 import subprocess
-from dataclasses import replace
 from threading import Event, Thread
 from uuid import uuid4
 
@@ -233,6 +232,17 @@ class ShujaaManager:
         task_id = str(uuid4())
         execution_id = new_execution_id()
 
+        dispatch_decision = self.execution_dispatcher.dispatch(
+            DispatchRequest(
+                work_id=work_id,
+                task_id=task_id,
+                execution_id=execution_id,
+                command=command,
+                requested_agent_id=requested_agent_id,
+                required_capability=required_capability,
+            )
+        )
+
         self.work_registry.create(
             Work(
                 work_id=work_id,
@@ -253,26 +263,10 @@ class ShujaaManager:
             execution_id=execution_id,
             work_id=work_id,
             task_id=task_id,
+            executor_id=dispatch_decision.executor_id,
         )
 
         self.execution_registry.create(execution)
-
-        dispatch_decision = self.execution_dispatcher.dispatch(
-            DispatchRequest(
-                work_id=work_id,
-                task_id=task_id,
-                execution_id=execution_id,
-                command=command,
-                requested_agent_id=requested_agent_id,
-                required_capability=required_capability,
-            )
-        )
-
-        execution = replace(
-            execution,
-            executor_id=dispatch_decision.executor_id,
-        )
-        self.execution_registry.save(execution)
 
         started = Event()
 
