@@ -1,10 +1,10 @@
 # SHUJAA_STAGE5_EVENT_AUDIT_PLAN.md
 
 > **المرحلة:** Stage 5 — Event Model + Audit Foundation
-> **الحالة:** `PLANNED — STABILIZATION VERIFICATION PENDING — IMPLEMENTATION NOT STARTED`
+> **الحالة:** `IN PROGRESS — SLICE 5.1 IMPLEMENTED + TESTED — INTEGRATION NOT STARTED`
 > **تاريخ الخطة:** 15 أغسطس 2026
-> **آخر تحديث موثق:** 16 أغسطس 2026
-> **مرجع التثبيت الحالي:** commit `4f15ca35b6e6c3f4ec4e0477019992aed4ea7519`، والاختبارات `224 passed`
+> **آخر تحديث موثق:** 17 أغسطس 2026
+> **مرجع Slice 5.1:** code commit `8410f57314b457393e4d9600625c838280f14795`؛ التحقق المحلي `253 passed`، وexit code `0`
 > **النطاق:** Local/Mock foundation فقط؛ لا Production أو Distributed أو Policy Enforcement
 
 ---
@@ -12,9 +12,11 @@
 ## CURRENT AUTHORITATIVE STATE
 
 - Stage 4: `VERIFIED COMPLETE — LOCAL/MOCK SCOPE`.
-- Owner Constraint Gate: `GO — DEVELOPMENT COMMAND SCOPE`، واختباراته الموجهة `13 passed`.
-- Audit 01: مكتمل؛ حكم التوافق محفوظ في artifact مستقل يميز الاستنتاج عن الدليل الخام.
-- Stage 5: لم يبدأ تنفيذها، وممنوع بدؤها في جولة إغلاق فجوتي التثبيت.
+- Owner Constraint Gate: `GO — DEVELOPMENT COMMAND SCOPE`.
+- Audit 01: verdict مستقل ومحفوظ؛ `4 COMPATIBLE / 0 PATCH / 2 PLANNED MIGRATION`.
+- Stage 5 Slice 5.0: `ENTRY_GATE=GO — INVENTORY VERIFIED`.
+- Stage 5 Slice 5.1: code commit `8410f57314b457393e4d9600625c838280f14795`؛ `IMPLEMENTED + TESTED — 253 passed`.
+- Event/Audit Stores وLifecycle Integration: `NOT STARTED`.
 - Shujaa Development: النسخة النشطة `v0.6`؛ لم تُنشأ أو تُستخدم `v0.7`.
 
 ---
@@ -308,9 +310,11 @@ Stage 5 لا تجعل Audit مجرد log نصي، ولا تجعل كل Event س�
 ## 12) نقطة التوقف الحالية
 
 - Stage 4: `VERIFIED COMPLETE — LOCAL/MOCK`.
-- Stage 5: `PLANNED — STABILIZATION VERIFICATION PENDING — IMPLEMENTATION NOT STARTED`.
-- لا يبدأ Stage 5 في هذه الجولة؛ الإجراء الحالي محصور في توثيق التثبيت وإثبات حكم Audit.
-- لا تعديل كود ولا إنشاء اختبارات حمراء قبل فحص البنية الحالية واعتماد Scope التنفيذي النهائي.
+- Slice 5.0: `VERIFIED — ENTRY_GATE=GO`.
+- Slice 5.1: code commit `8410f57314b457393e4d9600625c838280f14795`؛ `IMPLEMENTED + TESTED — 253 passed`.
+- العقود المثبتة: `WorkEvent` و`AuditRecord` و`AppendResult`.
+- أول إجراء لاحق: Slice 5.2 — Local Append Stores and Integrity Foundation.
+- لا Event/Audit Store ولا Manager/Lifecycle integration في Slice 5.1.
 
 ---
 
@@ -348,13 +352,10 @@ Stage 5 لا تبني Catalog أو Gateways قبل موعدها، لكنها ت�
 
 ## 15) بوابة ADR-027 قبل استئناف Slice 5.0
 
-**الحالة:** `VERIFIED — OWNER CONSTRAINT GATE GO`
+**الحالة:** `SATISFIED — OWNER CONSTRAINT GATE VERIFIED`
 
-تحققت متطلبات البوابة:
-
-1. أضيف `SHUJAA_OWNER_CONSTRAINTS.yaml` والـvalidator والاختبارات إلى Git في `4f15ca35b6e6c3f4ec4e0477019992aed4ea7519` ودُفعت إلى البعيد.
-2. نجحت الاختبارات الموجهة: `13 passed`، والـbaseline الكامل: `224 passed`.
-3. نُفذ Audit 01 كاملًا وحُفظ الناتج الخام دون تعديل.
-4. حُفظ حكم التوافق في artifact مستقل مع SHA-256 ومراجع الأسطر.
-
-**HISTORICAL / SUPERSEDED:** الملف السابق `shujaa_portability_audit_01.txt` سجل تاريخي غير مكتمل، وقد حل محله `shujaa_portability_audit_01_complete.txt`. شرط `v0.7` الاختياري غير مستخدم؛ النسخة النشطة `v0.6` لم تتغير.
+- Registry والـvalidator محفوظان في Git ومتحققان.
+- `SC-TOOL-001` يفرض استخدام `grep/find` ويحظر `rg/ripgrep`.
+- Compatibility Verdict: `4 COMPATIBLE / 0 PATCH / 2 PLANNED MIGRATION`.
+- Audit الخام محفوظ منفصلًا عن التحليل المشتق.
+- الملف الناقص السابق موسوم `HISTORICAL/SUPERSEDED` ولا يُستخدم للحكم.
