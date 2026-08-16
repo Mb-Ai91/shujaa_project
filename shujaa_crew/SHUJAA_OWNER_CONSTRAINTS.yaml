@@ -82,6 +82,68 @@
       ],
       "authority": "owner",
       "reason": "A proposal is not execution authority."
+    },
+    {
+      "id": "SC-COMPLETION-001",
+      "status": "active",
+      "scope": "completion-claim",
+      "deny": [
+        "state_without_required_evidence",
+        "ambiguous_completion_claim",
+        "final_go_without_independent_verification"
+      ],
+      "allowed_alternative": [
+        "hold_not_verified",
+        "evidence_receipt"
+      ],
+      "authority": "owner",
+      "reason": "Artifact state and provenance claims must follow the owner-approved lifecycle and evidence requirements.",
+      "artifact_states": [
+        "GENERATED",
+        "WRITTEN_TO_CODESPACE",
+        "TRACKED",
+        "COMMITTED",
+        "PUSHED",
+        "VERIFIED"
+      ],
+      "coverage_states": [
+        "VERIFIED",
+        "PARTIAL",
+        "NOT IMPLEMENTED",
+        "BLOCKED"
+      ],
+      "evidence_requirements": {
+        "save": [
+          "path",
+          "existence_and_content_verification",
+          "tracked_status_when_git_required",
+          "commit_and_push_status_when_required"
+        ],
+        "test": [
+          "test_count",
+          "exit_code"
+        ],
+        "push": [
+          "local_head",
+          "remote_head",
+          "head_match"
+        ],
+        "audit_verdict": [
+          "source_artifact",
+          "evidence_references",
+          "derived_verdict_persisted_separately_or_clearly_appended"
+        ],
+        "large_round_final_go": [
+          "independent_codespace_completion_verification"
+        ]
+      },
+      "documentation_update_cadence": [
+        "milestone",
+        "architecture_decision",
+        "stage_state_change"
+      ],
+      "sandbox_is_not_codespace_evidence": true,
+      "missing_evidence_result": "HOLD — NOT VERIFIED"
     }
   ]
 }

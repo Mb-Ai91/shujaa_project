@@ -1,7 +1,7 @@
 # 03-SHUJAA_ARCHITECTURE_DECISIONS.md
 
 > **الصفة:** سجل القرارات والعقود المعمارية المعتمدة لمشروع شجاع
-> **الإصدار:** 1.2
+> **الإصدار:** 1.3
 > **آخر تحديث موثق:** 16 أغسطس 2026
 > **تنبيه:** القرار المعماري يحدد ما يجب بناؤه؛ لا يثبت وحده أنه نُفذ أو اختُبر.
 
@@ -12,6 +12,8 @@
 هذه الوثيقة هي سلطة **القرارات طويلة العمر فقط**، وليست سجل الحالة اليومية. عند checkpoint `4f15ca35b6e6c3f4ec4e0477019992aed4ea7519`: Stage 4 مغلقة ضمن Local/Mock، وStage 5 ما زالت `PLANNED` ولم يبدأ تنفيذها، والـbaseline الكامل `224 passed`.
 
 ADR-027 حالته `IMPLEMENTED + VERIFIED — DEVELOPMENT COMMAND SCOPE`: سجل القيود والـvalidator واختباراته موجودة ومرفوعة. لا يعني ذلك Policy Engine عامًا. Audit 01 مكتمل، وحكم التوافق الموثق في artifact مستقل. النسخة النشطة من Shujaa Development هي `v0.6`؛ لم تُنشأ `v0.7` ولم تُستخدم.
+
+ADR-028 `ADOPTED`: ادعاءات الحفظ والاختبار والرفع والتحقق تخضع لسلسلة حالة صريحة وEvidence Receipts. اعتماد القرار لا يثبت وحده أن تعديل السجل والـvalidator قد وصل إلى Codespace أو Git؛ حالة التنفيذ تُثبت فقط بالمخرجات التشغيلية المطلوبة في ADR-028.
 
 ---
 
@@ -854,3 +856,67 @@ ADR-027 حالته `IMPLEMENTED + VERIFIED — DEVELOPMENT COMMAND SCOPE`: سج�
 - Audit 01 مكتمل؛ حكم التوافق محفوظ في artifact مستقل مع مراجع الأسطر وSHA-256 للدليل الخام.
 - نطاق التنفيذ: أوامر التطوير المحددة فقط؛ لا ادعاء Policy Engine أو Runtime gate شامل.
 - `v0.7`: لم تُنشأ ولم تُستخدم؛ النسخة النشطة `v0.6` لم تتغير.
+
+---
+
+## 34) ADR-028 — Completion State and Evidence Provenance Gate
+
+**التاريخ:** 16 أغسطس 2026
+**الحالة:** `ADOPTED — IMPLEMENTATION REQUIRES CODESPACE EVIDENCE`
+**صاحب القرار:** مالك شجاع
+
+### المشكلة
+
+يمكن أن يولد artifact في مساحة المحادثة، أو يكتب في Codespace، أو يصبح متعقبًا أو ملتزمًا أو مرفوعًا دون أن يبلغ حالة التحقق المطلوبة. اختزال هذه الحالات في كلمة «تم» ينتج false completion وغموضًا في مصدر الدليل.
+
+### القرار
+
+تمر حالة كل كود أو ملف أو وثيقة أو تقرير أو artifact بالترتيب التالي فقط:
+
+`GENERATED → WRITTEN_TO_CODESPACE → TRACKED → COMMITTED → PUSHED → VERIFIED`
+
+لا تُستخدم كلمة «تم» أو «اكتمل» دون تسمية الحالة الفعلية ودليلها. لا يجوز القفز دلاليًا بين الحالات:
+
+1. sandbox/chat artifact ليس Codespace artifact.
+2. وجود الملف في Codespace لا يثبت أنه tracked في Git.
+3. tracked لا يثبت committed.
+4. committed لا يثبت pushed.
+5. pushed لا يثبت verified حتى يتساوى Local HEAD وRemote HEAD وتتحقق الحالة المطلوبة.
+6. sandbox links ليست دليل حفظ داخل المشروع.
+
+### Evidence Receipts الإلزامية
+
+- save claim: المسار، وفحص الوجود والمحتوى، وحالة tracking إذا كان الملف يجب أن يكون في Git، وحالة commit/push عند الحاجة.
+- test claim: عدد الاختبارات وexit code.
+- push claim: Local HEAD وRemote HEAD ونتيجة التطابق.
+- audit/verdict claim: source artifact ومراجع الأدلة، مع حفظ التحليل المشتق منفصلًا أو إلحاقه بتمييز واضح لا يخلطه بالدليل الخام.
+- Final GO لجولة كبيرة: Completion Verification مستقلة من Codespace.
+- الطلب متعدد البنود: coverage لكل بند أصلي بقيمة واحدة من `VERIFIED / PARTIAL / NOT IMPLEMENTED / BLOCKED`.
+
+عند غياب أي Evidence لازمة تكون النتيجة:
+
+`HOLD — NOT VERIFIED`
+
+ولا تُستبدل الأدلة بالذاكرة أو الاستنتاج.
+
+### الانضباط والتناسب
+
+- يطبق القرار كdiscipline داخل workflow وبقيد واحد في السجل وvalidator واختبارات صغيرة؛ لا ينشئ subsystem جديدة.
+- لا تُحدّث Handoff أو Roadmap أو ADR بعد كل خطوة صغيرة. يكون التحديث عند milestone أو قرار معماري أو تغير حالة Stage.
+- لا يغير هذا القرار Stage 5 ولا يبدأ production code لها.
+
+### الإنفاذ
+
+- `SC-COMPLETION-001` هو المعرف التنفيذي الدائم.
+- يفشل validator مغلقًا عند حالة غير معتمدة أو receipt ناقصة أو رؤوس Git غير متطابقة أو audit provenance ناقص أو Final GO كبير بلا تحقق مستقل.
+- تغطي negative tests الفروق بين generated/written/tracked/committed/pushed/verified، ومتطلبات test/push/audit/coverage.
+
+### Rollback
+
+يمكن عكس تعديل الـvalidator والسجل بcommit رجوع صريح، لكن يبقى القرار المعماري محفوظًا ويُوسم `SUPERSEDED` فقط بقرار مالك لاحق يحدد البديل. لا يؤدي rollback تقني إلى ادعاء أن السياسة ألغيت.
+
+### Evidence State عند كتابة هذا القرار
+
+- قرار المالك: `ADOPTED` بإفادة صريحة.
+- ملفات الحزمة في مساحة المحادثة: `GENERATED` فقط.
+- `WRITTEN_TO_CODESPACE / TRACKED / COMMITTED / PUSHED / VERIFIED`: `HOLD — NOT VERIFIED` حتى تصل Receipts من Codespace.

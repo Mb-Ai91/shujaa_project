@@ -19,6 +19,25 @@ _REQUIRED_CONSTRAINT_IDS = frozenset(
         "SC-OUTPUT-001",
         "SC-SAVE-001",
         "SC-PROPOSAL-001",
+        "SC-COMPLETION-001",
+    }
+)
+
+_ARTIFACT_STATES = (
+    "GENERATED",
+    "WRITTEN_TO_CODESPACE",
+    "TRACKED",
+    "COMMITTED",
+    "PUSHED",
+    "VERIFIED",
+)
+
+_COVERAGE_STATES = frozenset(
+    {
+        "VERIFIED",
+        "PARTIAL",
+        "NOT IMPLEMENTED",
+        "BLOCKED",
     }
 )
 
@@ -55,6 +74,30 @@ class ProposedCodespaceAction:
 class ValidationResult:
     gate: str
     reason_ids: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class CompletionReceipt:
+    state: str
+    path: str | None = None
+    content_verified: bool = False
+    git_required: bool = True
+    tracked: bool = False
+    commit_hash: str | None = None
+    pushed: bool = False
+    local_head: str | None = None
+    remote_head: str | None = None
+    is_test_claim: bool = False
+    test_count: int | None = None
+    test_exit_code: int | None = None
+    is_audit_verdict: bool = False
+    source_artifact: str | None = None
+    evidence_references: tuple[str, ...] = ()
+    verdict_persisted: bool = False
+    is_large_round: bool = False
+    independent_codespace_verification: bool = False
+    requested_items: tuple[str, ...] = ()
+    coverage: tuple[str, ...] = ()
 
 
 def _load_registry(
@@ -227,6 +270,93 @@ def validate_batch(
     return tuple(
         validate_action(registry_path, action)
         for action in actions
+    )
+
+
+def validate_completion_receipt(
+    registry_path: Path,
+    receipt: CompletionReceipt,
+) -> ValidationResult:
+    try:
+        constraints = _load_registry(registry_path)
+    except FileNotFoundError:
+        return ValidationResult(
+            gate="HOLD",
+            reason_ids=("MISSING_REGISTRY",),
+        )
+    except (OSError, json.JSONDecodeError, ValueError):
+        return ValidationResult(
+            gate="HOLD",
+            reason_ids=("INVALID_REGISTRY",),
+        )
+
+    if not _is_active(constraints, "SC-COMPLETION-001"):
+        return ValidationResult(
+            gate="HOLD",
+            reason_ids=("SC-COMPLETION-001",),
+        )
+
+    reasons: list[str] = []
+
+    if receipt.state not in _ARTIFACT_STATES:
+        reasons.append("INVALID_ARTIFACT_STATE")
+        state_index = -1
+    else:
+        state_index = _ARTIFACT_STATES.index(receipt.state)
+
+    if state_index >= 1:
+        if not receipt.path or not receipt.content_verified:
+            reasons.append("INCOMPLETE_SAVE_RECEIPT")
+
+    if state_index >= 2 and receipt.git_required:
+        if not receipt.tracked:
+            reasons.append("UNVERIFIED_TRACKED_STATE")
+
+    if state_index >= 3 and not receipt.commit_hash:
+        reasons.append("UNVERIFIED_COMMITTED_STATE")
+
+    if state_index >= 4:
+        if not receipt.pushed:
+            reasons.append("UNVERIFIED_PUSHED_STATE")
+        if not receipt.local_head or not receipt.remote_head:
+            reasons.append("INCOMPLETE_PUSH_RECEIPT")
+        elif receipt.local_head != receipt.remote_head:
+            reasons.append("LOCAL_REMOTE_MISMATCH")
+
+    if receipt.is_test_claim:
+        if receipt.test_count is None or receipt.test_exit_code is None:
+            reasons.append("INCOMPLETE_TEST_RECEIPT")
+        elif state_index == 5 and receipt.test_exit_code != 0:
+            reasons.append("FAILED_TEST_RECEIPT")
+
+    if receipt.is_audit_verdict:
+        if (
+            not receipt.source_artifact
+            or not receipt.evidence_references
+            or not receipt.verdict_persisted
+        ):
+            reasons.append("INCOMPLETE_AUDIT_VERDICT_RECEIPT")
+
+    if (
+        receipt.is_large_round
+        and state_index == 5
+        and not receipt.independent_codespace_verification
+    ):
+        reasons.append("MISSING_INDEPENDENT_VERIFICATION")
+
+    if receipt.requested_items or receipt.coverage:
+        if len(receipt.requested_items) != len(receipt.coverage):
+            reasons.append("INCOMPLETE_REQUEST_COVERAGE")
+        elif any(
+            status not in _COVERAGE_STATES
+            for status in receipt.coverage
+        ):
+            reasons.append("INVALID_COVERAGE_STATE")
+
+    unique_reasons = tuple(dict.fromkeys(reasons))
+    return ValidationResult(
+        gate="HOLD" if unique_reasons else "GO",
+        reason_ids=unique_reasons,
     )
 
 
