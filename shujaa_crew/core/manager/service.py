@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 import os
 import signal
 import subprocess
@@ -22,6 +23,11 @@ from core.runtime.process_registry_contract import (
 from core.runtime.runner_contract import RunnerProtocol
 from core.tasks.contracts import TaskStoreProtocol
 from core.tasks.store import InMemoryTaskStore, TaskRecord
+from core.work.event_store import (
+    EventStoreProtocol,
+    InMemoryEventStore,
+)
+from core.work.events import WorkEvent
 from core.work.models import (
     Execution,
     ExecutionStatus,
@@ -60,6 +66,7 @@ class ShujaaManager:
         process_registry: ProcessRegistryProtocol | None = None,
         work_registry: WorkRegistryProtocol | None = None,
         execution_registry: ExecutionRegistryProtocol | None = None,
+        event_store: EventStoreProtocol | None = None,
         execution_dispatcher: ExecutionDispatcherProtocol | None = None,
         agent_registry: AgentRegistryProtocol | None = None,
         agent_executor_registry: AgentExecutorRegistryProtocol | None = None,
@@ -72,6 +79,9 @@ class ShujaaManager:
         )
         self.execution_registry = (
             execution_registry or InMemoryExecutionRegistry()
+        )
+        self.event_store = (
+            event_store or InMemoryEventStore()
         )
         self.execution_dispatcher = (
             execution_dispatcher
@@ -111,6 +121,85 @@ class ShujaaManager:
             _TERMINAL_EXECUTION_STATUSES
         ),
     }
+
+    @staticmethod
+    def _transition_event_id(
+        operation_id: str,
+    ) -> str:
+        return (
+            "event-execution-transition-"
+            f"{operation_id}"
+        )
+
+    def _append_transition_event(
+        self,
+        transition: TransitionResult,
+        *,
+        target_status: ExecutionStatus,
+        operation_id: str,
+    ):
+        event_id = self._transition_event_id(
+            operation_id
+        )
+
+        if (
+            transition.disposition
+            == TransitionDisposition.IDEMPOTENT_REPLAY
+        ):
+            existing = self.event_store.get(event_id)
+
+            if existing is not None:
+                return self.event_store.append(
+                    existing.record
+                )
+
+        execution = transition.execution
+
+        payload: dict[str, str | int] = {
+            "disposition": transition.disposition.value,
+            "status": execution.status.value,
+            "state_version": execution.state_version,
+        }
+
+        if transition.observation is not None:
+            payload.update(
+                {
+                    "attempted_status": (
+                        transition.observation
+                        .attempted_status.value
+                    ),
+                    "winner_status": (
+                        execution.status.value
+                    ),
+                    "rejected_at_version": (
+                        transition.observation
+                        .rejected_at_version
+                    ),
+                }
+            )
+        elif not transition.applied:
+            payload["attempted_status"] = (
+                target_status.value
+            )
+
+        event = WorkEvent(
+            event_id=event_id,
+            event_type=(
+                "execution.transition."
+                f"{transition.disposition.value}"
+            ),
+            entity_type="execution",
+            entity_id=execution.execution_id,
+            source_component="core.manager.lifecycle",
+            correlation_id=execution.work_id,
+            operation_id=operation_id,
+            work_id=execution.work_id,
+            task_id=execution.task_id,
+            execution_id=execution.execution_id,
+            payload=payload,
+        )
+
+        return self.event_store.append(event)
 
     def _transition_execution(
         self,
@@ -153,7 +242,7 @@ class ShujaaManager:
                 f"{target_status.value}"
             )
 
-        return self.execution_registry.transition(
+        transition = self.execution_registry.transition(
             execution_id,
             target_status=target_status,
             expected_version=execution.state_version,
@@ -161,6 +250,19 @@ class ShujaaManager:
             error=error,
             result=result,
             source="manager_lifecycle_authority",
+        )
+
+        event_append_receipt = (
+            self._append_transition_event(
+                transition,
+                target_status=target_status,
+                operation_id=operation_id,
+            )
+        )
+
+        return replace(
+            transition,
+            event_append_receipt=event_append_receipt,
         )
 
     def _reconcile_terminal_execution(

@@ -2,9 +2,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 
 from core.work.models import Execution, ExecutionStatus
+
+
+if TYPE_CHECKING:
+    from core.work.event_store import AppendReceipt
 
 
 class TransitionDisposition(StrEnum):
@@ -43,6 +47,7 @@ class TransitionResult:
     disposition: TransitionDisposition
     execution: Execution
     observation: LosingObservation | None = None
+    event_append_receipt: AppendReceipt | None = None
 
 
 class ExecutionRegistryProtocol(Protocol):
