@@ -1,0 +1,87 @@
+{
+  "schema_version": 1,
+  "registry_id": "shujaa-owner-constraints",
+  "constraints": [
+    {
+      "id": "SC-ASSUME-001",
+      "status": "active",
+      "scope": "codespace-action",
+      "deny": [
+        "unknown_evidence"
+      ],
+      "allowed_alternative": [
+        "hold_and_verify"
+      ],
+      "authority": "owner",
+      "reason": "Unverified assumptions are denied."
+    },
+    {
+      "id": "SC-OWNER-001",
+      "status": "active",
+      "scope": "codespace-action",
+      "deny": [
+        "instruction_conflict",
+        "scope_expansion"
+      ],
+      "allowed_alternative": [
+        "request_owner_approval"
+      ],
+      "authority": "owner",
+      "reason": "Owner instructions and scope cannot be overridden."
+    },
+    {
+      "id": "SC-TOOL-001",
+      "status": "active",
+      "scope": "codespace-command",
+      "deny": [
+        "rg",
+        "ripgrep"
+      ],
+      "allowed_alternative": [
+        "grep",
+        "find"
+      ],
+      "authority": "owner",
+      "reason": "Only approved search tools may be used."
+    },
+    {
+      "id": "SC-OUTPUT-001",
+      "status": "active",
+      "scope": "codespace-output",
+      "deny": [
+        "oversized_terminal_output"
+      ],
+      "allowed_alternative": [
+        "file_with_small_summary"
+      ],
+      "authority": "owner",
+      "reason": "Oversized output must be delivered through a file."
+    },
+    {
+      "id": "SC-SAVE-001",
+      "status": "active",
+      "scope": "save-claim",
+      "deny": [
+        "unverified_save_claim"
+      ],
+      "allowed_alternative": [
+        "complete_save_receipt"
+      ],
+      "authority": "owner",
+      "reason": "A save claim requires complete verification."
+    },
+    {
+      "id": "SC-PROPOSAL-001",
+      "status": "active",
+      "scope": "proposal-execution",
+      "deny": [
+        "unapproved_proposal_execution"
+      ],
+      "allowed_alternative": [
+        "explicit_owner_approval"
+      ],
+      "authority": "owner",
+      "reason": "A proposal is not execution authority."
+    }
+  ]
+}
