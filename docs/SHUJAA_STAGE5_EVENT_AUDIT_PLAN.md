@@ -1,10 +1,10 @@
 # SHUJAA_STAGE5_EVENT_AUDIT_PLAN.md
 
 > **المرحلة:** Stage 5 — Event Model + Audit Foundation
-> **الحالة:** `IN PROGRESS — SLICE 5.1 IMPLEMENTED + TESTED — INTEGRATION NOT STARTED`
+> **الحالة:** `IN PROGRESS — SLICE 5.2 VERIFIED — LIFECYCLE INTEGRATION NOT STARTED`
 > **تاريخ الخطة:** 15 أغسطس 2026
 > **آخر تحديث موثق:** 17 أغسطس 2026
-> **مرجع Slice 5.1:** code commit `8410f57314b457393e4d9600625c838280f14795`؛ التحقق المحلي `253 passed`، وexit code `0`
+> **مرجع Slice 5.2:** code commit `f54fc47dbd73eb2c2b21ea548be6eebbc20e0f0e`؛ التحقق بعد الدفع `266 passed`، وexit code `0`
 > **النطاق:** Local/Mock foundation فقط؛ لا Production أو Distributed أو Policy Enforcement
 
 ---
@@ -15,8 +15,9 @@
 - Owner Constraint Gate: `GO — DEVELOPMENT COMMAND SCOPE`.
 - Audit 01: verdict مستقل ومحفوظ؛ `4 COMPATIBLE / 0 PATCH / 2 PLANNED MIGRATION`.
 - Stage 5 Slice 5.0: `ENTRY_GATE=GO — INVENTORY VERIFIED`.
-- Stage 5 Slice 5.1: code commit `8410f57314b457393e4d9600625c838280f14795`؛ `IMPLEMENTED + TESTED — 253 passed`.
-- Event/Audit Stores وLifecycle Integration: `NOT STARTED`.
+- Stage 5 Slice 5.1: code commit `8410f57314b457393e4d9600625c838280f14795`؛ `VERIFIED — 22 targeted + 253 full، exit code 0`.
+- Stage 5 Slice 5.2: code commit `f54fc47dbd73eb2c2b21ea548be6eebbc20e0f0e`؛ `VERIFIED — 35 targeted + 266 full، exit code 0`.
+- Lifecycle Integration: `NOT STARTED`.
 - Shujaa Development: النسخة النشطة `v0.6`؛ لم تُنشأ أو تُستخدم `v0.7`.
 
 ---
@@ -189,6 +190,10 @@ Stage 5 لا تجعل Audit مجرد log نصي، ولا تجعل كل Event س�
 
 ### Slice 5.2 — Local Append Stores and Integrity Foundation
 
+**الحالة:** `VERIFIED — LOCAL/MOCK SCOPE`
+
+**Evidence Receipt:** code commit `f54fc47dbd73eb2c2b21ea548be6eebbc20e0f0e`؛ `35 targeted passed`؛ post-push full regression `266 passed`؛ exit code `0`؛ Local HEAD = Remote HEAD؛ worktree clean.
+
 **الهدف:** Protocols وتنفيذ Local/Mock قابل للاستبدال.
 
 المطلوب:
@@ -311,10 +316,12 @@ Stage 5 لا تجعل Audit مجرد log نصي، ولا تجعل كل Event س�
 
 - Stage 4: `VERIFIED COMPLETE — LOCAL/MOCK`.
 - Slice 5.0: `VERIFIED — ENTRY_GATE=GO`.
-- Slice 5.1: code commit `8410f57314b457393e4d9600625c838280f14795`؛ `IMPLEMENTED + TESTED — 253 passed`.
+- Slice 5.1: code commit `8410f57314b457393e4d9600625c838280f14795`؛ `VERIFIED — 253 passed`.
+- Slice 5.2: code commit `f54fc47dbd73eb2c2b21ea548be6eebbc20e0f0e`؛ `VERIFIED — 35 targeted + 266 full، exit code 0`.
 - العقود المثبتة: `WorkEvent` و`AuditRecord` و`AppendResult`.
-- أول إجراء لاحق: Slice 5.2 — Local Append Stores and Integrity Foundation.
-- لا Event/Audit Store ولا Manager/Lifecycle integration في Slice 5.1.
+- المخازن المثبتة: `InMemoryEventStore` و`InMemoryAuditStore` خلف Protocols مستقلة، ضمن Local/Mock فقط.
+- أول إجراء لاحق: Slice 5.3 وفق تعريفها المعتمد.
+- Manager/Lifecycle integration لم يبدأ في Slice 5.2.
 
 ---
 
