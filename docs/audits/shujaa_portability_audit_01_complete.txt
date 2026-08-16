@@ -1,0 +1,94 @@
+--- AUDIT 01: DEPENDENCY MANIFESTS ---
+../shujaa_crew/pyproject.toml
+../shujaa_crew/uv.lock
+--- CONTRACT AND ADAPTER FILES ---
+adapters/agents/crewai_executor.py
+adapters/agents/mock_executor.py
+adapters/crewai/runner.py
+adapters/mock/runner.py
+core/agents/contracts.py
+core/agents/executor_contract.py
+core/agents/executor_registry.py
+core/agents/executor_registry_contract.py
+core/runtime/process_registry_contract.py
+core/runtime/runner_contract.py
+core/tasks/contracts.py
+core/work/dispatcher.py
+core/work/execution_registry_contract.py
+core/work/queue_contract.py
+core/work/registry_contract.py
+--- EXTERNAL IMPORTS INSIDE CORE ---
+--- CAPABILITY AND RUNTIME BINDINGS ---
+core/manager/service.py:332:                    requested_agent_id=(
+core/manager/service.py:333:                        source.requested_agent_id
+core/manager/service.py:335:                    required_capability=(
+core/manager/service.py:336:                        source.required_capability
+core/manager/service.py:346:            executor_id=dispatch_decision.executor_id,
+core/manager/service.py:368:                dispatch_decision.runtime_id,
+core/manager/service.py:382:        requested_agent_id: str | None = None,
+core/manager/service.py:383:        required_capability: str | None = None,
+core/manager/service.py:412:                requested_agent_id=requested_agent_id,
+core/manager/service.py:413:                required_capability=required_capability,
+core/manager/service.py:437:            executor_id=dispatch_decision.executor_id,
+core/manager/service.py:439:            requested_agent_id=requested_agent_id,
+core/manager/service.py:440:            required_capability=required_capability,
+core/manager/service.py:454:                dispatch_decision.runtime_id,
+core/manager/service.py:530:        runtime_id: str | None,
+core/manager/service.py:541:            if runtime_id == "agent-executor":
+core/manager/service.py:551:            if runtime_id not in {None, "process-runner"}:
+core/manager/service.py:553:                    f"Unsupported execution runtime: {runtime_id}"
+core/work/execution_registry_contract.py:72:        executor_id: str | None = None,
+core/work/execution_registry.py:67:        executor_id: str | None = None,
+core/work/execution_registry.py:120:                executor_id=executor_id,
+core/work/execution_registry.py:125:                requested_agent_id=(
+core/work/execution_registry.py:126:                    source.requested_agent_id
+core/work/execution_registry.py:128:                required_capability=(
+core/work/execution_registry.py:129:                    source.required_capability
+core/work/execution_registry.py:270:                    execution.requested_agent_id
+core/work/execution_registry.py:271:                    != current.requested_agent_id
+core/work/execution_registry.py:274:                    execution.required_capability
+core/work/execution_registry.py:275:                    != current.required_capability
+core/work/dispatcher.py:20:    requested_agent_id: str | None = None
+core/work/dispatcher.py:21:    required_capability: str | None = None
+core/work/dispatcher.py:29:    executor_id: str
+core/work/dispatcher.py:31:    runtime_id: str | None = None
+core/work/dispatcher.py:33:    tool_id: str | None = None
+core/work/dispatcher.py:52:        executor_id: str = "runner-default",
+core/work/dispatcher.py:53:        runtime_id: str = "process-runner",
+core/work/dispatcher.py:59:        self.executor_id = executor_id
+core/work/dispatcher.py:60:        self.runtime_id = runtime_id
+core/work/dispatcher.py:68:        if request.requested_agent_id is not None:
+core/work/dispatcher.py:75:                request.requested_agent_id
+core/work/dispatcher.py:81:                    f"{request.requested_agent_id}"
+core/work/dispatcher.py:90:                executor_id=agent.agent_id,
+core/work/dispatcher.py:92:                runtime_id="agent-executor",
+core/work/dispatcher.py:94:                    "route": "agent-executor",
+core/work/dispatcher.py:99:        if request.required_capability is not None:
+core/work/dispatcher.py:113:                request.required_capability
+core/work/dispatcher.py:119:                    f"{request.required_capability}"
+core/work/dispatcher.py:129:                        executor_id=agent.agent_id,
+core/work/dispatcher.py:131:                        runtime_id="agent-executor",
+core/work/dispatcher.py:133:                            "route": "agent-executor",
+core/work/dispatcher.py:135:                            "required_capability": (
+core/work/dispatcher.py:136:                                request.required_capability
+core/work/dispatcher.py:144:                f"{request.required_capability}"
+core/work/dispatcher.py:148:            executor_id=self.executor_id,
+core/work/dispatcher.py:149:            runtime_id=self.runtime_id,
+core/work/models.py:77:    executor_id: str | None = None
+core/work/models.py:82:    requested_agent_id: str | None = None
+core/work/models.py:83:    required_capability: str | None = None
+--- CONCRETE IMPLEMENTATIONS INSIDE CORE ---
+core/agents/executor_contract.py:8:class AgentExecutorProtocol(Protocol):
+core/agents/executor_registry_contract.py:8:class AgentExecutorRegistryProtocol(Protocol):
+core/agents/bootstrap.py:14:    registry = InMemoryAgentRegistry()
+core/manager/service.py:68:        self.task_store = task_store or InMemoryTaskStore()
+core/manager/service.py:69:        self.process_registry = process_registry or ProcessRegistry()
+core/manager/service.py:71:            work_registry or InMemoryWorkRegistry()
+core/manager/service.py:74:            execution_registry or InMemoryExecutionRegistry()
+core/manager/service.py:78:            or DefaultExecutionDispatcher(
+--- REPOSITORY STATUS AFTER READ-ONLY AUDIT ---
+## refactor/modular-architecture...origin/refactor/modular-architecture
+?? SHUJAA_OWNER_CONSTRAINTS.yaml
+?? tests/test_owner_constraint_validator.py
+?? tools/__init__.py
+?? tools/owner_constraint_validator.py
