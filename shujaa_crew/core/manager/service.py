@@ -201,6 +201,62 @@ class ShujaaManager:
 
         return self.event_store.append(event)
 
+    @staticmethod
+    def _dispatch_event_id(
+        execution_id: str,
+    ) -> str:
+        return (
+            "event-execution-dispatched-"
+            f"{execution_id}"
+        )
+
+    def _append_dispatch_event(
+        self,
+        *,
+        work_id: str,
+        task_id: str,
+        execution_id: str,
+        executor_id: str,
+        runtime_id: str | None,
+        agent_id: str | None,
+        requested_agent_id: str | None,
+        required_capability: str | None,
+        operation_id: str,
+    ) -> AppendReceipt:
+        payload: dict[str, object] = {
+            "executor_id": executor_id,
+        }
+
+        if runtime_id is not None:
+            payload["runtime_id"] = runtime_id
+
+        if agent_id is not None:
+            payload["agent_id"] = agent_id
+
+        if requested_agent_id is not None:
+            payload["requested_agent_id"] = (
+                requested_agent_id
+            )
+
+        event = WorkEvent(
+            event_id=self._dispatch_event_id(
+                execution_id
+            ),
+            event_type="execution.dispatched",
+            entity_type="execution",
+            entity_id=execution_id,
+            source_component="core.manager",
+            correlation_id=work_id,
+            operation_id=operation_id,
+            work_id=work_id,
+            task_id=task_id,
+            execution_id=execution_id,
+            capability_asset_id=required_capability,
+            payload=payload,
+        )
+
+        return self.event_store.append(event)
+
     def _transition_execution(
         self,
         execution_id: str,
@@ -473,6 +529,37 @@ class ShujaaManager:
             daemon=True,
         ).start()
 
+        event_append_receipt = (
+            self._append_dispatch_event(
+                work_id=source.work_id,
+                task_id=source.task_id,
+                execution_id=(
+                    admission.execution.execution_id
+                ),
+                executor_id=(
+                    dispatch_decision.executor_id
+                ),
+                runtime_id=(
+                    dispatch_decision.runtime_id
+                ),
+                agent_id=dispatch_decision.agent_id,
+                requested_agent_id=(
+                    source.requested_agent_id
+                ),
+                required_capability=(
+                    source.required_capability
+                ),
+                operation_id=operation_id,
+            )
+        )
+
+        admission = replace(
+            admission,
+            event_append_receipt=(
+                event_append_receipt
+            ),
+        )
+
         started.wait(timeout=0.1)
 
         return admission
@@ -559,6 +646,30 @@ class ShujaaManager:
             daemon=True,
         ).start()
 
+        event_append_receipt = (
+            self._append_dispatch_event(
+                work_id=work_id,
+                task_id=task_id,
+                execution_id=execution_id,
+                executor_id=(
+                    dispatch_decision.executor_id
+                ),
+                runtime_id=(
+                    dispatch_decision.runtime_id
+                ),
+                agent_id=dispatch_decision.agent_id,
+                requested_agent_id=(
+                    requested_agent_id
+                ),
+                required_capability=(
+                    required_capability
+                ),
+                operation_id=(
+                    f"{execution_id}:dispatch"
+                ),
+            )
+        )
+
         started.wait(timeout=0.1)
 
         task = self.task_store.get(task_id)
@@ -568,6 +679,9 @@ class ShujaaManager:
             "work_id": work_id,
             "task_id": task_id,
             "execution_id": execution_id,
+            "event_append_receipt": (
+                event_append_receipt
+            ),
             "process_id": task.process_id if task else None,
             "message": "Shujaa accepted the task.",
         }

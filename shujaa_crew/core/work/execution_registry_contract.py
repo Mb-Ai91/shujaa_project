@@ -31,6 +31,7 @@ class RetryAdmissionResult:
     applied: bool
     disposition: RetryAdmissionDisposition
     execution: Execution
+    event_append_receipt: AppendReceipt | None = None
 
 
 @dataclass(frozen=True)
