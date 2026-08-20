@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from hashlib import sha256
 import json
 import os
@@ -53,6 +53,50 @@ from core.work.dispatcher import (
     DispatchRequest,
     ExecutionDispatcherProtocol,
 )
+
+
+
+@dataclass(frozen=True)
+class RetryEventOutcome:
+    """Manager result separating admission from event persistence."""
+
+    admission_result: RetryAdmissionResult
+    admission_event_append_receipt: AppendReceipt
+
+    @property
+    def applied(self) -> bool:
+        return self.admission_result.applied
+
+    @property
+    def disposition(self):
+        return self.admission_result.disposition
+
+    @property
+    def execution(self) -> Execution:
+        return self.admission_result.execution
+
+    @property
+    def event_append_receipt(self) -> AppendReceipt | None:
+        return self.admission_result.event_append_receipt
+
+
+class RetryAdmissionDeniedError(ValueError):
+    """Structured retry denial with an isolated event receipt."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        reason_code: str,
+        admission_event_append_receipt: (
+            AppendReceipt | None
+        ),
+    ) -> None:
+        super().__init__(message)
+        self.reason_code = reason_code
+        self.admission_event_append_receipt = (
+            admission_event_append_receipt
+        )
 
 
 class ShujaaManager:
@@ -431,42 +475,179 @@ class ShujaaManager:
 
         return transition
 
+    @staticmethod
+    def _retry_admission_event_id(
+        operation_id: str,
+        source_execution_id: str,
+    ) -> str:
+        material = json.dumps(
+            [operation_id, source_execution_id],
+            separators=(",", ":"),
+            ensure_ascii=False,
+        ).encode("utf-8")
+        digest = sha256(material).hexdigest()
+        return (
+            "event-execution-retry-admission-"
+            f"{digest}"
+        )
+
+    def _append_retry_admission_event(
+        self,
+        admission: RetryAdmissionResult,
+        *,
+        source: Execution,
+        operation_id: str,
+    ) -> AppendReceipt:
+        disposition = admission.disposition.value
+
+        if disposition == "idempotent_replay":
+            disposition = "applied"
+
+        event = WorkEvent(
+            event_id=self._retry_admission_event_id(
+                operation_id,
+                source.execution_id,
+            ),
+            event_type=(
+                "execution.retry_admission."
+                f"{disposition}"
+            ),
+            entity_type="execution",
+            entity_id=source.execution_id,
+            source_component=(
+                "core.manager.retry_admission"
+            ),
+            correlation_id=source.work_id,
+            operation_id=operation_id,
+            work_id=source.work_id,
+            task_id=source.task_id,
+            execution_id=(
+                admission.execution.execution_id
+            ),
+            payload={"disposition": disposition},
+        )
+
+        return self.event_store.append_replay_stable(
+            event
+        )
+
+    def _append_retry_denial_event(
+        self,
+        *,
+        source_execution_id: str,
+        operation_id: str,
+        reason_code: str,
+        source: Execution | None,
+    ) -> AppendReceipt:
+        event = WorkEvent(
+            event_id=self._retry_admission_event_id(
+                operation_id,
+                source_execution_id,
+            ),
+            event_type=(
+                "execution.retry_admission.denied"
+            ),
+            entity_type="execution",
+            entity_id=source_execution_id,
+            source_component=(
+                "core.manager.retry_admission"
+            ),
+            correlation_id=(
+                source.work_id
+                if source
+                else source_execution_id
+            ),
+            operation_id=operation_id,
+            work_id=(
+                source.work_id if source else None
+            ),
+            task_id=(
+                source.task_id if source else None
+            ),
+            execution_id=None,
+            payload={
+                "disposition": "denied",
+                "reason_code": reason_code,
+            },
+        )
+
+        return self.event_store.append_replay_stable(
+            event
+        )
+
+    def _retry_denied_error(
+        self,
+        message: str,
+        *,
+        reason_code: str,
+        source_execution_id: str,
+        operation_id: str,
+        source: Execution | None,
+    ) -> RetryAdmissionDeniedError:
+        receipt = self._append_retry_denial_event(
+            source_execution_id=source_execution_id,
+            operation_id=operation_id,
+            reason_code=reason_code,
+            source=source,
+        )
+        return RetryAdmissionDeniedError(
+            message,
+            reason_code=reason_code,
+            admission_event_append_receipt=receipt,
+        )
+
     def _authorize_retry_source(
         self,
         source_execution_id: str,
         *,
         operation_id: str,
     ) -> Execution:
+        if (
+            not isinstance(operation_id, str)
+            or not operation_id.strip()
+        ):
+            raise RetryAdmissionDeniedError(
+                "Retry operation ID is required.",
+                reason_code="invalid_operation_id",
+                admission_event_append_receipt=None,
+            )
+
         source = self.execution_registry.get(
             source_execution_id
         )
 
         if source is None:
-            raise ValueError(
+            raise self._retry_denied_error(
                 "Source execution does not exist: "
-                f"{source_execution_id}"
+                f"{source_execution_id}",
+                reason_code=(
+                    "source_execution_not_found"
+                ),
+                source_execution_id=source_execution_id,
+                operation_id=operation_id,
+                source=None,
             )
 
         if source.retry_safety != RetrySafety.DECLARED_SAFE:
-            raise ValueError(
-                "Execution is not declared safe to retry."
+            raise self._retry_denied_error(
+                "Execution is not declared safe to retry.",
+                reason_code="retry_not_declared_safe",
+                source_execution_id=source_execution_id,
+                operation_id=operation_id,
+                source=source,
             )
 
         if (
             source.status
             not in self._RETRYABLE_EXECUTION_STATUSES
         ):
-            raise ValueError(
+            raise self._retry_denied_error(
                 "Execution status is not retryable: "
-                f"{source.status.value}"
-            )
-
-        if (
-            not isinstance(operation_id, str)
-            or not operation_id.strip()
-        ):
-            raise ValueError(
-                "Retry operation ID is required."
+                f"{source.status.value}",
+                reason_code="status_not_retryable",
+                source_execution_id=source_execution_id,
+                operation_id=operation_id,
+                source=source,
             )
 
         return source
@@ -476,17 +657,26 @@ class ShujaaManager:
         source_execution_id: str,
         *,
         operation_id: str,
-    ) -> RetryAdmissionResult:
+    ) -> RetryEventOutcome:
         """Authorize and atomically admit a retry attempt."""
-        self._authorize_retry_source(
+        source = self._authorize_retry_source(
             source_execution_id,
             operation_id=operation_id,
         )
 
-        return self.execution_registry.admit_retry(
+        admission = self.execution_registry.admit_retry(
             source_execution_id,
             execution_id=new_execution_id(),
             operation_id=operation_id,
+        )
+        receipt = self._append_retry_admission_event(
+            admission,
+            source=source,
+            operation_id=operation_id,
+        )
+        return RetryEventOutcome(
+            admission_result=admission,
+            admission_event_append_receipt=receipt,
         )
 
     def retry_task(
@@ -494,7 +684,7 @@ class ShujaaManager:
         source_execution_id: str,
         *,
         operation_id: str,
-    ) -> RetryAdmissionResult:
+    ) -> RetryEventOutcome:
         """Dispatch then atomically admit a retry attempt."""
         source = self._authorize_retry_source(
             source_execution_id,
@@ -517,10 +707,23 @@ class ShujaaManager:
         )
 
         if existing_retry is not None:
-            return self.execution_registry.admit_retry(
-                source_execution_id,
-                execution_id=new_execution_id(),
-                operation_id=operation_id,
+            admission = (
+                self.execution_registry.admit_retry(
+                    source_execution_id,
+                    execution_id=new_execution_id(),
+                    operation_id=operation_id,
+                )
+            )
+            receipt = (
+                self._append_retry_admission_event(
+                    admission,
+                    source=source,
+                    operation_id=operation_id,
+                )
+            )
+            return RetryEventOutcome(
+                admission_result=admission,
+                admission_event_append_receipt=receipt,
             )
 
         task = self.task_store.get(source.task_id)
@@ -555,9 +758,21 @@ class ShujaaManager:
             operation_id=operation_id,
             executor_id=dispatch_decision.executor_id,
         )
+        admission_event_append_receipt = (
+            self._append_retry_admission_event(
+                admission,
+                source=source,
+                operation_id=operation_id,
+            )
+        )
 
         if not admission.applied:
-            return admission
+            return RetryEventOutcome(
+                admission_result=admission,
+                admission_event_append_receipt=(
+                    admission_event_append_receipt
+                ),
+            )
 
         self.task_store.update(
             source.task_id,
@@ -614,7 +829,12 @@ class ShujaaManager:
 
         started.wait(timeout=0.1)
 
-        return admission
+        return RetryEventOutcome(
+            admission_result=admission,
+            admission_event_append_receipt=(
+                admission_event_append_receipt
+            ),
+        )
 
     def submit(
         self,

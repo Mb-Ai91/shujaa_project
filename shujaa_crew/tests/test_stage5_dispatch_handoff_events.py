@@ -283,7 +283,18 @@ def test_retry_replay_does_not_duplicate_dispatch_event(
     assert first.event_append_receipt is not None
     assert replay.applied is False
     assert replay.event_append_receipt is None
-    assert len(store.list()) == 1
+    events = tuple(
+        entry.record for entry in store.list()
+    )
+    assert sum(
+        event.event_type == "execution.dispatched"
+        for event in events
+    ) == 1
+    assert sum(
+        event.event_type
+        == "execution.retry_admission.applied"
+        for event in events
+    ) == 1
     assert len(dispatcher.requests) == 1
     assert captured_threads.starts == 1
 
