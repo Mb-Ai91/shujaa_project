@@ -112,7 +112,10 @@ def test_winning_cancel_terminates_and_releases_owner(
         lambda pgid: signals.append(pgid)
     )
 
-    response = manager.cancel_task(task_id)
+    response = manager.cancel_task(
+        task_id,
+        cleanup_operation_id="op-test-cancel-winning",
+    )
 
     assert response["status"] == "cancelled"
     assert (
@@ -147,7 +150,10 @@ def test_idempotent_cancel_retries_pending_cleanup(
         lambda pgid: signals.append(pgid)
     )
 
-    response = manager.cancel_task(task_id)
+    response = manager.cancel_task(
+        task_id,
+        cleanup_operation_id="op-test-cancel-replay",
+    )
 
     assert response["status"] == "cancelled"
     assert (
@@ -180,7 +186,10 @@ def test_already_exited_process_releases_without_signal(
         lambda pgid: signals.append(pgid)
     )
 
-    response = manager.cancel_task(task_id)
+    response = manager.cancel_task(
+        task_id,
+        cleanup_operation_id="op-test-cancel-already-exited",
+    )
 
     assert response["status"] == "cancelled"
     assert (
@@ -213,7 +222,10 @@ def test_process_identity_mismatch_retains_owner(
         lambda pgid: signals.append(pgid)
     )
 
-    response = manager.cancel_task(task_id)
+    response = manager.cancel_task(
+        task_id,
+        cleanup_operation_id="op-test-cancel-identity-mismatch",
+    )
 
     assert response["status"] == "cancelled"
     assert (
@@ -247,7 +259,10 @@ def test_termination_failure_retains_owner_and_winner(
 
     manager._terminate_process_group_by_id = fail_termination
 
-    response = manager.cancel_task(task_id)
+    response = manager.cancel_task(
+        task_id,
+        cleanup_operation_id="op-test-cancel-termination-failure",
+    )
 
     execution = manager.execution_registry.get(
         execution_id
@@ -287,7 +302,10 @@ def test_stale_execution_cannot_cleanup_newer_owner(
         lambda pgid: signals.append(pgid)
     )
 
-    response = manager.cancel_task(task_id)
+    response = manager.cancel_task(
+        task_id,
+        cleanup_operation_id="op-test-cancel-stale-owner",
+    )
 
     assert response["status"] == "cancelled"
     assert (
@@ -383,7 +401,10 @@ def test_identity_read_failure_retains_owner_and_winner(
         lambda pgid: signals.append(pgid)
     )
 
-    response = manager.cancel_task(task_id)
+    response = manager.cancel_task(
+        task_id,
+        cleanup_operation_id="op-test-cancel-identity-read-failure",
+    )
 
     execution = manager.execution_registry.get(
         execution_id
@@ -434,7 +455,10 @@ def test_cleanup_refuses_process_group_mismatch(
         lambda pgid: signals.append(pgid)
     )
 
-    response = manager.cancel_task(task_id)
+    response = manager.cancel_task(
+        task_id,
+        cleanup_operation_id="op-test-cancel-group-mismatch",
+    )
 
     assert response["status"] == "cancelled"
     assert (
@@ -464,7 +488,9 @@ def test_startup_cleanup_reports_retained_failures(
 
     manager._read_process_start_time_ticks = fail_identity_read
 
-    results = manager.cleanup_registered_processes()
+    results = manager.cleanup_registered_processes(
+        cleanup_operation_id="op-test-startup-cleanup",
+    )
 
     assert isinstance(results, dict)
     assert task_id in results

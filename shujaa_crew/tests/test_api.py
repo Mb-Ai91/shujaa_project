@@ -81,8 +81,14 @@ def test_manager_accepts_valid_command():
 
 def test_cancel_task_endpoint(monkeypatch):
     class FakeManager:
-        def cancel_task(self, task_id: str):
+        def cancel_task(
+            self,
+            task_id: str,
+            *,
+            cleanup_operation_id: str,
+        ):
             assert task_id == "task-123"
+            assert isinstance(cleanup_operation_id, str)
             return {
                 "task_id": task_id,
                 "status": "cancelled",

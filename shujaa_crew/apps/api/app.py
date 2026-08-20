@@ -4,6 +4,7 @@ import atexit
 import hmac
 import os
 import time
+from uuid import uuid4
 
 from dotenv import load_dotenv
 from flask import Flask, jsonify, request
@@ -235,7 +236,13 @@ def cancel_task(task_id: str):
         }), 401
 
     try:
-        return jsonify(manager.cancel_task(task_id)), 200
+        cleanup_operation_id = f"op-cancel-{uuid4()}"
+        return jsonify(
+            manager.cancel_task(
+                task_id,
+                cleanup_operation_id=cleanup_operation_id,
+            )
+        ), 200
     except ValueError as error:
         message = str(error)
         status_code = 404 if message == "Task not found." else 409
@@ -267,9 +274,15 @@ def get_task(task_id: str):
 
 if __name__ == "__main__":
     # تنظيف أي عمليات CrewAI متبقية من جلسة سابقة.
-    manager.cleanup_registered_processes()
+    manager.cleanup_registered_processes(
+        cleanup_operation_id=f"op-startup-cleanup-{uuid4()}"
+    )
 
     # تنظيف العمليات المسجلة عند الإغلاق الطبيعي.
-    atexit.register(manager.cleanup_registered_processes)
+    atexit.register(
+        lambda: manager.cleanup_registered_processes(
+            cleanup_operation_id=f"op-shutdown-cleanup-{uuid4()}"
+        )
+    )
 
     app.run(host="0.0.0.0", port=5000, debug=False)

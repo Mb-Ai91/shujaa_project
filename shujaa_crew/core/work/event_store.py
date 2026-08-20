@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass, fields, is_dataclass
+from dataclasses import dataclass, fields, is_dataclass, replace
 from datetime import datetime, timezone
 from enum import Enum
 from hashlib import sha256
@@ -50,6 +50,12 @@ class EventStoreProtocol(Protocol):
     """Minimal replaceable contract for WorkEvent persistence."""
 
     def append(
+        self,
+        record: WorkEvent,
+    ) -> AppendReceipt:
+        ...
+
+    def append_replay_stable(
         self,
         record: WorkEvent,
     ) -> AppendReceipt:
@@ -347,6 +353,134 @@ class InMemoryEventStore(
             identity_attribute="event_id",
             integrity_hasher=integrity_hasher,
         )
+
+    def append_replay_stable(
+        self,
+        record: WorkEvent,
+    ) -> AppendReceipt:
+        if not isinstance(record, self._record_type):
+            return AppendReceipt(
+                result=AppendResult.SCHEMA_REJECTED,
+                record_id=None,
+                error_code="invalid_record_type",
+            )
+
+        record_id = getattr(
+            record,
+            self._identity_attribute,
+        )
+
+        try:
+            canonical_record = _canonical_bytes(record)
+        except Exception as error:
+            return AppendReceipt(
+                result=AppendResult.SCHEMA_REJECTED,
+                record_id=record_id,
+                error_code=type(error).__name__,
+            )
+
+        with self._lock:
+            existing = self._entries_by_id.get(record_id)
+
+            if existing is not None:
+                candidate = replace(
+                    record,
+                    occurred_at=existing.record.occurred_at,
+                    recorded_at=existing.record.recorded_at,
+                )
+                try:
+                    candidate_canonical = _canonical_bytes(candidate)
+                except Exception as error:
+                    return AppendReceipt(
+                        result=AppendResult.SCHEMA_REJECTED,
+                        record_id=record_id,
+                        error_code=type(error).__name__,
+                    )
+
+                if (
+                    self._canonical_by_id[record_id]
+                    == candidate_canonical
+                ):
+                    return AppendReceipt(
+                        result=AppendResult.IDEMPOTENT_REPLAY,
+                        record_id=record_id,
+                        local_sequence=(
+                            existing.local_sequence
+                        ),
+                        integrity_hash=(
+                            existing.integrity_hash
+                        ),
+                    )
+
+                return AppendReceipt(
+                    result=AppendResult.IDENTITY_CONFLICT,
+                    record_id=record_id,
+                )
+
+            local_sequence = len(self._entries) + 1
+            previous_hash = (
+                self._entries[-1].integrity_hash
+                if self._entries
+                else None
+            )
+
+            integrity_material = json.dumps(
+                {
+                    "local_sequence": local_sequence,
+                    "previous_integrity_hash": (
+                        previous_hash
+                    ),
+                    "record": json.loads(
+                        canonical_record.decode("utf-8")
+                    ),
+                },
+                ensure_ascii=False,
+                allow_nan=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+
+            try:
+                integrity_hash = (
+                    self._integrity_hasher(
+                        integrity_material
+                    )
+                )
+
+                if not isinstance(
+                    integrity_hash,
+                    str,
+                ) or not integrity_hash:
+                    raise ValueError(
+                        "integrity_hasher returned "
+                        "an invalid digest"
+                    )
+            except Exception as error:
+                return AppendReceipt(
+                    result=AppendResult.WRITE_FAILED,
+                    record_id=record_id,
+                    error_code=type(error).__name__,
+                )
+
+            entry = StoredEntry(
+                record=record,
+                local_sequence=local_sequence,
+                integrity_hash=integrity_hash,
+                previous_integrity_hash=previous_hash,
+            )
+
+            self._entries.append(entry)
+            self._entries_by_id[record_id] = entry
+            self._canonical_by_id[
+                record_id
+            ] = canonical_record
+
+            return AppendReceipt(
+                result=AppendResult.APPENDED,
+                record_id=record_id,
+                local_sequence=local_sequence,
+                integrity_hash=integrity_hash,
+            )
 
 
 class InMemoryAuditStore(

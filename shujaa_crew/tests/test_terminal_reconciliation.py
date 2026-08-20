@@ -114,7 +114,10 @@ def test_late_cancel_preserves_completed_execution_winner():
         execution_status=ExecutionStatus.COMPLETED,
     )
 
-    response = manager.cancel_task(task_id)
+    response = manager.cancel_task(
+        task_id,
+        cleanup_operation_id="op-test-cancel-late",
+    )
 
     task = manager.task_store.get(task_id)
     execution = manager.execution_registry.get(execution_id)
@@ -136,7 +139,10 @@ def test_queued_cancel_transitions_execution_directly():
         execution_status=ExecutionStatus.QUEUED,
     )
 
-    response = manager.cancel_task(task_id)
+    response = manager.cancel_task(
+        task_id,
+        cleanup_operation_id="op-test-cancel-queued",
+    )
 
     task = manager.task_store.get(task_id)
     execution = manager.execution_registry.get(execution_id)
@@ -339,7 +345,10 @@ def test_cancel_retries_after_stale_nonterminal_version():
         execution_status=ExecutionStatus.QUEUED,
     )
 
-    response = manager.cancel_task(task_id)
+    response = manager.cancel_task(
+        task_id,
+        cleanup_operation_id="op-test-cancel-stale",
+    )
 
     task = manager.task_store.get(task_id)
     execution = registry.get(execution_id)
@@ -381,7 +390,10 @@ def test_idempotent_cancel_replay_is_consumed_explicitly():
     )
     registry.cancel_attempts = 0
 
-    response = manager.cancel_task(task_id)
+    response = manager.cancel_task(
+        task_id,
+        cleanup_operation_id="op-test-cancel-replay",
+    )
 
     task = manager.task_store.get(task_id)
     execution = registry.get(execution_id)

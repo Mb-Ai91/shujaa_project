@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from hashlib import sha256
+import json
 import os
 import signal
 import subprocess
@@ -24,6 +26,7 @@ from core.runtime.runner_contract import RunnerProtocol
 from core.tasks.contracts import TaskStoreProtocol
 from core.tasks.store import InMemoryTaskStore, TaskRecord
 from core.work.event_store import (
+    AppendReceipt,
     EventStoreProtocol,
     InMemoryEventStore,
 )
@@ -200,6 +203,55 @@ class ShujaaManager:
         )
 
         return self.event_store.append(event)
+
+    @staticmethod
+    def _cleanup_event_id(
+        cleanup_operation_id: str,
+        task_id: str,
+    ) -> str:
+        payload = json.dumps(
+            [cleanup_operation_id, task_id],
+            separators=(",", ":"),
+            ensure_ascii=False,
+        ).encode("utf-8")
+        digest = sha256(payload).hexdigest()
+        return f"event-process-cleanup-{digest}"
+
+    def _append_cleanup_event(
+        self,
+        cleanup_result: CleanupResult,
+        *,
+        task_id: str,
+        cleanup_operation_id: str,
+    ) -> AppendReceipt:
+        event = WorkEvent(
+            event_id=self._cleanup_event_id(
+                cleanup_operation_id,
+                task_id,
+            ),
+            event_type=(
+                "process.cleanup."
+                f"{cleanup_result.disposition.value}"
+            ),
+            entity_type="process",
+            entity_id=task_id,
+            source_component="core.manager.process_cleanup",
+            correlation_id=task_id,
+            operation_id=cleanup_operation_id,
+            task_id=task_id,
+            execution_id=(
+                cleanup_result.ownership.execution_id
+                if cleanup_result.ownership
+                else None
+            ),
+            payload={
+                "disposition": (
+                    cleanup_result.disposition.value
+                ),
+            },
+        )
+
+        return self.event_store.append_replay_stable(event)
 
     @staticmethod
     def _dispatch_event_id(
@@ -1157,7 +1209,12 @@ class ShujaaManager:
             ownership=None,
         )
 
-    def cancel_task(self, task_id: str) -> dict[str, object]:
+    def cancel_task(
+        self,
+        task_id: str,
+        *,
+        cleanup_operation_id: str,
+    ) -> dict[str, object]:
         task = self.task_store.get(task_id)
 
         if task is None:
@@ -1198,6 +1255,11 @@ class ShujaaManager:
                 expected_execution_id=(
                     execution.execution_id
                 ),
+            )
+            self._append_cleanup_event(
+                cleanup_result,
+                task_id=task_id,
+                cleanup_operation_id=cleanup_operation_id,
             )
 
         updated = self.task_store.get(task_id)
@@ -1275,6 +1337,8 @@ class ShujaaManager:
 
     def cleanup_registered_processes(
         self,
+        *,
+        cleanup_operation_id: str,
     ) -> dict[str, CleanupResult]:
         """Clean ownership retained from an earlier session."""
 
@@ -1282,13 +1346,17 @@ class ShujaaManager:
         results: dict[str, CleanupResult] = {}
 
         for task_id, ownership in ownerships.items():
-            results[task_id] = (
-                self._cleanup_process_ownership(
-                    task_id,
-                    expected_execution_id=(
-                        ownership.execution_id
-                    ),
-                )
+            result = self._cleanup_process_ownership(
+                task_id,
+                expected_execution_id=(
+                    ownership.execution_id
+                ),
+            )
+            results[task_id] = result
+            self._append_cleanup_event(
+                result,
+                task_id=task_id,
+                cleanup_operation_id=cleanup_operation_id,
             )
 
         return results
