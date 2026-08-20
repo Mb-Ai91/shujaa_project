@@ -27,10 +27,12 @@ from core.tasks.contracts import TaskStoreProtocol
 from core.tasks.store import InMemoryTaskStore, TaskRecord
 from core.work.event_store import (
     AppendReceipt,
+    AuditStoreProtocol,
     EventStoreProtocol,
+    InMemoryAuditStore,
     InMemoryEventStore,
 )
-from core.work.events import WorkEvent
+from core.work.events import AuditRecord, WorkEvent
 from core.work.models import (
     Execution,
     ExecutionStatus,
@@ -99,6 +101,21 @@ class RetryAdmissionDeniedError(ValueError):
         )
 
 
+class AuditedDispatchRejectionError(ValueError):
+    """Dispatch rejection retaining its separate Audit receipt."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        reason_code: str,
+        audit_append_receipt: AppendReceipt,
+    ) -> None:
+        super().__init__(message)
+        self.reason_code = reason_code
+        self.audit_append_receipt = audit_append_receipt
+
+
 class ShujaaManager:
     """المدير المركزي لاستقبال المهام ومتابعة حالتها."""
 
@@ -114,6 +131,7 @@ class ShujaaManager:
         work_registry: WorkRegistryProtocol | None = None,
         execution_registry: ExecutionRegistryProtocol | None = None,
         event_store: EventStoreProtocol | None = None,
+        audit_store: AuditStoreProtocol | None = None,
         execution_dispatcher: ExecutionDispatcherProtocol | None = None,
         agent_registry: AgentRegistryProtocol | None = None,
         agent_executor_registry: AgentExecutorRegistryProtocol | None = None,
@@ -129,6 +147,9 @@ class ShujaaManager:
         )
         self.event_store = (
             event_store or InMemoryEventStore()
+        )
+        self.audit_store = (
+            audit_store or InMemoryAuditStore()
         )
         self.execution_dispatcher = (
             execution_dispatcher
@@ -168,6 +189,59 @@ class ShujaaManager:
             _TERMINAL_EXECUTION_STATUSES
         ),
     }
+
+    @staticmethod
+    def _submit_audit_operation_id(
+        work_id: str,
+    ) -> str:
+        return f"{work_id}:submit"
+
+    @classmethod
+    def _submit_audit_id(
+        cls,
+        work_id: str,
+    ) -> str:
+        operation_id = (
+            cls._submit_audit_operation_id(work_id)
+        )
+        material = json.dumps(
+            [operation_id, work_id],
+            separators=(",", ":"),
+            ensure_ascii=False,
+        ).encode("utf-8")
+        digest = sha256(material).hexdigest()
+        return f"audit-work-submit-{digest}"
+
+    def _append_submit_audit(
+        self,
+        *,
+        work_id: str,
+        outcome: str,
+        reason_code: str,
+        event_id: str | None = None,
+        error_code: str | None = None,
+        actor_type: str = "system",
+        actor_id: str = "shujaa_manager",
+    ) -> AppendReceipt:
+        audit = AuditRecord(
+            audit_id=self._submit_audit_id(work_id),
+            action="work.submit",
+            actor_type=actor_type,
+            actor_id=actor_id,
+            resource_type="work",
+            resource_id=work_id,
+            outcome=outcome,
+            reason_code=reason_code,
+            operation_id=(
+                self._submit_audit_operation_id(
+                    work_id
+                )
+            ),
+            event_id=event_id,
+            error_code=error_code,
+        )
+
+        return self.audit_store.append(audit)
 
     @staticmethod
     def _transition_event_id(
@@ -864,16 +938,39 @@ class ShujaaManager:
         task_id = str(uuid4())
         execution_id = new_execution_id()
 
-        dispatch_decision = self.execution_dispatcher.dispatch(
-            DispatchRequest(
-                work_id=work_id,
-                task_id=task_id,
-                execution_id=execution_id,
-                command=command,
-                requested_agent_id=requested_agent_id,
-                required_capability=required_capability,
+        try:
+            dispatch_decision = (
+                self.execution_dispatcher.dispatch(
+                    DispatchRequest(
+                        work_id=work_id,
+                        task_id=task_id,
+                        execution_id=execution_id,
+                        command=command,
+                        requested_agent_id=(
+                            requested_agent_id
+                        ),
+                        required_capability=(
+                            required_capability
+                        ),
+                    )
+                )
             )
-        )
+        except ValueError as error:
+            audit_append_receipt = (
+                self._append_submit_audit(
+                    work_id=work_id,
+                    outcome="rejected",
+                    reason_code="dispatch_rejected",
+                    error_code=type(error).__name__,
+                )
+            )
+            raise AuditedDispatchRejectionError(
+                str(error),
+                reason_code="dispatch_rejected",
+                audit_append_receipt=(
+                    audit_append_receipt
+                ),
+            ) from error
 
         self.work_registry.create(
             Work(
@@ -942,6 +1039,15 @@ class ShujaaManager:
             )
         )
 
+        audit_append_receipt = (
+            self._append_submit_audit(
+                work_id=work_id,
+                outcome="accepted",
+                reason_code="dispatch_accepted",
+                event_id=event_append_receipt.record_id,
+            )
+        )
+
         started.wait(timeout=0.1)
 
         task = self.task_store.get(task_id)
@@ -953,6 +1059,9 @@ class ShujaaManager:
             "execution_id": execution_id,
             "event_append_receipt": (
                 event_append_receipt
+            ),
+            "audit_append_receipt": (
+                audit_append_receipt
             ),
             "process_id": task.process_id if task else None,
             "message": "Shujaa accepted the task.",
