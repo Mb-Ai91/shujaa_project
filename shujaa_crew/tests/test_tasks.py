@@ -137,6 +137,7 @@ def test_manager_cancels_running_task():
 
     cancelled = manager.cancel_task(
         task_id,
+        cancel_operation_id="op-test-cancel-request-test_tasks-1",
         cleanup_operation_id="op-test-cancel-running",
     )
 
@@ -168,6 +169,7 @@ def test_cancelled_task_is_not_overwritten_after_process_exit():
 
     cancelled = manager.cancel_task(
         task_id,
+        cancel_operation_id="op-test-cancel-request-test_tasks-2",
         cleanup_operation_id="op-test-cancel-race",
     )
     assert cancelled["status"] == "cancelled"
@@ -441,6 +443,7 @@ def test_manager_marks_execution_cancelled():
 
     manager.cancel_task(
         task_id,
+        cancel_operation_id="op-test-cancel-request-test_tasks-3",
         cleanup_operation_id="op-test-cancel-execution",
     )
 

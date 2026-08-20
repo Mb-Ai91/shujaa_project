@@ -85,10 +85,15 @@ def test_cancel_task_endpoint(monkeypatch):
             self,
             task_id: str,
             *,
+            cancel_operation_id: str,
             cleanup_operation_id: str,
         ):
             assert task_id == "task-123"
+            assert isinstance(cancel_operation_id, str)
             assert isinstance(cleanup_operation_id, str)
+            assert cancel_operation_id != (
+                cleanup_operation_id
+            )
             return {
                 "task_id": task_id,
                 "status": "cancelled",

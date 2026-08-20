@@ -64,6 +64,7 @@ class RetryEventOutcome:
 
     admission_result: RetryAdmissionResult
     admission_event_append_receipt: AppendReceipt
+    audit_append_receipt: AppendReceipt
 
     @property
     def applied(self) -> bool:
@@ -93,12 +94,29 @@ class RetryAdmissionDeniedError(ValueError):
         admission_event_append_receipt: (
             AppendReceipt | None
         ),
+        audit_append_receipt: AppendReceipt | None,
     ) -> None:
         super().__init__(message)
         self.reason_code = reason_code
         self.admission_event_append_receipt = (
             admission_event_append_receipt
         )
+        self.audit_append_receipt = audit_append_receipt
+
+
+class AuditedCancelError(ValueError):
+    """Cancel rejection retaining its separate Audit receipt."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        reason_code: str,
+        audit_append_receipt: AppendReceipt | None,
+    ) -> None:
+        super().__init__(message)
+        self.reason_code = reason_code
+        self.audit_append_receipt = audit_append_receipt
 
 
 class AuditedDispatchRejectionError(ValueError):
@@ -242,6 +260,148 @@ class ShujaaManager:
         )
 
         return self.audit_store.append(audit)
+
+    @staticmethod
+    def _operation_audit_id(
+        prefix: str,
+        operation_id: str,
+        resource_id: str,
+    ) -> str:
+        material = json.dumps(
+            [operation_id, resource_id],
+            separators=(",", ":"),
+            ensure_ascii=False,
+        ).encode("utf-8")
+        digest = sha256(material).hexdigest()
+        return f"{prefix}{digest}"
+
+    @classmethod
+    def _retry_audit_id(
+        cls,
+        operation_id: str,
+        source_execution_id: str,
+    ) -> str:
+        return cls._operation_audit_id(
+            "audit-execution-retry-",
+            operation_id,
+            source_execution_id,
+        )
+
+    @classmethod
+    def _cancel_audit_id(
+        cls,
+        cancel_operation_id: str,
+        task_id: str,
+    ) -> str:
+        return cls._operation_audit_id(
+            "audit-task-cancel-",
+            cancel_operation_id,
+            task_id,
+        )
+
+    def _append_retry_audit(
+        self,
+        *,
+        source_execution_id: str,
+        operation_id: str,
+        outcome: str,
+        reason_code: str,
+        event_id: str | None,
+    ) -> AppendReceipt:
+        audit = AuditRecord(
+            audit_id=self._retry_audit_id(
+                operation_id,
+                source_execution_id,
+            ),
+            action="execution.retry",
+            actor_type="system",
+            actor_id="shujaa_manager",
+            resource_type="execution",
+            resource_id=source_execution_id,
+            outcome=outcome,
+            reason_code=reason_code,
+            operation_id=operation_id,
+            event_id=event_id,
+        )
+        return self.audit_store.append_replay_stable(
+            audit
+        )
+
+    def _append_retry_result_audit(
+        self,
+        admission: RetryAdmissionResult,
+        *,
+        source_execution_id: str,
+        operation_id: str,
+        event_id: str,
+    ) -> AppendReceipt:
+        disposition = admission.disposition.value
+        if disposition in {
+            "applied",
+            "idempotent_replay",
+        }:
+            outcome = "accepted"
+            reason_code = "retry_admitted"
+        else:
+            outcome = "rejected"
+            reason_code = disposition
+
+        return self._append_retry_audit(
+            source_execution_id=source_execution_id,
+            operation_id=operation_id,
+            outcome=outcome,
+            reason_code=reason_code,
+            event_id=event_id,
+        )
+
+    def _append_cancel_audit(
+        self,
+        *,
+        task_id: str,
+        cancel_operation_id: str,
+        outcome: str,
+        reason_code: str,
+        event_id: str | None,
+    ) -> AppendReceipt:
+        audit = AuditRecord(
+            audit_id=self._cancel_audit_id(
+                cancel_operation_id,
+                task_id,
+            ),
+            action="task.cancel",
+            actor_type="system",
+            actor_id="shujaa_manager",
+            resource_type="task",
+            resource_id=task_id,
+            outcome=outcome,
+            reason_code=reason_code,
+            operation_id=cancel_operation_id,
+            event_id=event_id,
+        )
+        return self.audit_store.append_replay_stable(
+            audit
+        )
+
+    def _cancel_rejection_error(
+        self,
+        message: str,
+        *,
+        task_id: str,
+        cancel_operation_id: str,
+        reason_code: str,
+    ) -> AuditedCancelError:
+        receipt = self._append_cancel_audit(
+            task_id=task_id,
+            cancel_operation_id=cancel_operation_id,
+            outcome="rejected",
+            reason_code=reason_code,
+            event_id=None,
+        )
+        return AuditedCancelError(
+            message,
+            reason_code=reason_code,
+            audit_append_receipt=receipt,
+        )
 
     @staticmethod
     def _transition_event_id(
@@ -658,16 +818,24 @@ class ShujaaManager:
         operation_id: str,
         source: Execution | None,
     ) -> RetryAdmissionDeniedError:
-        receipt = self._append_retry_denial_event(
+        event_receipt = self._append_retry_denial_event(
             source_execution_id=source_execution_id,
             operation_id=operation_id,
             reason_code=reason_code,
             source=source,
         )
+        audit_receipt = self._append_retry_audit(
+            source_execution_id=source_execution_id,
+            operation_id=operation_id,
+            outcome="rejected",
+            reason_code=reason_code,
+            event_id=event_receipt.record_id,
+        )
         return RetryAdmissionDeniedError(
             message,
             reason_code=reason_code,
-            admission_event_append_receipt=receipt,
+            admission_event_append_receipt=event_receipt,
+            audit_append_receipt=audit_receipt,
         )
 
     def _authorize_retry_source(
@@ -684,6 +852,7 @@ class ShujaaManager:
                 "Retry operation ID is required.",
                 reason_code="invalid_operation_id",
                 admission_event_append_receipt=None,
+                audit_append_receipt=None,
             )
 
         source = self.execution_registry.get(
@@ -743,14 +912,21 @@ class ShujaaManager:
             execution_id=new_execution_id(),
             operation_id=operation_id,
         )
-        receipt = self._append_retry_admission_event(
+        event_receipt = self._append_retry_admission_event(
             admission,
             source=source,
             operation_id=operation_id,
         )
+        audit_receipt = self._append_retry_result_audit(
+            admission,
+            source_execution_id=source.execution_id,
+            operation_id=operation_id,
+            event_id=event_receipt.record_id,
+        )
         return RetryEventOutcome(
             admission_result=admission,
-            admission_event_append_receipt=receipt,
+            admission_event_append_receipt=event_receipt,
+            audit_append_receipt=audit_receipt,
         )
 
     def retry_task(
@@ -788,16 +964,29 @@ class ShujaaManager:
                     operation_id=operation_id,
                 )
             )
-            receipt = (
+            event_receipt = (
                 self._append_retry_admission_event(
                     admission,
                     source=source,
                     operation_id=operation_id,
                 )
             )
+            audit_receipt = (
+                self._append_retry_result_audit(
+                    admission,
+                    source_execution_id=(
+                        source.execution_id
+                    ),
+                    operation_id=operation_id,
+                    event_id=event_receipt.record_id,
+                )
+            )
             return RetryEventOutcome(
                 admission_result=admission,
-                admission_event_append_receipt=receipt,
+                admission_event_append_receipt=(
+                    event_receipt
+                ),
+                audit_append_receipt=audit_receipt,
             )
 
         task = self.task_store.get(source.task_id)
@@ -839,12 +1028,28 @@ class ShujaaManager:
                 operation_id=operation_id,
             )
         )
+        audit_append_receipt = (
+            self._append_retry_result_audit(
+                admission,
+                source_execution_id=(
+                    source.execution_id
+                ),
+                operation_id=operation_id,
+                event_id=(
+                    admission_event_append_receipt
+                    .record_id
+                ),
+            )
+        )
 
         if not admission.applied:
             return RetryEventOutcome(
                 admission_result=admission,
                 admission_event_append_receipt=(
                     admission_event_append_receipt
+                ),
+                audit_append_receipt=(
+                    audit_append_receipt
                 ),
             )
 
@@ -907,6 +1112,9 @@ class ShujaaManager:
             admission_result=admission,
             admission_event_append_receipt=(
                 admission_event_append_receipt
+            ),
+            audit_append_receipt=(
+                audit_append_receipt
             ),
         )
 
@@ -1542,17 +1750,44 @@ class ShujaaManager:
         self,
         task_id: str,
         *,
+        cancel_operation_id: str,
         cleanup_operation_id: str,
     ) -> dict[str, object]:
+        if (
+            not isinstance(cancel_operation_id, str)
+            or not cancel_operation_id.strip()
+        ):
+            raise AuditedCancelError(
+                "Cancel operation ID is required.",
+                reason_code="invalid_cancel_operation_id",
+                audit_append_receipt=None,
+            )
+
         task = self.task_store.get(task_id)
 
         if task is None:
-            raise ValueError("Task not found.")
+            raise self._cancel_rejection_error(
+                "Task not found.",
+                task_id=task_id,
+                cancel_operation_id=(
+                    cancel_operation_id
+                ),
+                reason_code="task_not_found",
+            )
 
-        executions = self.execution_registry.list_by_task(task_id)
+        executions = self.execution_registry.list_by_task(
+            task_id
+        )
 
         if not executions:
-            raise ValueError("Execution not found.")
+            raise self._cancel_rejection_error(
+                "Execution not found.",
+                task_id=task_id,
+                cancel_operation_id=(
+                    cancel_operation_id
+                ),
+                reason_code="execution_not_found",
+            )
 
         execution = max(
             executions,
@@ -1569,8 +1804,7 @@ class ShujaaManager:
         )
 
         cleanup_result = None
-
-        if (
+        cancel_applied = (
             transition.execution.status
             == ExecutionStatus.CANCELLED
             and transition.disposition
@@ -1578,7 +1812,9 @@ class ShujaaManager:
                 TransitionDisposition.APPLIED,
                 TransitionDisposition.IDEMPOTENT_REPLAY,
             }
-        ):
+        )
+
+        if cancel_applied:
             cleanup_result = self._cleanup_process_ownership(
                 task_id,
                 expected_execution_id=(
@@ -1588,7 +1824,9 @@ class ShujaaManager:
             self._append_cleanup_event(
                 cleanup_result,
                 task_id=task_id,
-                cleanup_operation_id=cleanup_operation_id,
+                cleanup_operation_id=(
+                    cleanup_operation_id
+                ),
             )
 
         updated = self.task_store.get(task_id)
@@ -1598,7 +1836,9 @@ class ShujaaManager:
             if updated
             else {
                 "task_id": task_id,
-                "status": transition.execution.status.value,
+                "status": (
+                    transition.execution.status.value
+                ),
             }
         )
         response["cleanup_disposition"] = (
@@ -1610,6 +1850,32 @@ class ShujaaManager:
             cleanup_result.error
             if cleanup_result
             else None
+        )
+
+        transition_receipt = (
+            transition.event_append_receipt
+        )
+        audit_receipt = self._append_cancel_audit(
+            task_id=task_id,
+            cancel_operation_id=cancel_operation_id,
+            outcome=(
+                "accepted"
+                if cancel_applied
+                else "rejected"
+            ),
+            reason_code=(
+                "cancel_applied"
+                if cancel_applied
+                else "terminal_winner_preserved"
+            ),
+            event_id=(
+                transition_receipt.record_id
+                if transition_receipt
+                else None
+            ),
+        )
+        response["audit_append_receipt"] = (
+            audit_receipt
         )
 
         return response

@@ -116,6 +116,7 @@ def test_late_cancel_preserves_completed_execution_winner():
 
     response = manager.cancel_task(
         task_id,
+        cancel_operation_id="op-test-cancel-request-test_terminal_reconciliation-1",
         cleanup_operation_id="op-test-cancel-late",
     )
 
@@ -141,6 +142,7 @@ def test_queued_cancel_transitions_execution_directly():
 
     response = manager.cancel_task(
         task_id,
+        cancel_operation_id="op-test-cancel-request-test_terminal_reconciliation-2",
         cleanup_operation_id="op-test-cancel-queued",
     )
 
@@ -347,6 +349,7 @@ def test_cancel_retries_after_stale_nonterminal_version():
 
     response = manager.cancel_task(
         task_id,
+        cancel_operation_id="op-test-cancel-request-test_terminal_reconciliation-3",
         cleanup_operation_id="op-test-cancel-stale",
     )
 
@@ -392,6 +395,7 @@ def test_idempotent_cancel_replay_is_consumed_explicitly():
 
     response = manager.cancel_task(
         task_id,
+        cancel_operation_id="op-test-cancel-request-test_terminal_reconciliation-4",
         cleanup_operation_id="op-test-cancel-replay",
     )
 

@@ -114,6 +114,7 @@ def test_winning_cancel_terminates_and_releases_owner(
 
     response = manager.cancel_task(
         task_id,
+        cancel_operation_id="op-test-cancel-request-test_process_cleanup_manager-1",
         cleanup_operation_id="op-test-cancel-winning",
     )
 
@@ -152,6 +153,7 @@ def test_idempotent_cancel_retries_pending_cleanup(
 
     response = manager.cancel_task(
         task_id,
+        cancel_operation_id="op-test-cancel-request-test_process_cleanup_manager-2",
         cleanup_operation_id="op-test-cancel-replay",
     )
 
@@ -188,6 +190,7 @@ def test_already_exited_process_releases_without_signal(
 
     response = manager.cancel_task(
         task_id,
+        cancel_operation_id="op-test-cancel-request-test_process_cleanup_manager-3",
         cleanup_operation_id="op-test-cancel-already-exited",
     )
 
@@ -224,6 +227,7 @@ def test_process_identity_mismatch_retains_owner(
 
     response = manager.cancel_task(
         task_id,
+        cancel_operation_id="op-test-cancel-request-test_process_cleanup_manager-4",
         cleanup_operation_id="op-test-cancel-identity-mismatch",
     )
 
@@ -261,6 +265,7 @@ def test_termination_failure_retains_owner_and_winner(
 
     response = manager.cancel_task(
         task_id,
+        cancel_operation_id="op-test-cancel-request-test_process_cleanup_manager-5",
         cleanup_operation_id="op-test-cancel-termination-failure",
     )
 
@@ -304,6 +309,7 @@ def test_stale_execution_cannot_cleanup_newer_owner(
 
     response = manager.cancel_task(
         task_id,
+        cancel_operation_id="op-test-cancel-request-test_process_cleanup_manager-6",
         cleanup_operation_id="op-test-cancel-stale-owner",
     )
 
@@ -403,6 +409,7 @@ def test_identity_read_failure_retains_owner_and_winner(
 
     response = manager.cancel_task(
         task_id,
+        cancel_operation_id="op-test-cancel-request-test_process_cleanup_manager-7",
         cleanup_operation_id="op-test-cancel-identity-read-failure",
     )
 
@@ -457,6 +464,7 @@ def test_cleanup_refuses_process_group_mismatch(
 
     response = manager.cancel_task(
         task_id,
+        cancel_operation_id="op-test-cancel-request-test_process_cleanup_manager-8",
         cleanup_operation_id="op-test-cancel-group-mismatch",
     )
 

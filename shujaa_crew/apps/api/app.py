@@ -236,11 +236,21 @@ def cancel_task(task_id: str):
         }), 401
 
     try:
-        cleanup_operation_id = f"op-cancel-{uuid4()}"
+        cancel_operation_id = (
+            f"op-cancel-request-{uuid4()}"
+        )
+        cleanup_operation_id = (
+            f"op-cancel-cleanup-{uuid4()}"
+        )
         return jsonify(
             manager.cancel_task(
                 task_id,
-                cleanup_operation_id=cleanup_operation_id,
+                cancel_operation_id=(
+                    cancel_operation_id
+                ),
+                cleanup_operation_id=(
+                    cleanup_operation_id
+                ),
             )
         ), 200
     except ValueError as error:

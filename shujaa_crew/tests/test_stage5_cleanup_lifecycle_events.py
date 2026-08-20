@@ -100,6 +100,7 @@ def test_cancel_task_emits_cleanup_event_after_cleanup(tmp_path):
 
     manager.cancel_task(
         task_id,
+        cancel_operation_id="op-test-cancel-request-test_stage5_cleanup_lifecycle_events-1",
         cleanup_operation_id=cleanup_op_id,
     )
 
@@ -417,6 +418,7 @@ def test_cleanup_event_write_failure_does_not_rewrite_cleanup_outcome(tmp_path, 
 
     response = manager.cancel_task(
         task_id,
+        cancel_operation_id="op-test-cancel-request-test_stage5_cleanup_lifecycle_events-2",
         cleanup_operation_id="op-cleanup-write-failure-1",
     )
 
