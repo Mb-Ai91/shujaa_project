@@ -185,6 +185,28 @@ class AuditedDispatchRejectionError(ValueError):
         self.audit_append_receipt = audit_append_receipt
 
 
+@dataclass(frozen=True)
+class TerminalAuditOutcome:
+    transition: TransitionResult
+    audit_append_receipt: AppendReceipt
+
+    @property
+    def applied(self) -> bool:
+        return self.transition.applied
+
+    @property
+    def disposition(self):
+        return self.transition.disposition
+
+    @property
+    def execution(self) -> Execution:
+        return self.transition.execution
+
+    @property
+    def event_append_receipt(self) -> AppendReceipt | None:
+        return self.transition.event_append_receipt
+
+
 class ShujaaManager:
     """المدير المركزي لاستقبال المهام ومتابعة حالتها."""
 
@@ -351,6 +373,18 @@ class ShujaaManager:
         )
 
     @classmethod
+    def _terminal_audit_id(
+        cls,
+        operation_id: str,
+        execution_id: str,
+    ) -> str:
+        return cls._operation_audit_id(
+            "audit-execution-terminal-",
+            operation_id,
+            execution_id,
+        )
+
+    @classmethod
     def _cleanup_audit_id(
         cls,
         cleanup_operation_id: str,
@@ -441,6 +475,70 @@ class ShujaaManager:
             operation_id=cancel_operation_id,
             event_id=event_id,
         )
+        return self.audit_store.append_replay_stable(
+            audit
+        )
+
+    def _append_terminal_audit(
+        self,
+        transition: TransitionResult,
+        *,
+        target_status: ExecutionStatus,
+        operation_id: str,
+    ) -> AppendReceipt:
+        action_by_status = {
+            ExecutionStatus.COMPLETED: "execution.complete",
+            ExecutionStatus.FAILED: "execution.fail",
+            ExecutionStatus.TIMED_OUT: "execution.timeout",
+        }
+        reason_by_status = {
+            ExecutionStatus.COMPLETED: "execution_completed",
+            ExecutionStatus.FAILED: "execution_failed",
+            ExecutionStatus.TIMED_OUT: "execution_timed_out",
+        }
+
+        action = action_by_status[target_status]
+        disposition = transition.disposition
+
+        if disposition in {
+            TransitionDisposition.APPLIED,
+            TransitionDisposition.IDEMPOTENT_REPLAY,
+        }:
+            outcome = "applied"
+            reason_code = reason_by_status[target_status]
+        elif disposition is (
+            TransitionDisposition
+            .CONFLICTING_TERMINAL_ATTEMPT
+        ):
+            outcome = "rejected"
+            reason_code = disposition.value
+        else:
+            outcome = "no_effect"
+            reason_code = disposition.value
+
+        event_receipt = transition.event_append_receipt
+        event_id = (
+            event_receipt.record_id
+            if event_receipt is not None
+            else None
+        )
+
+        audit = AuditRecord(
+            audit_id=self._terminal_audit_id(
+                operation_id,
+                transition.execution.execution_id,
+            ),
+            action=action,
+            actor_type="system",
+            actor_id="shujaa_manager",
+            resource_type="execution",
+            resource_id=transition.execution.execution_id,
+            outcome=outcome,
+            reason_code=reason_code,
+            operation_id=operation_id,
+            event_id=event_id,
+        )
+
         return self.audit_store.append_replay_stable(
             audit
         )
@@ -833,6 +931,49 @@ class ShujaaManager:
         )
 
         return transition
+
+    def _reconcile_system_terminal_execution(
+        self,
+        task_id: str,
+        execution_id: str,
+        *,
+        target_status: ExecutionStatus,
+        operation_id: str,
+        error: str | None = None,
+        result: str | None = None,
+    ) -> TerminalAuditOutcome:
+        audited_statuses = {
+            ExecutionStatus.COMPLETED,
+            ExecutionStatus.FAILED,
+            ExecutionStatus.TIMED_OUT,
+        }
+
+        if target_status not in audited_statuses:
+            raise ValueError(
+                "System terminal audit does not support status: "
+                f"{target_status.value}"
+            )
+
+        transition = self._reconcile_terminal_execution(
+            task_id,
+            execution_id,
+            target_status=target_status,
+            operation_id=operation_id,
+            error=error,
+            result=result,
+        )
+        audit_append_receipt = (
+            self._append_terminal_audit(
+                transition,
+                target_status=target_status,
+                operation_id=operation_id,
+            )
+        )
+
+        return TerminalAuditOutcome(
+            transition=transition,
+            audit_append_receipt=audit_append_receipt,
+        )
 
     @staticmethod
     def _retry_admission_event_id(
@@ -1546,7 +1687,7 @@ class ShujaaManager:
                 # دعم المشغلات الوهمية في الاختبارات.
                 return_code = process.wait()
             except subprocess.TimeoutExpired:
-                transition = self._reconcile_terminal_execution(
+                transition = self._reconcile_system_terminal_execution(
                     task_id,
                     execution_id,
                     target_status=ExecutionStatus.TIMED_OUT,
@@ -1585,7 +1726,7 @@ class ShujaaManager:
                 if callable(result_reader):
                     result = result_reader(process)
 
-                self._reconcile_terminal_execution(
+                self._reconcile_system_terminal_execution(
                     task_id,
                     execution_id,
                     target_status=ExecutionStatus.COMPLETED,
@@ -1605,7 +1746,7 @@ class ShujaaManager:
                 else:
                     error_message = f"Exit code: {return_code}"
 
-                self._reconcile_terminal_execution(
+                self._reconcile_system_terminal_execution(
                     task_id,
                     execution_id,
                     target_status=ExecutionStatus.FAILED,
@@ -1637,7 +1778,7 @@ class ShujaaManager:
                 else:
                     process_termination_succeeded = True
 
-            self._reconcile_terminal_execution(
+            self._reconcile_system_terminal_execution(
                 task_id,
                 execution_id,
                 target_status=ExecutionStatus.FAILED,
@@ -1720,7 +1861,7 @@ class ShujaaManager:
             command,
         )
 
-        self._reconcile_terminal_execution(
+        self._reconcile_system_terminal_execution(
             task_id,
             execution_id,
             target_status=ExecutionStatus.COMPLETED,
