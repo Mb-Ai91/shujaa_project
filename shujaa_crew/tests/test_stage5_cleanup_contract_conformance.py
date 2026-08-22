@@ -249,11 +249,17 @@ def test_registered_cleanup_returns_compatible_outcome_per_task(
     )
 
     outcome = results[task_id]
-    assert type(outcome).__name__ == "CleanupEventOutcome"
+    assert type(outcome).__name__ == "CleanupAuditOutcome"
+    assert type(
+        outcome.cleanup_event_outcome
+    ).__name__ == "CleanupEventOutcome"
     assert outcome.cleanup_result.disposition is (
         CleanupDisposition.TERMINATED_AND_RELEASED
     )
     assert outcome.event_append_receipt.result is (
+        AppendResult.APPENDED
+    )
+    assert outcome.audit_append_receipt.result is (
         AppendResult.APPENDED
     )
     assert outcome.disposition is outcome.cleanup_result.disposition

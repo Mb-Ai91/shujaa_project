@@ -79,6 +79,37 @@ class CleanupEventOutcome:
 
 
 @dataclass(frozen=True)
+class CleanupAuditOutcome:
+    """Manager result separating cleanup, event, and audit."""
+
+    cleanup_event_outcome: CleanupEventOutcome
+    audit_append_receipt: AppendReceipt
+
+    @property
+    def cleanup_result(self) -> CleanupResult:
+        return self.cleanup_event_outcome.cleanup_result
+
+    @property
+    def event_append_receipt(self) -> AppendReceipt:
+        return (
+            self.cleanup_event_outcome
+            .event_append_receipt
+        )
+
+    @property
+    def disposition(self) -> CleanupDisposition:
+        return self.cleanup_event_outcome.disposition
+
+    @property
+    def ownership(self) -> ProcessOwnership | None:
+        return self.cleanup_event_outcome.ownership
+
+    @property
+    def error(self) -> str | None:
+        return self.cleanup_event_outcome.error
+
+
+@dataclass(frozen=True)
 class RetryEventOutcome:
     """Manager result separating admission from event persistence."""
 
@@ -319,6 +350,18 @@ class ShujaaManager:
             task_id,
         )
 
+    @classmethod
+    def _cleanup_audit_id(
+        cls,
+        cleanup_operation_id: str,
+        task_id: str,
+    ) -> str:
+        return cls._operation_audit_id(
+            "audit-process-ownership-cleanup-",
+            cleanup_operation_id,
+            task_id,
+        )
+
     def _append_retry_audit(
         self,
         *,
@@ -398,6 +441,46 @@ class ShujaaManager:
             operation_id=cancel_operation_id,
             event_id=event_id,
         )
+        return self.audit_store.append_replay_stable(
+            audit
+        )
+
+    def _append_cleanup_audit(
+        self,
+        cleanup_result: CleanupResult,
+        *,
+        task_id: str,
+        cleanup_operation_id: str,
+        event_id: str | None,
+    ) -> AppendReceipt:
+        disposition = cleanup_result.disposition
+
+        if disposition in {
+            CleanupDisposition.TERMINATED_AND_RELEASED,
+            CleanupDisposition.ALREADY_EXITED_AND_RELEASED,
+        }:
+            outcome = "released"
+        elif disposition is CleanupDisposition.NOT_OWNED:
+            outcome = "no_effect"
+        else:
+            outcome = "retained"
+
+        audit = AuditRecord(
+            audit_id=self._cleanup_audit_id(
+                cleanup_operation_id,
+                task_id,
+            ),
+            action="process_ownership.cleanup",
+            actor_type="system",
+            actor_id="shujaa_manager",
+            resource_type="process_ownership",
+            resource_id=task_id,
+            outcome=outcome,
+            reason_code=disposition.value,
+            operation_id=cleanup_operation_id,
+            event_id=event_id,
+        )
+
         return self.audit_store.append_replay_stable(
             audit
         )
@@ -1847,6 +1930,7 @@ class ShujaaManager:
 
         cleanup_result = None
         cleanup_event_append_receipt = None
+        cleanup_audit_append_receipt = None
         cancel_applied = (
             transition.execution.status
             == ExecutionStatus.CANCELLED
@@ -1875,6 +1959,19 @@ class ShujaaManager:
                     work_id=task.work_id,
                 )
             )
+            cleanup_audit_append_receipt = (
+                self._append_cleanup_audit(
+                    cleanup_result,
+                    task_id=task_id,
+                    cleanup_operation_id=(
+                        cleanup_operation_id
+                    ),
+                    event_id=(
+                        cleanup_event_append_receipt
+                        .record_id
+                    ),
+                )
+            )
 
         updated = self.task_store.get(task_id)
 
@@ -1900,6 +1997,9 @@ class ShujaaManager:
         )
         response["cleanup_event_append_receipt"] = (
             cleanup_event_append_receipt
+        )
+        response["cleanup_audit_append_receipt"] = (
+            cleanup_audit_append_receipt
         )
 
         transition_receipt = (
@@ -1984,11 +2084,11 @@ class ShujaaManager:
         self,
         *,
         cleanup_operation_id: str,
-    ) -> dict[str, CleanupEventOutcome]:
+    ) -> dict[str, CleanupAuditOutcome]:
         """Clean ownership retained from an earlier session."""
 
         ownerships = self.process_registry.all()
-        results: dict[str, CleanupEventOutcome] = {}
+        results: dict[str, CleanupAuditOutcome] = {}
 
         for task_id, ownership in ownerships.items():
             cleanup_result = self._cleanup_process_ownership(
@@ -2009,9 +2109,21 @@ class ShujaaManager:
                     else None
                 ),
             )
-            results[task_id] = CleanupEventOutcome(
+            cleanup_event_outcome = CleanupEventOutcome(
                 cleanup_result=cleanup_result,
                 event_append_receipt=event_receipt,
+            )
+            audit_receipt = self._append_cleanup_audit(
+                cleanup_result,
+                task_id=task_id,
+                cleanup_operation_id=cleanup_operation_id,
+                event_id=event_receipt.record_id,
+            )
+            results[task_id] = CleanupAuditOutcome(
+                cleanup_event_outcome=(
+                    cleanup_event_outcome
+                ),
+                audit_append_receipt=audit_receipt,
             )
 
         return results
