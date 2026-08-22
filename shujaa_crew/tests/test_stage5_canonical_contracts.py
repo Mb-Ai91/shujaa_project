@@ -179,6 +179,7 @@ def test_append_result_contract_is_stable():
         "identity_conflict",
         "schema_rejected",
         "write_failed",
+        "integrity_failed",
     )
 
 

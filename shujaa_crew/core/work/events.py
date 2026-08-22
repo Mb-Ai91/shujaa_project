@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import StrEnum
 from math import isfinite
+import re
 from types import MappingProxyType
 from typing import Any
 from uuid import uuid4
@@ -38,6 +39,22 @@ _SECRET_SUFFIXES = (
     "token",
 )
 
+_SAFE_REFERENCE_SUFFIXES = frozenset(
+    {"ref", "reference"}
+)
+
+_SECRET_TOKENS = frozenset(
+    {
+        "authorization",
+        "cookie",
+        "credential",
+        "credentials",
+        "password",
+        "secret",
+        "token",
+    }
+)
+
 
 def new_event_id() -> str:
     return f"event-{uuid4()}"
@@ -55,13 +72,34 @@ def _normalize_key(value: str) -> str:
     )
 
 
+def _key_tokens(value: str) -> tuple[str, ...]:
+    separated = re.sub(
+        r"([a-z0-9])([A-Z])",
+        r"\1 \2",
+        value,
+    )
+    return tuple(
+        re.findall(r"[a-z0-9]+", separated.casefold())
+    )
+
+
 def _is_secret_key(value: str) -> bool:
     normalized = _normalize_key(value)
+    tokens = _key_tokens(value)
+
+    if (
+        tokens
+        and tokens[-1] in _SAFE_REFERENCE_SUFFIXES
+    ):
+        return False
+
+    markers = _SECRET_KEYS.union(_SECRET_SUFFIXES)
     return (
-        normalized in _SECRET_KEYS
+        any(token in _SECRET_TOKENS for token in tokens)
         or any(
-            normalized.endswith(suffix)
-            for suffix in _SECRET_SUFFIXES
+            normalized.startswith(marker)
+            or normalized.endswith(marker)
+            for marker in markers
         )
     )
 
@@ -182,6 +220,7 @@ class AppendResult(StrEnum):
     IDENTITY_CONFLICT = "identity_conflict"
     SCHEMA_REJECTED = "schema_rejected"
     WRITE_FAILED = "write_failed"
+    INTEGRITY_FAILED = "integrity_failed"
 
 
 @dataclass(frozen=True)

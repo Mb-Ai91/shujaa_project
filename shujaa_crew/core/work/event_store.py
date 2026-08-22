@@ -46,6 +46,19 @@ class AppendReceipt:
     error_code: str | None = None
 
 
+class IntegrityResult(str, Enum):
+    VALID = "valid"
+    CORRUPTED = "corrupted"
+
+
+@dataclass(frozen=True)
+class IntegrityReceipt:
+    result: IntegrityResult
+    checked_entries: int
+    invalid_sequence: int | None = None
+    error_code: str | None = None
+
+
 class EventStoreProtocol(Protocol):
     """Minimal replaceable contract for WorkEvent persistence."""
 
@@ -59,6 +72,9 @@ class EventStoreProtocol(Protocol):
         self,
         record: WorkEvent,
     ) -> AppendReceipt:
+        ...
+
+    def verify_integrity(self) -> IntegrityReceipt:
         ...
 
     def get(
@@ -88,6 +104,9 @@ class AuditStoreProtocol(Protocol):
         self,
         record: AuditRecord,
     ) -> AppendReceipt:
+        ...
+
+    def verify_integrity(self) -> IntegrityReceipt:
         ...
 
     def get(
@@ -192,6 +211,138 @@ class _InMemoryAppendStore(Generic[RecordT]):
         self._canonical_by_id: dict[str, bytes] = {}
         self._lock = Lock()
 
+    @staticmethod
+    def _corrupted_receipt(
+        *,
+        checked_entries: int,
+        invalid_sequence: int | None,
+        error_code: str,
+    ) -> IntegrityReceipt:
+        return IntegrityReceipt(
+            result=IntegrityResult.CORRUPTED,
+            checked_entries=checked_entries,
+            invalid_sequence=invalid_sequence,
+            error_code=error_code,
+        )
+
+    def _verify_integrity_locked(self) -> IntegrityReceipt:
+        previous_hash: str | None = None
+        seen_ids: set[str] = set()
+        checked_entries = 0
+
+        for expected_sequence, entry in enumerate(
+            self._entries,
+            start=1,
+        ):
+            checked_entries += 1
+
+            if entry.local_sequence != expected_sequence:
+                return self._corrupted_receipt(
+                    checked_entries=checked_entries,
+                    invalid_sequence=expected_sequence,
+                    error_code="sequence_mismatch",
+                )
+
+            if entry.previous_integrity_hash != previous_hash:
+                return self._corrupted_receipt(
+                    checked_entries=checked_entries,
+                    invalid_sequence=expected_sequence,
+                    error_code=(
+                        "previous_integrity_hash_mismatch"
+                    ),
+                )
+
+            try:
+                record_id = getattr(
+                    entry.record,
+                    self._identity_attribute,
+                )
+                canonical_record = _canonical_bytes(
+                    entry.record
+                )
+                integrity_material = json.dumps(
+                    {
+                        "local_sequence": expected_sequence,
+                        "previous_integrity_hash": previous_hash,
+                        "record": json.loads(
+                            canonical_record.decode("utf-8")
+                        ),
+                    },
+                    ensure_ascii=False,
+                    allow_nan=False,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ).encode("utf-8")
+                expected_hash = self._integrity_hasher(
+                    integrity_material
+                )
+            except Exception:
+                return self._corrupted_receipt(
+                    checked_entries=checked_entries,
+                    invalid_sequence=expected_sequence,
+                    error_code="integrity_verification_failed",
+                )
+
+            if (
+                not isinstance(expected_hash, str)
+                or not expected_hash
+                or entry.integrity_hash != expected_hash
+            ):
+                return self._corrupted_receipt(
+                    checked_entries=checked_entries,
+                    invalid_sequence=expected_sequence,
+                    error_code="integrity_hash_mismatch",
+                )
+
+            if self._canonical_by_id.get(record_id) != (
+                canonical_record
+            ):
+                return self._corrupted_receipt(
+                    checked_entries=checked_entries,
+                    invalid_sequence=expected_sequence,
+                    error_code="canonical_index_mismatch",
+                )
+
+            if self._entries_by_id.get(record_id) is not entry:
+                return self._corrupted_receipt(
+                    checked_entries=checked_entries,
+                    invalid_sequence=expected_sequence,
+                    error_code="identity_index_mismatch",
+                )
+
+            if record_id in seen_ids:
+                return self._corrupted_receipt(
+                    checked_entries=checked_entries,
+                    invalid_sequence=expected_sequence,
+                    error_code="duplicate_identity",
+                )
+
+            seen_ids.add(record_id)
+            previous_hash = entry.integrity_hash
+
+        if set(self._entries_by_id) != seen_ids:
+            return self._corrupted_receipt(
+                checked_entries=checked_entries,
+                invalid_sequence=None,
+                error_code="identity_index_mismatch",
+            )
+
+        if set(self._canonical_by_id) != seen_ids:
+            return self._corrupted_receipt(
+                checked_entries=checked_entries,
+                invalid_sequence=None,
+                error_code="canonical_index_mismatch",
+            )
+
+        return IntegrityReceipt(
+            result=IntegrityResult.VALID,
+            checked_entries=checked_entries,
+        )
+
+    def verify_integrity(self) -> IntegrityReceipt:
+        with self._lock:
+            return self._verify_integrity_locked()
+
     def append(
         self,
         record: RecordT,
@@ -218,6 +369,14 @@ class _InMemoryAppendStore(Generic[RecordT]):
             )
 
         with self._lock:
+            verification = self._verify_integrity_locked()
+            if verification.result is IntegrityResult.CORRUPTED:
+                return AppendReceipt(
+                    result=AppendResult.INTEGRITY_FAILED,
+                    record_id=record_id,
+                    error_code=verification.error_code,
+                )
+
             existing = self._entries_by_id.get(record_id)
 
             if existing is not None:
@@ -386,6 +545,14 @@ class InMemoryEventStore(
             )
 
         with self._lock:
+            verification = self._verify_integrity_locked()
+            if verification.result is IntegrityResult.CORRUPTED:
+                return AppendReceipt(
+                    result=AppendResult.INTEGRITY_FAILED,
+                    record_id=record_id,
+                    error_code=verification.error_code,
+                )
+
             existing = self._entries_by_id.get(record_id)
 
             if existing is not None:
@@ -532,6 +699,14 @@ class InMemoryAuditStore(
             )
 
         with self._lock:
+            verification = self._verify_integrity_locked()
+            if verification.result is IntegrityResult.CORRUPTED:
+                return AppendReceipt(
+                    result=AppendResult.INTEGRITY_FAILED,
+                    record_id=record_id,
+                    error_code=verification.error_code,
+                )
+
             existing = self._entries_by_id.get(record_id)
 
             if existing is not None:
