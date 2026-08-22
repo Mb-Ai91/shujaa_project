@@ -195,11 +195,15 @@ def test_cleanup_event_idempotent_replay_through_manager_emission():
         result,
         task_id=task_id,
         cleanup_operation_id=cleanup_op_id,
+        trigger="registered_cleanup",
+        work_id=None,
     )
     second_receipt = manager._append_cleanup_event(
         result,
         task_id=task_id,
         cleanup_operation_id=cleanup_op_id,
+        trigger="registered_cleanup",
+        work_id=None,
     )
 
     assert first_receipt.result is AppendResult.APPENDED
@@ -244,11 +248,15 @@ def test_cleanup_event_identity_conflict_through_manager_emission():
         result_1,
         task_id=task_id,
         cleanup_operation_id=cleanup_op_id,
+        trigger="registered_cleanup",
+        work_id=None,
     )
     conflict_receipt = manager._append_cleanup_event(
         result_2,
         task_id=task_id,
         cleanup_operation_id=cleanup_op_id,
+        trigger="registered_cleanup",
+        work_id=None,
     )
 
     assert first_receipt.result is AppendResult.APPENDED
@@ -294,6 +302,8 @@ def test_concurrent_cleanup_event_identical_emissions_are_replay_stable():
             result,
             task_id=task_id,
             cleanup_operation_id=cleanup_op_id,
+            trigger="registered_cleanup",
+            work_id=None,
         )
 
     with ThreadPoolExecutor(max_workers=2) as pool:
@@ -354,6 +364,8 @@ def test_concurrent_cleanup_event_conflicting_emissions_preserve_one_winner():
             result,
             task_id=task_id,
             cleanup_operation_id=cleanup_op_id,
+            trigger="registered_cleanup",
+            work_id=None,
         )
 
     with ThreadPoolExecutor(max_workers=2) as pool:
@@ -442,11 +454,15 @@ def test_independent_cleanup_attempts_require_distinct_operation_ids():
         result,
         task_id=task_id,
         cleanup_operation_id="op-attempt-1",
+        trigger="registered_cleanup",
+        work_id=None,
     )
     receipt_2 = manager._append_cleanup_event(
         result,
         task_id=task_id,
         cleanup_operation_id="op-attempt-2",
+        trigger="registered_cleanup",
+        work_id=None,
     )
 
     assert receipt_1.result is AppendResult.APPENDED

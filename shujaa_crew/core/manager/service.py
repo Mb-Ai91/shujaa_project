@@ -59,6 +59,26 @@ from core.work.dispatcher import (
 
 
 @dataclass(frozen=True)
+class CleanupEventOutcome:
+    """Manager result separating cleanup from event persistence."""
+
+    cleanup_result: CleanupResult
+    event_append_receipt: AppendReceipt
+
+    @property
+    def disposition(self) -> CleanupDisposition:
+        return self.cleanup_result.disposition
+
+    @property
+    def ownership(self) -> ProcessOwnership | None:
+        return self.cleanup_result.ownership
+
+    @property
+    def error(self) -> str | None:
+        return self.cleanup_result.error
+
+
+@dataclass(frozen=True)
 class RetryEventOutcome:
     """Manager result separating admission from event persistence."""
 
@@ -501,21 +521,41 @@ class ShujaaManager:
         *,
         task_id: str,
         cleanup_operation_id: str,
+        trigger: str,
+        work_id: str | None,
     ) -> AppendReceipt:
+        ownership_retained = (
+            cleanup_result.disposition
+            in {
+                CleanupDisposition.OWNER_MISMATCH,
+                CleanupDisposition.IDENTITY_MISMATCH,
+                CleanupDisposition.PROCESS_GROUP_MISMATCH,
+                (
+                    CleanupDisposition
+                    .IDENTITY_CHECK_FAILED_RETAINED
+                ),
+                (
+                    CleanupDisposition
+                    .TERMINATION_FAILED_RETAINED
+                ),
+            }
+        )
+
         event = WorkEvent(
             event_id=self._cleanup_event_id(
                 cleanup_operation_id,
                 task_id,
             ),
             event_type=(
-                "process.cleanup."
+                "process_ownership.cleanup."
                 f"{cleanup_result.disposition.value}"
             ),
-            entity_type="process",
+            entity_type="process_ownership",
             entity_id=task_id,
-            source_component="core.manager.process_cleanup",
-            correlation_id=task_id,
+            source_component="core.manager.cleanup",
+            correlation_id=work_id or task_id,
             operation_id=cleanup_operation_id,
+            work_id=work_id,
             task_id=task_id,
             execution_id=(
                 cleanup_result.ownership.execution_id
@@ -526,6 +566,8 @@ class ShujaaManager:
                 "disposition": (
                     cleanup_result.disposition.value
                 ),
+                "ownership_retained": ownership_retained,
+                "trigger": trigger,
             },
         )
 
@@ -1804,6 +1846,7 @@ class ShujaaManager:
         )
 
         cleanup_result = None
+        cleanup_event_append_receipt = None
         cancel_applied = (
             transition.execution.status
             == ExecutionStatus.CANCELLED
@@ -1821,12 +1864,16 @@ class ShujaaManager:
                     execution.execution_id
                 ),
             )
-            self._append_cleanup_event(
-                cleanup_result,
-                task_id=task_id,
-                cleanup_operation_id=(
-                    cleanup_operation_id
-                ),
+            cleanup_event_append_receipt = (
+                self._append_cleanup_event(
+                    cleanup_result,
+                    task_id=task_id,
+                    cleanup_operation_id=(
+                        cleanup_operation_id
+                    ),
+                    trigger="cancel",
+                    work_id=task.work_id,
+                )
             )
 
         updated = self.task_store.get(task_id)
@@ -1850,6 +1897,9 @@ class ShujaaManager:
             cleanup_result.error
             if cleanup_result
             else None
+        )
+        response["cleanup_event_append_receipt"] = (
+            cleanup_event_append_receipt
         )
 
         transition_receipt = (
@@ -1934,24 +1984,34 @@ class ShujaaManager:
         self,
         *,
         cleanup_operation_id: str,
-    ) -> dict[str, CleanupResult]:
+    ) -> dict[str, CleanupEventOutcome]:
         """Clean ownership retained from an earlier session."""
 
         ownerships = self.process_registry.all()
-        results: dict[str, CleanupResult] = {}
+        results: dict[str, CleanupEventOutcome] = {}
 
         for task_id, ownership in ownerships.items():
-            result = self._cleanup_process_ownership(
+            cleanup_result = self._cleanup_process_ownership(
                 task_id,
                 expected_execution_id=(
                     ownership.execution_id
                 ),
             )
-            results[task_id] = result
-            self._append_cleanup_event(
-                result,
+            task = self.task_store.get(task_id)
+            event_receipt = self._append_cleanup_event(
+                cleanup_result,
                 task_id=task_id,
                 cleanup_operation_id=cleanup_operation_id,
+                trigger="registered_cleanup",
+                work_id=(
+                    task.work_id
+                    if task is not None
+                    else None
+                ),
+            )
+            results[task_id] = CleanupEventOutcome(
+                cleanup_result=cleanup_result,
+                event_append_receipt=event_receipt,
             )
 
         return results
