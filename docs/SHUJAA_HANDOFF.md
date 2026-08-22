@@ -4,22 +4,23 @@
 
 > **وظيفة الوثيقة:** لقطة الاستمرارية الحالية ونقطة الاستئناف الوحيدة. القرارات طويلة العمر في سجل ADR، وترتيب المراحل في Active Roadmap، وخطة Stage 5 في وثيقتها المخصصة.
 >
-> **آخر تحديث موثق:** 16 أغسطس 2026
+> **آخر تحديث موثق:** 23 أغسطس 2026
 
 | البند | الحالة الحالية المثبتة |
 |---|---|
 | المستودع / الفرع | `Mb-Ai91/shujaa_project` / `refactor/modular-architecture` |
-| Local HEAD = Remote HEAD | `4f15ca35b6e6c3f4ec4e0477019992aed4ea7519` |
-| Worktree | نظيفة بعد الالتزام والدفع |
+| مرجع كود إغلاق Stage 5 | `afcba30fe74d6d9e6e28290f9868cb448633c593`؛ كان Local HEAD = Remote HEAD قبل تحديث الوثائق |
+| Worktree | كانت نظيفة عند بدء تحديث وثائق الإغلاق |
 | Stage 4 | `VERIFIED COMPLETE — LOCAL/MOCK SCOPE` |
-| Stage 5 | `PLANNED — SLICE 5.0 ENTRY GATE GO — IMPLEMENTATION NOT STARTED` |
+| Stage 5 | `VERIFIED COMPLETE — LOCAL/MOCK SCOPE` |
+| Stage 6 | `PLANNED — NOT STARTED` |
 | Owner Constraint Gate | `GO — DEVELOPMENT COMMAND SCOPE`؛ السجل والـvalidator والاختبارات ملتزمة ومرفوعة |
-| الاختبارات | `13 passed` موجهة للبوابة، ثم `224 passed` للـbaseline الكامل |
+| الاختبارات | Stage 5: `10 new + 126 affected + 367 full`؛ failures/errors/skipped = `0/0/0` |
 | Audit 01 | `COMPLETE` باستخدام القيود والأدوات المعتمدة، والنتيجة الكاملة محفوظة في ملف التدقيق |
 | Compatibility | `COMPATIBLE — NO CHANGE BEFORE STAGE 5`؛ التحسينات غير المانعة migrations مخططة لمراحلها |
 | Shujaa Development Skill | النسخة النشطة `v0.6` لم تتغير؛ `v0.7` لم تُنشأ ولم تُستخدم |
-| الموانع المفتوحة | لا يوجد مانع مثبت أمام Slice 5.0 |
-| الإجراء التالي الوحيد | لا يبدأ Stage 5 الآن؛ بعد إغلاق التثبيت وموافقة المالك تكون الخطوة اللاحقة Slice 5.0 فقط |
+| الموانع المفتوحة | لا يوجد مانع مثبت أمام تخطيط Stage 6؛ التنفيذ يتطلب Entry Gate مستقلًا |
+| الإجراء التالي الوحيد | تثبيت هذا الإغلاق في Git والتحقق من remote، ثم Stage 6 Entry Gate فقط |
 
 **مراجع السلطة:** ADR-024 وADR-025 وADR-026 وADR-027، و`SHUJAA_OWNER_CONSTRAINTS.yaml`، وخطة Stage 5، وActive Roadmap.
 
@@ -1172,3 +1173,34 @@ Preserve → Inspect → Compare:
 - نجحت اختبارات البوابة الموجهة: `13 passed`، ونجح baseline الكامل: `224 passed`.
 - نطاق الضمان هو فحص أوامر التطوير المحدد، وليس Policy Engine عامًا أو Runtime enforcement شاملًا.
 - إنشاء `v0.7` كان اختياريًا فقط؛ لم تُنشأ ولم تُستخدم ولم يحدث أي self-promotion. النسخة النشطة `v0.6` باقية كما هي.
+
+---
+
+## 29) Stage 5 Exit Gate — الإغلاق النهائي
+
+**التاريخ:** 23 أغسطس 2026
+**الحالة:** `VERIFIED COMPLETE — LOCAL/MOCK SCOPE`
+**مرجع كود الإغلاق:** `afcba30fe74d6d9e6e28290f9868cb448633c593`
+
+### الأدلة المعتمدة
+
+- الاختبارات الجديدة: `10 passed`.
+- الاختبارات المتأثرة: `126 passed`.
+- Full regression: `367 passed`.
+- failures/errors/skipped: `0/0/0`.
+- `git diff --check`: ناجح.
+- Privacy/failure/concurrency/integrity verification: ناجح.
+- مراجعة 16 مسارًا مرشحًا للتجاوز:
+  `PASSED — NO BYPASS DETECTED`.
+- Exit audit SHA-256:
+  `19002d29ccbac140659abae3f77b5c6a4ae4460910d530ef97209c2dc277bc32`.
+- Bypass review SHA-256:
+  `240ccd919e861a3e71c0224acf9afa006be562ef2d81b221f0c018e0f4379b72`.
+
+### حدود الإغلاق
+
+يثبت الإغلاق Event Model وAudit Foundation محليين وخلف Protocols مملوكة لشجاع. لا يثبت durability أو distributed ordering أو exactly-once أو production tamper resistance أو Policy Enforcement أو Observability أو production readiness.
+
+### الاستئناف
+
+Stage 6 — `Catalog Foundation` هي المرحلة التالية المخططة. لا يبدأ كودها قبل Entry Gate مستقل.

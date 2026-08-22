@@ -1,10 +1,10 @@
 # 02-SHUJAA_ACTIVE_ROADMAP.md
 
 > **الصفة:** خارطة التنفيذ الرسمية النشطة لمشروع شجاع
-> **الإصدار:** 1.2
-> **آخر تحديث موثق:** 16 أغسطس 2026
+> **الإصدار:** 1.3
+> **آخر تحديث موثق:** 23 أغسطس 2026
 > **النطاق:** 19 مرحلة مترابطة بالاعتماديات، من Stage 0 إلى Stage 18
-> **المرجع التشغيلي عند هذا التحديث:** commit `4f15ca35b6e6c3f4ec4e0477019992aed4ea7519`
+> **مرجع كود إغلاق Stage 5:** commit `afcba30fe74d6d9e6e28290f9868cb448633c593`
 
 ---
 
@@ -12,12 +12,12 @@
 
 | البند | الحالة الحالية |
 |---|---|
-| checkpoint | `4f15ca35b6e6c3f4ec4e0477019992aed4ea7519`، المحلي = البعيد، Worktree نظيفة |
-| آخر مرحلة مغلقة | Stage 4 — `VERIFIED COMPLETE — LOCAL/MOCK SCOPE` |
-| الموقع الحالي | Stage 5 — `PLANNED`; التنفيذ لم يبدأ؛ Stabilization Verification ما زالت معلقة حتى حفظ الوثائق والحكم في Git |
-| baseline | `224 passed`؛ واختبارات Owner Gate الموجهة `13 passed` |
+| checkpoint | كود Stage 5 عند `afcba30fe74d6d9e6e28290f9868cb448633c593`؛ المحلي = البعيد قبل تحديث الوثائق |
+| آخر مرحلة مغلقة | Stage 5 — `VERIFIED COMPLETE — LOCAL/MOCK SCOPE` |
+| الموقع الحالي | Stage 6 — `PLANNED — NOT STARTED` |
+| baseline | Stage 5: `10 new + 126 affected + 367 full` |
 | Audit | Audit 01 مكتمل؛ حكم التوافق محفوظ في artifact مستقل |
-| الإجراء الحالي | إغلاق GAP-1 وGAP-2 فقط؛ ممنوع بدء Stage 5 في هذه الجولة |
+| الإجراء الحالي | تثبيت إغلاق Stage 5 في Git/remote، ثم Stage 6 Entry Gate فقط |
 
 ---
 
@@ -93,7 +93,7 @@
 | 2 | Work Model | `COMPLETE — INHERITED BASELINE` | Work Registry وQueue والأولوية والاعتماديات والتقدم والنتائج ومراجع الآثار. |
 | 3 | Unified Execution Model | `VERIFIED COMPLETE` | مسار موحد: Manager → Work → Task → Execution → Dispatcher → Executor/Runner. |
 | 4 | Full Execution Lifecycle Control | `VERIFIED COMPLETE` | تحكم محلي/Mock في دورة التنفيذ وسباقات الحالات النهائية والإلغاء والمهلة وRetry الآمنة والتنظيف والملكية؛ Pause/Resume منقولة بالاعتماديات وفق ADR-023. |
-| 5 | Event Model + Audit Foundation | `PLANNED` | نموذج أحداث منظم وأساس سجل التدقيق، مع فصل الحدث التشغيلي عن سجل التدقيق الأمني. |
+| 5 | Event Model + Audit Foundation | `VERIFIED COMPLETE — LOCAL/MOCK SCOPE` | Event/Audit منفصلان ومختبران مع Local stores خلف Protocols. |
 | 6 | Catalog Foundation | `PLANNED` | Capability Catalog موحد بهوية مستقرة وDescriptor وDependency Graph وLifecycle وResolver/Bindings لكل قدرة قابلة للإضافة والاستبدال والتقاعد. |
 | 7 | Policy & Access Control | `PLANNED` | Policy-as-Data وAccess Graph ونقطة إنفاذ موحدة والموافقات والصلاحيات المحدودة. |
 | 8 | Runtime Isolation & Safety | `PLANNED` | Runtime Adapters قابلة للاستبدال مع العزل وSandbox وحدود الموارد والأسرار وKill Switch دون branching دائم داخل Manager. |
@@ -397,7 +397,7 @@
 ## 13) خطة تنفيذ Stage 5 — Event Model + Audit Foundation
 
 **التاريخ:** 15 أغسطس 2026
-**الحالة:** `PLANNED — STABILIZATION VERIFICATION PENDING — IMPLEMENTATION NOT STARTED`
+**الحالة:** `VERIFIED COMPLETE — LOCAL/MOCK SCOPE`
 **الخطة التفصيلية:** `04-01-SHUJAA_STAGE5_EVENT_AUDIT_PLAN.md`
 
 | الشريحة | الهدف | بوابة الخروج |
@@ -425,7 +425,7 @@
 
 Policy Enforcement وApprovals وDurable Journal وRecovery وObservability وdistributed ordering وtransactional outbox وProduction tamper resistance وControl Plane.
 
-لا تنتقل Stage 5 من `PLANNED` إلى `IN PROGRESS` إلا بعد Slice 5.0 و`ENTRY_GATE=GO`.
+أغلقت Stage 5 بعد Slice 5.6. تبقى Stage 6 `PLANNED` حتى Entry Gate مستقل.
 
 ---
 
@@ -538,3 +538,28 @@ Policy Enforcement وApprovals وDurable Journal وRecovery وObservability وdi
 ### أثرها على Stage 5
 
 `AUDIT_01=COMPLETE`. سجل القيود والـvalidator واختباراته ملتزمة ومرفوعة في `4f15ca35b6e6c3f4ec4e0477019992aed4ea7519`؛ الاختبارات الموجهة `13 passed` والـbaseline `224 passed`. حكم التوافق محفوظ في artifact مستقل، وStage 5 لم يبدأ.
+
+---
+
+## 17) Stage 5 Exit Gate — إغلاق موثق
+
+**التاريخ:** 23 أغسطس 2026
+**الحالة:** `VERIFIED COMPLETE — LOCAL/MOCK SCOPE`
+**مرجع كود الإغلاق:** `afcba30fe74d6d9e6e28290f9868cb448633c593`
+
+- الاختبارات: `10 new + 126 affected + 367 full`.
+- Event وAudit منفصلان وخلف Protocols مستقلة.
+- lifecycle emission من نقاط السلطة المركزية.
+- Privacy وfailure وrace وintegrity paths مختبرة.
+- مراجعة bypass paths: `PASSED`.
+- لا اقتران مباشر بمزود أو Framework داخل Event/Audit Core.
+
+| القدرة المرحّلة | المرحلة |
+|---|---:|
+| Catalog وResolver/Bindings | 6 |
+| Policy Enforcement وApprovals | 7 |
+| Durable Journal وRecovery | 9 |
+| Metrics وLogs وTraces وAlerts | 10 |
+| Production storage وdistributed ordering وtamper resistance | 16 |
+
+Stage 6 تبقى `PLANNED` حتى Entry Gate مستقل.

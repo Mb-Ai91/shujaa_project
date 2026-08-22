@@ -1,10 +1,10 @@
 # SHUJAA_STAGE5_EVENT_AUDIT_PLAN.md
 
 > **المرحلة:** Stage 5 — Event Model + Audit Foundation
-> **الحالة:** `IN PROGRESS — SLICE 5.2 VERIFIED — LIFECYCLE INTEGRATION NOT STARTED`
+> **الحالة:** `VERIFIED COMPLETE — LOCAL/MOCK SCOPE`
 > **تاريخ الخطة:** 15 أغسطس 2026
-> **آخر تحديث موثق:** 17 أغسطس 2026
-> **مرجع Slice 5.2:** code commit `f54fc47dbd73eb2c2b21ea548be6eebbc20e0f0e`؛ التحقق بعد الدفع `266 passed`، وexit code `0`
+> **آخر تحديث موثق:** 23 أغسطس 2026
+> **مرجع كود إغلاق Stage 5:** `afcba30fe74d6d9e6e28290f9868cb448633c593`؛ التحقق الكامل `367 passed`
 > **النطاق:** Local/Mock foundation فقط؛ لا Production أو Distributed أو Policy Enforcement
 
 ---
@@ -17,7 +17,10 @@
 - Stage 5 Slice 5.0: `ENTRY_GATE=GO — INVENTORY VERIFIED`.
 - Stage 5 Slice 5.1: code commit `8410f57314b457393e4d9600625c838280f14795`؛ `VERIFIED — 22 targeted + 253 full، exit code 0`.
 - Stage 5 Slice 5.2: code commit `f54fc47dbd73eb2c2b21ea548be6eebbc20e0f0e`؛ `VERIFIED — 35 targeted + 266 full، exit code 0`.
-- Lifecycle Integration: `NOT STARTED`.
+- Slice 5.3 lifecycle integration: `VERIFIED`.
+- Slice 5.4 audit integration: `VERIFIED`.
+- Slice 5.5 privacy/failure/concurrency: `VERIFIED`.
+- Slice 5.6 exit review: `VERIFIED — DOCUMENTATION CHECKPOINT`.
 - Shujaa Development: النسخة النشطة `v0.6`؛ لم تُنشأ أو تُستخدم `v0.7`.
 
 ---
@@ -312,16 +315,15 @@ Stage 5 لا تجعل Audit مجرد log نصي، ولا تجعل كل Event س�
 | lock-in | Protocols وschemas يملكها شجاع وadapters قابلة للاستبدال. |
 | خلط Event وAudit وObservability | عقود ومخازن وأغراض منفصلة مع روابط صريحة. |
 
+
 ## 12) نقطة التوقف الحالية
 
 - Stage 4: `VERIFIED COMPLETE — LOCAL/MOCK`.
-- Slice 5.0: `VERIFIED — ENTRY_GATE=GO`.
-- Slice 5.1: code commit `8410f57314b457393e4d9600625c838280f14795`؛ `VERIFIED — 253 passed`.
-- Slice 5.2: code commit `f54fc47dbd73eb2c2b21ea548be6eebbc20e0f0e`؛ `VERIFIED — 35 targeted + 266 full، exit code 0`.
-- العقود المثبتة: `WorkEvent` و`AuditRecord` و`AppendResult`.
-- المخازن المثبتة: `InMemoryEventStore` و`InMemoryAuditStore` خلف Protocols مستقلة، ضمن Local/Mock فقط.
-- أول إجراء لاحق: Slice 5.3 وفق تعريفها المعتمد.
-- Manager/Lifecycle integration لم يبدأ في Slice 5.2.
+- Stage 5: `VERIFIED COMPLETE — LOCAL/MOCK SCOPE`.
+- الاختبارات: `10 new + 126 affected + 367 full`.
+- مراجعة bypass paths: `PASSED — NO BYPASS DETECTED`.
+- المرحلة التالية: Stage 6 — `Catalog Foundation`.
+- Stage 6 حالتها `PLANNED — NOT STARTED` ولا يبدأ كودها قبل Entry Gate مستقل.
 
 ---
 
@@ -366,3 +368,32 @@ Stage 5 لا تبني Catalog أو Gateways قبل موعدها، لكنها ت�
 - Compatibility Verdict: `4 COMPATIBLE / 0 PATCH / 2 PLANNED MIGRATION`.
 - Audit الخام محفوظ منفصلًا عن التحليل المشتق.
 - الملف الناقص السابق موسوم `HISTORICAL/SUPERSEDED` ولا يُستخدم للحكم.
+
+---
+
+## 16) Stage 5 Exit Gate — نتيجة الإغلاق
+
+**التاريخ:** 23 أغسطس 2026
+**الحالة:** `STAGE5_EXIT_GATE=GO — LOCAL/MOCK SCOPE`
+**مرجع كود الإغلاق:** `afcba30fe74d6d9e6e28290f9868cb448633c593`
+
+### Definition of Done
+
+1. Event وAudit منفصلان وversioned وimmutable: `VERIFIED`.
+2. identity/correlation/causation/actor/resource/outcome: `VERIFIED`.
+3. Local stores خلف Protocols مع replay/conflict منظمين: `VERIFIED`.
+4. lifecycle emission من السلطة المركزية دون bypass: `VERIFIED`.
+5. Audit للأفعال الحساسة الحالية: `VERIFIED`.
+6. فشل التسجيل ظاهر ولا يعيد كتابة terminal winner: `VERIFIED`.
+7. منع sensitive payloads الخام مع negative tests: `VERIFIED`.
+8. Pause/Resume semantics موثقة دون ادعاء capability: `VERIFIED`.
+9. contract/integration/race/failure/full regression: `VERIFIED`.
+10. حدود Local/Mock والترحيل اللاحق: `DOCUMENTED`.
+
+الإيصالات: `10 new + 126 affected + 367 full`، مع `0 failures/errors/skipped`.
+
+مراجعة التجاوز: 16 نقطة مصنفة، والنتيجة `BYPASS_REVIEW=PASSED`.
+
+### خارج النطاق
+
+durability وdistributed ordering وexactly-once وtamper-proof production وPolicy Enforcement وObservability وDurable Workflow Journal وRecovery وproduction readiness.

@@ -1,15 +1,15 @@
 # 03-SHUJAA_ARCHITECTURE_DECISIONS.md
 
 > **الصفة:** سجل القرارات والعقود المعمارية المعتمدة لمشروع شجاع
-> **الإصدار:** 1.3
-> **آخر تحديث موثق:** 16 أغسطس 2026
+> **الإصدار:** 1.4
+> **آخر تحديث موثق:** 23 أغسطس 2026
 > **تنبيه:** القرار المعماري يحدد ما يجب بناؤه؛ لا يثبت وحده أنه نُفذ أو اختُبر.
 
 ---
 
 ## CURRENT AUTHORITATIVE STATE
 
-هذه الوثيقة هي سلطة **القرارات طويلة العمر فقط**، وليست سجل الحالة اليومية. عند checkpoint `4f15ca35b6e6c3f4ec4e0477019992aed4ea7519`: Stage 4 مغلقة ضمن Local/Mock، وStage 5 ما زالت `PLANNED` ولم يبدأ تنفيذها، والـbaseline الكامل `224 passed`.
+هذه الوثيقة هي سلطة **القرارات طويلة العمر فقط**، وليست سجل الحالة اليومية. عند code checkpoint `afcba30fe74d6d9e6e28290f9868cb448633c593`: Stage 5 مكتملة ومتحققة ضمن Local/Mock، والـfull regression هو `367 passed`. Stage 6 ما زالت `PLANNED — NOT STARTED`.
 
 ADR-027 حالته `IMPLEMENTED + VERIFIED — DEVELOPMENT COMMAND SCOPE`: سجل القيود والـvalidator واختباراته موجودة ومرفوعة. لا يعني ذلك Policy Engine عامًا. Audit 01 مكتمل، وحكم التوافق الموثق في artifact مستقل. النسخة النشطة من Shujaa Development هي `v0.6`؛ لم تُنشأ `v0.7` ولم تُستخدم.
 
@@ -591,7 +591,7 @@ ADR-028 `ADOPTED`: ادعاءات الحفظ والاختبار والرفع و�
 ## 30) ADR-024 — فصل Event عن Audit واعتماد عقود مملوكة لشجاع
 
 **التاريخ:** 15 أغسطس 2026
-**الحالة:** `ADOPTED PLANNING BASELINE — IMPLEMENTATION NOT STARTED`
+**الحالة:** `ADOPTED + VERIFIED — LOCAL/MOCK SCOPE`
 
 ### المشكلة
 
@@ -920,3 +920,30 @@ ADR-028 `ADOPTED`: ادعاءات الحفظ والاختبار والرفع و�
 - قرار المالك: `ADOPTED` بإفادة صريحة.
 - ملفات الحزمة في مساحة المحادثة: `GENERATED` فقط.
 - `WRITTEN_TO_CODESPACE / TRACKED / COMMITTED / PUSHED / VERIFIED`: `HOLD — NOT VERIFIED` حتى تصل Receipts من Codespace.
+
+---
+
+## سجل تحقق تشغيلي — Stage 5 Exit Gate
+
+**التاريخ:** 23 أغسطس 2026
+**الحالة:** `VERIFIED COMPLETE — LOCAL/MOCK SCOPE`
+**مرجع كود الإغلاق:** `afcba30fe74d6d9e6e28290f9868cb448633c593`
+
+هذا سجل تحقق للقرار ADR-024، وليس ADR جديدًا.
+
+### المثبت
+
+- فصل WorkEvent عن AuditRecord.
+- Local stores خلف EventStoreProtocol وAuditStoreProtocol.
+- replay/conflict/failure/integrity بعقود منظمة.
+- الإصدار من ShujaaManager ونقاط السلطة المركزية.
+- عدم تغيير terminal winner بسبب Event/Audit failure.
+- حماية مفاتيح البيانات الحساسة والسماح بالمراجع الآمنة.
+- عدم وجود bypass مثبت.
+- نجاح `10 new + 126 affected + 367 full`.
+
+### غير المثبت
+
+durability أو distributed coordination أو exactly-once موزع أو tamper-proof production أو Policy Enforcement أو Observability أو production readiness.
+
+لا يغير هذا الإغلاق حدود ADR-014 أو ADR-023 أو ADR-025.
