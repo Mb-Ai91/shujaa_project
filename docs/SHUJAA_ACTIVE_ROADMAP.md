@@ -563,3 +563,154 @@ Policy Enforcement وApprovals وDurable Journal وRecovery وObservability وdi
 | Production storage وdistributed ordering وtamper resistance | 16 |
 
 Stage 6 تبقى `PLANNED` حتى Entry Gate مستقل.
+
+---
+
+
+<!-- STAGE6_SLICE6_1_CONTRACT_BEGIN -->
+## Stage 6 — Catalog Foundation
+
+### Slice 6.1 — Capability Catalog Foundation
+
+**الحالة:** `APPROVED CONTRACT — RED TESTS NOT WRITTEN`
+
+**الغرض:** إنشاء أساس عام لـCapability Catalog يملكه شجاع، يعمل Local/In-Memory فقط، دون تكامل مع Runtime في هذه الشريحة.
+
+#### CapabilityAssetType
+
+القيم الرسمية المغلقة: `AGENT`، `TOOL`، `SKILL`، `MODEL`، `CONNECTOR`، `RUNTIME`، `WORKFLOW_ENGINE`.
+
+لا توجد `OTHER`، ولا أنواع نصية حرة، ولا أنواع مرتبطة بمزود أو منصة.
+
+#### CapabilityLifecycle
+
+القيم الرسمية المغلقة: `SANDBOX`، `STAGING`، `ACTIVE`، `DEPRECATED`، `RETIRED`، `QUARANTINED`.
+
+Lifecycle وصفية فقط، ولا تنفذ انتقالات أو سلوكًا تشغيليًا في Slice 6.1.
+
+#### CapabilityDescriptor والهوية
+
+الحقول الوحيدة: `asset_id`، `version`، `asset_type`، `capabilities`، `lifecycle`، `dependency_asset_ids`، `provenance`، `risk_tier`، `required_permissions`.
+
+الهوية الدقيقة هي `(asset_id, version)`.
+
+- `asset_id` و`version` required ومن نوع `str`.
+- يرفض الفارغ وwhitespace-only وleading/trailing whitespace.
+- الهوية case-sensitive.
+- `version` opaque، بلا SemVer وبلا latest ضمني.
+- `provenance` required ويخضع لقواعد النص نفسها.
+- `risk_tier` قد يكون `None`؛ وإلا يخضع لقواعد النص نفسها، وهو declaration-only بلا Policy semantics.
+
+#### Canonical collections
+
+- عناصر `capabilities` و`required_permissions` نصوص صالحة؛ canonical item = `strip + casefold`.
+- التكرارات الدلالية فيها تنتج `SCHEMA_REJECTED`، وتخزن كـtuple حتمية مرتبة lexicographically.
+- عناصر `dependency_asset_ids` تتبع قواعد `asset_id`، وتبقى case-sensitive، وتُرفض تكراراتها، وتخزن كـtuple حتمية مرتبة.
+- ترتيب الإدخال لا يحمل معنى دلاليًا.
+
+#### Registration contract
+
+النتائج المنظمة: `REGISTERED`، `IDEMPOTENT_REPLAY`، `IDENTITY_CONFLICT`، `SCHEMA_REJECTED`.
+
+- هوية جديدة صالحة → `REGISTERED`.
+- الهوية نفسها والمحتوى القياسي نفسه → `IDEMPOTENT_REPLAY`.
+- الهوية نفسها مع اختلاف دلالي → `IDENTITY_CONFLICT`.
+- Descriptor غير صالح → `SCHEMA_REJECTED`.
+- التعارض لا يغير السجل الفائز، والمرفوض لا يُخزن.
+- المساواة الدلالية تقارن جميع الحقول بعد canonicalization.
+
+#### Atomicity and concurrency
+
+- يمتلك Catalog حدود check-and-write ذرية واحدة بلا caller locking.
+- المتطابقون المتزامنون: فائز واحد `REGISTERED` والبقية `IDEMPOTENT_REPLAY`.
+- المختلفون بالهوية نفسها: فائز واحد والبقية `IDENTITY_CONFLICT`.
+- عدة متنافسين يتركون سجلًا فائزًا واحدًا فقط لكل `(asset_id, version)`.
+- تغطى هذه الحالات من RED suite الأولى.
+
+#### Read contract
+
+```text
+get(asset_id, version) -> CapabilityDescriptor | None
+list() -> tuple[CapabilityDescriptor, ...]
+find_by_capability(capability, *, lifecycle_states) -> tuple[CapabilityDescriptor, ...]
+```
+
+- `get` دقيق، بلا latest ضمني.
+- `list` مرتبة حسب `asset_id` ثم `version`؛ ترتيب version للعرض فقط لا للأحدثية.
+- capability match دقيق بعد canonicalization.
+- `lifecycle_states` مطلوب؛ الفارغ يعيد tuple فارغة؛ لا `ACTIVE` ضمني.
+- لا ranking ولا fuzzy matching، والنتائج immutable snapshots.
+
+#### Dependency semantics
+
+`dependency_asset_ids` declaration-only: لا existence validation، ولا traversal أو graph أو cycle detection، ولا dependency-version resolution، ولا Resolver/Binding.
+
+#### خارج النطاق
+
+update/delete، lifecycle transitions، dependency graph/resolution، Resolver/Binding، adapter selection، Policy/permission enforcement، Manager، Dispatcher، AgentRegistry، Event/Audit، MCP/Skills، model providers، n8n/LangGraph/Hermes/platform integrations، distributed storage، وproduction database.
+
+#### نطاق ملفات التنفيذ اللاحق
+
+لا ينشئ هذا التحديث أي ملف تنفيذ أو اختبار. يبقى النطاق اللاحق فقط:
+
+- `core/capabilities/__init__.py`
+- `core/capabilities/models.py`
+- `core/capabilities/contracts.py`
+- `core/capabilities/catalog.py`
+- `tests/test_stage6_capability_catalog_foundation.py`
+
+<!-- STAGE6_SLICE6_1_CONTRACT_END -->
+
+## Development Tooling and External-Idea Backlog
+
+**تاريخ الاعتماد:** 24 أغسطس 2026
+**الحالة:** `PLANNED BACKLOG — TRIGGERED EVALUATION ONLY`
+
+هذا backlog لا يغيّر خارطة التنفيذ ذات 19 مرحلة، ولا يغيّر أسماء المراحل
+أو ترتيبها أو نطاق Slice 6.1. إدراج أداة أو فكرة لا يعني اعتمادها أو
+تثبيتها أو دمجها في production.
+
+### Graphify Pilot
+
+**Trigger:** بعد وجود commit نظيف ومتحقق لـStage 6.1.
+
+الحدود:
+
+- development-only.
+- code-only وlocal AST أولًا.
+- المخرجات خارج المستودع.
+- لا production integration.
+- لا Git hooks في البداية.
+- لا تُرسل وثائق المشروع إلى external models.
+- Graphify أداة navigation/index فقط.
+- Git والكود والاختبارات والعقود السلطوية تبقى مصدر الحقيقة.
+
+المقاييس:
+
+- token/context reduction.
+- files read.
+- latency.
+- correctness.
+- stale-index risk.
+- operational complexity.
+
+### Deferred Development Ideas
+
+| الفكرة | Trigger | نطاق التقييم فقط |
+|---|---|---|
+| OpenCode | مسار التطوير الحالي بعد evaluation | Development harness داخل Codespace فقط |
+| MonkeyCode | مراجعة مستقبلية مستقلة | Cloud/mobile development UX |
+| Prime Agent / Hermes | Stage 9 | Long-running goals، quality gates، bounded turns/time/tokens، resumability، controlled autonomy |
+| MiniMax | Stages 12–13 | Provider/model performance وSkill lifecycle ideas |
+| Apex | Stage 15 | Central command visualization، specialist-agent map، live task/state visibility، one-person-company model |
+
+كل تقييم يخضع لـProvider Evaluation Gate المثبت في
+`SHUJAA_HANDOFF.md`، ولا يصبح أي مزود اعتمادًا معماريًا.
+
+### Scope Preservation
+
+- لا تعديل على Stage 6.1.
+- لا تغيير لترقيم أو نطاق المراحل اللاحقة.
+- لا تثبيت Tools.
+- لا production integration.
+- لا تعديل على Manager أو Dispatcher أو AgentRegistry أو Event/Audit.

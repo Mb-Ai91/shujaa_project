@@ -1204,3 +1204,73 @@ Preserve → Inspect → Compare:
 ### الاستئناف
 
 Stage 6 — `Catalog Foundation` هي المرحلة التالية المخططة. لا يبدأ كودها قبل Entry Gate مستقل.
+
+---
+
+# Development Efficiency and Continuity — Active Policy
+
+**تاريخ الاعتماد:** 24 أغسطس 2026
+**الحالة:** `ACTIVE NOW — DEVELOPMENT WORKFLOW POLICY`
+
+## Token Conservation
+
+يُستخدم ChatGPT أساسًا في:
+
+- Architecture.
+- Security وPolicy.
+- Roadmap وDesign Contracts.
+- الإخفاقات الصعبة.
+- المراجعة النهائية عالية المخاطر.
+
+يُنفذ العمل البرمجي الروتيني بواسطة coding agent داخل GitHub Codespace
+الحالي، مع بقاء Git والمستودع والاختبارات مصدر الحقيقة.
+
+الدليل الافتراضي المعاد إلى ChatGPT يقتصر على:
+
+- branch.
+- HEAD.
+- changed files.
+- targeted test summary.
+- full regression summary إذا شُغلت فقط.
+- `git diff --check`.
+- blocker.
+- raw evidence path.
+
+لا تُلصق successful full logs أو full diffs افتراضيًا. يُحفظ الدليل
+الكبير في:
+
+`/workspaces/shujaa_handoff_bundle/`
+
+لا يُعاد اختبار ناجح دون trigger مباشر:
+
+- تغير الكود بعد الاختبار.
+- تغير HEAD.
+- تغير البيئة.
+- ظهور contract gap جديد مرتبط مباشرة بالنطاق.
+
+تُفضّل `grep` و`sed` والقراءات المستهدفة. تُستخدم verified commit hashes
+كـcheckpoints. تحصل المحادثات الجديدة على Handoff + delta فقط.
+
+## Development Continuity
+
+- GitHub Codespace هو بيئة التطوير ومصدر حقيقة المستودع.
+- الجهاز اللوحي هو remote interface.
+- المرشح الأساسي لأداة التطوير هو OpenCode داخل Codespace الحالي.
+- مرشحو المزودين: OpenCode Go وZ.AI GLM Coding Plan وGitHub Copilot
+  وMiniMax.
+- لا يُضاف مزود آخر إلا بعد evaluation.
+- لا يصبح أي مزود أو coding tool اعتمادًا معماريًا لشجاع.
+- OpenCode يبقى development harness candidate فقط، وليس جزءًا من
+  production runtime أو Control Plane.
+
+## Provider Evaluation Gate
+
+قبل الدفع لأي Tool أو Model أو Provider يجب الإجابة بالدليل عن:
+
+1. لماذا نحتاجه؟
+2. لماذا هذا الخيار؟
+3. ما البدائل؟
+4. ماذا يحدث إذا اختفى أو غيّر السعر أو الترخيص؟
+5. كيف نزيله أو نستبدله دون إعادة بناء شجاع؟
+
+لا يعني إدراج اسم في قائمة المرشحين اعتماده أو شراؤه أو تثبيته.
