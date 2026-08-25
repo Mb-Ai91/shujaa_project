@@ -12,12 +12,14 @@
 
 | البند | الحالة الحالية |
 |---|---|
-| checkpoint | `988a82234cf8662e90a262e8baac8494ef69bf97`؛ تنفيذ Slice 6.1 عند `fe3c97f96e6473791236d1804b5ab7f1d2520b2b`؛ المحلي = البعيد قبل المصالحة التوثيقية |
+| Repository checkpoint قبل حفظ عقد Slice 6.2 | `35441260aa2df576f9442518fbdc61d3fbdeff5e`؛ المحلي = البعيد وشجرة العمل نظيفة عند Entry Gate |
+| مرجع Slice 6.1 المتحقق | implementation `fe3c97f96e6473791236d1804b5ab7f1d2520b2b`؛ verified checkpoint `988a82234cf8662e90a262e8baac8494ef69bf97` |
 | آخر شريحة مغلقة | Stage 6 / Slice 6.1 — `VERIFIED COMPLETE — LOCAL/IN-MEMORY SCOPE` |
 | الموقع الحالي | Stage 6 — `IN PROGRESS — SLICE 6.1 VERIFIED COMPLETE` |
+| الشريحة التالية | Stage 6 / Slice 6.2 — `APPROVED CONTRACT — RED NOT STARTED` |
 | baseline | Stage 5: `10 new + 126 affected + 367 full`؛ Slice 6.1: `74 targeted + 441 full` |
 | Audit | Audit 01 مكتمل؛ حكم التوافق محفوظ في artifact مستقل |
-| الإجراء الحالي | تصميم واعتماد Entry Gate وعقد الشريحة التالية في Stage 6؛ لا يبدأ الكود قبل موافقة المالك |
+| الإجراء الحالي | RED Entry Gate مستقل لـSlice 6.2 وفق العقد المعتمد؛ لا يبدأ production code قبل إثبات RED وموافقة المالك على GREEN |
 
 ---
 
@@ -669,9 +671,122 @@ update/delete، lifecycle transitions، dependency graph/resolution، Resolver/B
 - Local وremote متطابقان، وشجرة العمل نظيفة عند checkpoint.
 - لم تُعد الاختبارات في دفعة المصالحة التوثيقية لعدم وجود Trigger.
 - تبقى كل عناصر «خارج النطاق» أعلاه خارج Slice 6.1.
-- الشريحة التالية غير متعاقد عليها؛ يلزم Owner Approval وEntry Gate مستقل قبل RED أو production code.
+- عقد Slice 6.2 محفوظ ومعتمد من المالك؛ الدفعة التالية RED Entry Gate مستقل، ولا يبدأ production code قبل إثبات RED وموافقة المالك على GREEN.
 
 <!-- STAGE6_SLICE6_1_CONTRACT_END -->
+
+<!-- STAGE6_SLICE6_2_CONTRACT_BEGIN -->
+## Slice 6.2 — Capability Dependency Graph Read Model
+
+**الحالة:** `APPROVED CONTRACT — RED NOT STARTED`
+
+### الغرض
+
+إضافة Read Model محلي/In-Memory وحتمي لعلاقات اعتماد القدرات المسجلة، مبني فوق ناتج Slice 6.1، ليكون أساسًا لاحقًا لـimpact analysis دون تنفيذ impact analysis الكامل في هذه الشريحة.
+
+### الحدود والسلطة
+
+- شجاع يملك العقود والنماذج والتنفيذ؛ لا اعتماد على مزود أو Framework خارجي.
+- Graph للقراءة فقط ولا تعدّل Catalog أو Descriptor.
+- لا Runtime integration، ولا persistence، ولا distributed graph، ولا lifecycle transitions، ولا Resolver/Binding، ولا removal enforcement.
+- لا transitive dependents أو transitive impact analysis في Slice 6.2.
+
+### هوية العقد
+
+- هوية descriptor الدقيقة هي `(asset_id, version)`.
+- لأن `dependency_asset_ids` غير مرتبطة بإصدار، تُحل علاقات الاعتماد على مستوى `asset_id`.
+- تمثل النتائج التي تشير إلى المصدر هويته الدقيقة `(asset_id, version)`، بينما تمثل الدورة مجموعة `asset_id` دورية.
+
+### Snapshot معزولة
+
+- تُبنى Graph من tuple ثابتة من `CapabilityDescriptor`، مأخوذة من `catalog.list()` أو مدخلة مباشرة بالقيمة نفسها.
+- تنسخ Graph المدخل وتبني فهارسها الخاصة غير القابلة للتعديل.
+- لا تحتفظ بمرجع حي إلى Catalog، ولا تصل إلى lock الخاص به، ولا تستدعيه بعد البناء.
+- التسجيلات اللاحقة في Catalog لا تغيّر Graph سابقة؛ يلزم إنشاء Graph جديدة لرؤية Snapshot أحدث.
+
+### العقود العامة المقترحة
+
+- `CapabilityIdentity = tuple[str, str]`.
+- `UnresolvedDependency`: يحتوي `source_asset_id` و`source_version` و`dependency_asset_id`.
+- `DependencyCycle`: يحتوي `asset_ids: tuple[str, ...]` تمثل SCC دورية واحدة بترتيب حتمي.
+- `CapabilityDependencyGraphProtocol` يعرّف واجهة القراءة.
+- `InMemoryCapabilityDependencyGraph` تنفيذ Local/In-Memory.
+
+الاستعلامات:
+
+- `direct_dependencies(asset_id, version) -> tuple[str, ...] | None`
+  - `None`: هوية المصدر غير موجودة.
+  - `()`: المصدر موجود بلا اعتماديات.
+  - وإلا tuple مرتبة من dependency asset IDs المباشرة.
+- `direct_dependents(dependency_asset_id) -> tuple[CapabilityIdentity, ...]`
+  - يعيد هويات المصادر الدقيقة التي تشير مباشرة إلى asset ID المطلوب.
+  - لا يشترط أن يكون asset ID المطلوب مسجلًا؛ عدم وجود مراجع يعيد `()`.
+- `unresolved_dependencies() -> tuple[UnresolvedDependency, ...]`.
+- `dependency_cycles() -> tuple[DependencyCycle, ...]`.
+
+### معنى resolved وunresolved
+
+- dependency تكون resolved إذا وُجد أي descriptor مسجل يحمل `asset_id` الهدف، بغض النظر عن version أو lifecycle.
+- لا يوجد اختيار latest، ولا version binding، ولا lifecycle filtering في هذه الشريحة.
+- إذا لم يوجد أي descriptor بذلك `asset_id`، تسجل نتيجة unresolved لكل هوية مصدر دقيقة تشير إليه.
+- النتائج تزيل التكرار وتُرتب حتميًا حسب هوية المصدر ثم dependency asset ID.
+
+### الدورات — SCC فقط
+
+- لا تُعدّد جميع المسارات الدورية الممكنة.
+- تُبنى دورة واحدة لكل Strongly Connected Component دورية على مستوى `asset_id`.
+- SCC متعددة العناصر تعد دورة.
+- SCC أحادية العنصر تعد دورة فقط عند وجود self-loop.
+- تُدمج الحواف المتكررة الناتجة من إصدارات متعددة قبل حساب SCC.
+- الحواف unresolved لا تدخل SCC لأنها لا تملك عقدة هدف مسجلة.
+- ترتب `asset_ids` داخل كل دورة، وترتب سجلات الدورات lexicographically لضمان نتيجة ثابتة وغير مكررة.
+
+### التطبيع والتحقق والحتمية
+
+- تستخدم استعلامات الهوية قواعد Slice 6.1 نفسها؛ لا fuzzy أو substring أو prefix matching.
+- المدخلات غير الصالحة تتبع TypeError/validation semantics الموجودة في عقود 6.1 بدل إنشاء سياسة موازية.
+- كل المخرجات tuples immutable ومرتبة حتميًا.
+- لا تُكشف dict أو set داخلية قابلة للتعديل.
+- القراءة بعد البناء لا تحتاج lock الخاص بالCatalog.
+
+### Invariants البناء والحالات الحدّية
+
+- Snapshot الفارغة صالحة: `direct_dependencies` لهوية صحيحة يعيد `None`، و`direct_dependents` و`unresolved_dependencies` و`dependency_cycles` تعيد `()`.
+- tuple المدخلة مباشرة يجب أن تحقق canonicalization وidentity uniqueness invariants نفسها التي يفرضها Catalog في Slice 6.1.
+- تكرار الهوية الدقيقة نفسها `(asset_id, version)` مدخل غير صالح ويرفع `ValueError`؛ لا silent merge ولا last-write-wins.
+- بناء الفهارس وحساب SCC يجب أن يكونا `O(V + E)` قبل كلفة الترتيب الحتمي؛ يُمنع تعداد المسارات أو الدورات الممكنة.
+
+### ملفات التنفيذ المتوقعة
+
+- `core/capabilities/models.py`
+- `core/capabilities/contracts.py`
+- `core/capabilities/dependency_graph.py`
+- `core/capabilities/__init__.py`
+- `tests/test_stage6_capability_dependency_graph.py`
+
+### بوابة RED ومعايير القبول
+
+يجب أن تثبت RED المستقلة قبل GREEN:
+
+1. Snapshot isolation وعدم الاحتفاظ بمرجع Catalog حي.
+2. التفريق بين المصدر غير الموجود والمصدر بلا dependencies.
+3. direct dependencies/dependents لكل الإصدارات وبترتيب حتمي.
+4. resolved بأي إصدار دون latest/lifecycle/version binding.
+5. unresolved بهوية المصدر الدقيقة.
+6. SCC متعددة العناصر، وself-loop، وعدم التكرار أو تعداد كل دورة ممكنة.
+7. استبعاد الحواف unresolved من SCC.
+8. immutability وعدم تسريب المجموعات الداخلية.
+9. عدم إضافة transitive impact أو enforcement أو Runtime/persistence.
+10. Snapshot الفارغة ونتائجها المحددة.
+11. رفض الهوية الدقيقة المكررة دون silent merge.
+12. عدم تعداد المسارات/الدورات، ومراجعة حد البناء وSCC كـ`O(V + E)` قبل الترتيب.
+13. نجاح اختبارات Slice 6.1 المتأثرة فقط عند وجود Trigger، ثم full regression في Exit Gate.
+
+### الإجراء التالي
+
+العقد محفوظ ومعتمد من المالك. لا يبدأ production code. الدفعة التالية المستقلة هي RED Entry Gate لـSlice 6.2، وتحتاج تحقق Git ونطاق واختبارات فاشلة للأسباب المقصودة.
+
+<!-- STAGE6_SLICE6_2_CONTRACT_END -->
 
 ## Development Tooling and External-Idea Backlog
 

@@ -9,18 +9,20 @@
 | البند | الحالة الحالية المثبتة |
 |---|---|
 | المستودع / الفرع | `Mb-Ai91/shujaa_project` / `refactor/modular-architecture` |
-| checkpoint الحالي | `988a82234cf8662e90a262e8baac8494ef69bf97`؛ تنفيذ Slice 6.1 عند `fe3c97f96e6473791236d1804b5ab7f1d2520b2b`؛ Local HEAD = Remote HEAD قبل المصالحة التوثيقية |
+| Repository checkpoint قبل حفظ عقد Slice 6.2 | `35441260aa2df576f9442518fbdc61d3fbdeff5e`؛ Local HEAD = Remote HEAD وشجرة العمل نظيفة عند Entry Gate |
+| مرجع Slice 6.1 المتحقق | implementation `fe3c97f96e6473791236d1804b5ab7f1d2520b2b`؛ verified checkpoint `988a82234cf8662e90a262e8baac8494ef69bf97` |
 | Worktree | نظيفة عند بدء المصالحة التوثيقية |
 | Stage 4 | `VERIFIED COMPLETE — LOCAL/MOCK SCOPE` |
 | Stage 5 | `VERIFIED COMPLETE — LOCAL/MOCK SCOPE` |
 | Stage 6 | `IN PROGRESS — SLICE 6.1 VERIFIED COMPLETE` |
+| Slice 6.2 | `APPROVED CONTRACT — RED NOT STARTED` |
 | Owner Constraint Gate | `GO — DEVELOPMENT COMMAND SCOPE`؛ السجل والـvalidator والاختبارات ملتزمة ومرفوعة |
 | الاختبارات | Stage 5: `10 new + 126 affected + 367 full`؛ Slice 6.1: `74 targeted + 441 full` |
 | Audit 01 | `COMPLETE` باستخدام القيود والأدوات المعتمدة، والنتيجة الكاملة محفوظة في ملف التدقيق |
 | Compatibility | `COMPATIBLE — NO CHANGE BEFORE STAGE 5`؛ التحسينات غير المانعة migrations مخططة لمراحلها |
 | Shujaa Development Skill | النسخة النشطة `v0.6` لم تتغير؛ `v0.7` لم تُنشأ ولم تُستخدم |
-| الموانع المفتوحة | لا يوجد مانع مثبت؛ الشريحة التالية غير متعاقد عليها وتحتاج Entry Gate مستقلًا |
-| الإجراء التالي الوحيد | تصميم واعتماد Entry Gate وعقد الشريحة التالية في Stage 6 فقط؛ لا يبدأ الكود قبل موافقة المالك |
+| الموانع المفتوحة | لا يوجد مانع مثبت أمام RED Entry Gate لـSlice 6.2؛ التنفيذ لم يبدأ |
+| الإجراء التالي الوحيد | RED Entry Gate مستقل لـSlice 6.2 وفق العقد المعتمد؛ لا يبدأ production code قبل إثبات RED وموافقة المالك على GREEN |
 
 **مراجع السلطة:** ADR-024 وADR-025 وADR-026 وADR-027، و`SHUJAA_OWNER_CONSTRAINTS.yaml`، وخطة Stage 5، وActive Roadmap.
 
@@ -1216,7 +1218,7 @@ Stage 6 — `Catalog Foundation` بدأت ضمن نطاق Local/In-Memory، وأ
 - ملف الاختبارات: `tests/test_stage6_capability_catalog_foundation.py`.
 - لم تُعد الاختبارات في مصالحة الوثائق هذه لعدم وجود Trigger؛ بقي HEAD وكود الإنتاج دون تغيير.
 - لا يثبت هذا الإغلاق Runtime integration أو persistence أو distributed catalog أو Policy enforcement أو dependency resolution أو Resolver/Binding.
-- الإجراء التالي: تصميم عقد الشريحة التالية من مكونات Stage 6 المتبقية، ثم Owner Approval وEntry Gate مستقل.
+- الإجراء التالي: RED Entry Gate مستقل لـSlice 6.2 وفق العقد المعتمد؛ لا يبدأ production code قبل إثبات RED وموافقة المالك على GREEN.
 
 ---
 
