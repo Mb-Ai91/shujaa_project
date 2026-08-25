@@ -7,7 +7,9 @@ from .models import (
     CapabilityIdentity,
     CapabilityLifecycle,
     CapabilityRegistrationResult,
+    DependencyCandidateDisposition,
     DependencyCycle,
+    DependencyResolutionCandidates,
     UnresolvedDependency,
 )
 
@@ -54,3 +56,9 @@ class CapabilityDependencyGraphProtocol(Protocol):
         self,
         dependency_asset_id: str,
     ) -> tuple[CapabilityIdentity, ...]: ...
+
+    def dependency_resolution_candidates(
+        self,
+        asset_id: str,
+        version: str,
+    ) -> tuple[DependencyResolutionCandidates, ...] | None: ...

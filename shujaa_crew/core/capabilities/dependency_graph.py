@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from types import MappingProxyType
 
 from .catalog import _SchemaRejected, _canonical_descriptor
 from .models import (
     CapabilityDescriptor,
     CapabilityIdentity,
+    DependencyCandidateDisposition,
     DependencyCycle,
+    DependencyResolutionCandidates,
     UnresolvedDependency,
 )
 
@@ -58,6 +61,16 @@ class InMemoryCapabilityDependencyGraph:
 
         identities = tuple(sorted(records))
         asset_ids = frozenset(identity[0] for identity in identities)
+
+        identities_by_asset_id: dict[str, list[CapabilityIdentity]] = {}
+        for identity in identities:
+            identities_by_asset_id.setdefault(identity[0], []).append(identity)
+        self._candidate_identities_by_asset_id = MappingProxyType(
+            {
+                asset_id: tuple(asset_identities)
+                for asset_id, asset_identities in identities_by_asset_id.items()
+            }
+        )
 
         dependencies_by_identity = {
             identity: records[identity].dependency_asset_ids
@@ -126,6 +139,42 @@ class InMemoryCapabilityDependencyGraph:
             "dependency_asset_id",
         )
         return self._dependents.get(canonical, ())
+
+    def dependency_resolution_candidates(
+        self,
+        asset_id: str,
+        version: str,
+    ) -> tuple[DependencyResolutionCandidates, ...] | None:
+        identity = (
+            _validated_query_string(asset_id, "asset_id"),
+            _validated_query_string(version, "version"),
+        )
+        dependencies = self._dependencies_by_identity.get(identity)
+        if dependencies is None:
+            return None
+
+        results: list[DependencyResolutionCandidates] = []
+        for dependency_asset_id in dependencies:
+            candidates = self._candidate_identities_by_asset_id.get(
+                dependency_asset_id,
+                (),
+            )
+            if not candidates:
+                disposition = DependencyCandidateDisposition.UNRESOLVED
+            elif len(candidates) == 1:
+                disposition = DependencyCandidateDisposition.UNIQUE
+            else:
+                disposition = (
+                    DependencyCandidateDisposition.MULTIPLE_CANDIDATES
+                )
+            results.append(
+                DependencyResolutionCandidates(
+                    dependency_asset_id=dependency_asset_id,
+                    candidate_identities=candidates,
+                    disposition=disposition,
+                )
+            )
+        return tuple(results)
 
     def unresolved_dependencies(
         self,

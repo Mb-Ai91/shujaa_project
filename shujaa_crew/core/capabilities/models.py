@@ -62,3 +62,16 @@ class UnresolvedDependency:
 @dataclass(frozen=True)
 class DependencyCycle:
     asset_ids: tuple[str, ...]
+
+
+class DependencyCandidateDisposition(str, Enum):
+    UNRESOLVED = "unresolved"
+    UNIQUE = "unique"
+    MULTIPLE_CANDIDATES = "multiple_candidates"
+
+
+@dataclass(frozen=True)
+class DependencyResolutionCandidates:
+    dependency_asset_id: str
+    candidate_identities: tuple[CapabilityIdentity, ...]
+    disposition: DependencyCandidateDisposition

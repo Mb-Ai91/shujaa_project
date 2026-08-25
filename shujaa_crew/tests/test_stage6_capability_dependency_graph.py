@@ -97,6 +97,7 @@ def test_protocol_exposes_only_the_approved_queries():
         "unresolved_dependencies",
         "dependency_cycles",
         "potential_transitive_dependents",
+        "dependency_resolution_candidates",
     }
 
 

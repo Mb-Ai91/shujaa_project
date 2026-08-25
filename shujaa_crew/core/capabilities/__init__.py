@@ -11,7 +11,9 @@ from .models import (
     CapabilityLifecycle,
     CapabilityRegistrationDisposition,
     CapabilityRegistrationResult,
+    DependencyCandidateDisposition,
     DependencyCycle,
+    DependencyResolutionCandidates,
     UnresolvedDependency,
 )
 
@@ -24,7 +26,9 @@ __all__ = (
     "CapabilityLifecycle",
     "CapabilityRegistrationDisposition",
     "CapabilityRegistrationResult",
+    "DependencyCandidateDisposition",
     "DependencyCycle",
+    "DependencyResolutionCandidates",
     "InMemoryCapabilityCatalog",
     "InMemoryCapabilityDependencyGraph",
     "UnresolvedDependency",
