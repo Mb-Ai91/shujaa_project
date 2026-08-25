@@ -4,12 +4,12 @@
 
 > **وظيفة الوثيقة:** لقطة الاستمرارية الحالية ونقطة الاستئناف الوحيدة. القرارات طويلة العمر في سجل ADR، وترتيب المراحل في Active Roadmap، وخطة Stage 5 في وثيقتها المخصصة.
 >
-> **آخر تحديث موثق:** 25 أغسطس 2026
+> **آخر تحديث موثق:** 26 أغسطس 2026
 
 | البند | الحالة الحالية المثبتة |
 |---|---|
 | المستودع / الفرع | `Mb-Ai91/shujaa_project` / `refactor/modular-architecture` |
-| Repository checkpoint قبل الإغلاق التوثيقي لـSlice 6.3 | `1d20fced920cdff4b413392d3df78f27b1b8b1e4`؛ Local HEAD = Remote HEAD وشجرة العمل نظيفة بعد حفظ التنفيذ |
+| Repository checkpoint قبل حفظ عقد Slice 6.4 | `d6fe09eab6cfa58784d6a59f841c89b651547760`؛ Local HEAD = Remote HEAD وشجرة العمل نظيفة عند Entry Gate |
 | مرجع Slice 6.1 المتحقق | implementation `fe3c97f96e6473791236d1804b5ab7f1d2520b2b`؛ verified checkpoint `988a82234cf8662e90a262e8baac8494ef69bf97` |
 | Worktree | نظيفة عند بدء المصالحة التوثيقية |
 | Stage 4 | `VERIFIED COMPLETE — LOCAL/MOCK SCOPE` |
@@ -17,14 +17,15 @@
 | Stage 6 | `IN PROGRESS — SLICE 6.3 VERIFIED COMPLETE` |
 | Slice 6.2 | `VERIFIED COMPLETE — LOCAL/IN-MEMORY SCOPE` |
 | Slice 6.3 | `VERIFIED COMPLETE — LOCAL/IN-MEMORY SCOPE` |
+| Slice 6.4 | `APPROVED CONTRACT — RED NOT STARTED` |
 | Contract Review Gate | `ADOPTED — DESIGN/CONTRACT GATES ONLY`؛ لا تعدّل Skill النشطة ولا تمنح إذن تنفيذ |
 | Owner Constraint Gate | `GO — DEVELOPMENT COMMAND SCOPE`؛ السجل والـvalidator والاختبارات ملتزمة ومرفوعة |
 | الاختبارات | Stage 5: `10 new + 126 affected + 367 full`؛ Slice 6.1: `74 targeted + 441 full`؛ Slice 6.2: `25 targeted + 74 affected + 466 full`؛ Slice 6.3: `14 targeted + 25 affected + 480 full` |
 | Audit 01 | `COMPLETE` باستخدام القيود والأدوات المعتمدة، والنتيجة الكاملة محفوظة في ملف التدقيق |
 | Compatibility | `COMPATIBLE — NO CHANGE BEFORE STAGE 5`؛ التحسينات غير المانعة migrations مخططة لمراحلها |
 | Shujaa Development Skill | النسخة النشطة `v0.6` لم تتغير؛ `v0.7` لم تُنشأ ولم تُستخدم |
-| الموانع المفتوحة | لا يوجد مانع مثبت؛ الشريحة التالية في Stage 6 غير متعاقد عليها |
-| الإجراء التالي الوحيد | NEXT_SLICE_DISCOVERY لـStage 6، ثم تصميم واعتماد عقد مستقل؛ لا يبدأ RED أو production code قبل موافقة المالك |
+| الموانع المفتوحة | لا يوجد مانع مثبت أمام RED Entry Gate لـSlice 6.4؛ التنفيذ لم يبدأ |
+| الإجراء التالي الوحيد | RED Entry Gate مستقل لـSlice 6.4 وفق العقد المعتمد؛ لا يبدأ production code قبل إثبات RED وموافقة المالك على GREEN |
 
 **مراجع السلطة:** ADR-024 وADR-025 وADR-026 وADR-027، و`SHUJAA_OWNER_CONSTRAINTS.yaml`، وخطة Stage 5، وActive Roadmap.
 

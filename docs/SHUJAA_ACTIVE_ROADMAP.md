@@ -2,7 +2,7 @@
 
 > **الصفة:** خارطة التنفيذ الرسمية النشطة لمشروع شجاع
 > **الإصدار:** 1.3
-> **آخر تحديث موثق:** 25 أغسطس 2026
+> **آخر تحديث موثق:** 26 أغسطس 2026
 > **النطاق:** 19 مرحلة مترابطة بالاعتماديات، من Stage 0 إلى Stage 18
 > **مرجع Stage 6 / Slice 6.3:** implementation `1d20fced920cdff4b413392d3df78f27b1b8b1e4`؛ `14 targeted + 25 affected + 480 full`
 
@@ -12,14 +12,14 @@
 
 | البند | الحالة الحالية |
 |---|---|
-| Repository checkpoint قبل الإغلاق التوثيقي لـSlice 6.3 | `1d20fced920cdff4b413392d3df78f27b1b8b1e4`؛ التنفيذ محفوظ ومتطابق محليًا وبعيدًا وشجرة العمل نظيفة |
+| Repository checkpoint قبل حفظ عقد Slice 6.4 | `d6fe09eab6cfa58784d6a59f841c89b651547760`؛ المحلي = البعيد وشجرة العمل نظيفة عند Entry Gate |
 | مرجع Slice 6.1 المتحقق | implementation `fe3c97f96e6473791236d1804b5ab7f1d2520b2b`؛ verified checkpoint `988a82234cf8662e90a262e8baac8494ef69bf97` |
 | آخر شريحة مغلقة | Stage 6 / Slice 6.3 — `VERIFIED COMPLETE — LOCAL/IN-MEMORY SCOPE` |
 | الموقع الحالي | Stage 6 — `IN PROGRESS — SLICE 6.3 VERIFIED COMPLETE` |
-| الشريحة التالية | غير متعاقد عليها؛ تحتاج NEXT_SLICE_DISCOVERY وOwner Approval وEntry Gate مستقلًا |
+| الشريحة التالية | Stage 6 / Slice 6.4 — `APPROVED CONTRACT — RED NOT STARTED` |
 | baseline | Stage 5: `10 new + 126 affected + 367 full`؛ Slice 6.1: `74 targeted + 441 full`؛ Slice 6.2: `25 targeted + 74 affected + 466 full`؛ Slice 6.3: `14 targeted + 25 affected + 480 full` |
 | Audit | Audit 01 مكتمل؛ حكم التوافق محفوظ في artifact مستقل |
-| الإجراء الحالي | NEXT_SLICE_DISCOVERY لـStage 6؛ لا يبدأ RED أو production code قبل عقد مستقل وموافقة المالك |
+| الإجراء الحالي | RED Entry Gate مستقل لـSlice 6.4 وفق العقد المعتمد؛ لا يبدأ production code قبل إثبات RED وموافقة المالك على GREEN |
 
 ---
 
@@ -895,8 +895,103 @@ potential_transitive_dependents(
 
 ### الإجراء التالي
 
-Slice 6.3 مغلقة ومتحققة. الخطوة التالية هي `NEXT_SLICE_DISCOVERY` لـStage 6؛ لا يُعتمد ترتيب لاحق، ولا يبدأ RED أو production code قبل عقد مستقل وموافقة المالك.
+Slice 6.3 مغلقة ومتحققة. عقد Slice 6.4 محفوظ ومعتمد؛ الدفعة التالية RED Entry Gate مستقل، ولا يبدأ production code قبل إثبات RED وموافقة المالك على GREEN.
 <!-- STAGE6_SLICE6_3_CONTRACT_END -->
+
+<!-- STAGE6_SLICE6_4_CONTRACT_BEGIN -->
+## Slice 6.4 — Capability Dependency Resolution Candidates Read Model
+
+**الحالة:** `APPROVED CONTRACT — RED NOT STARTED`
+
+### الغرض
+
+إضافة Read Model محلي/In-Memory وحتمي يعرض هويات الإصدارات المسجلة التي يمكن أن تكون مدخلات محتملة لـResolver مستقبلي لكل dependency معلنة، دون اختيار إصدار أو اعتماد قرار تشغيل.
+
+كلمة `Resolution` هنا تعني **resolution candidates فقط**؛ لا تعني أن Slice 6.4 تنفذ Resolver أو Binding أو قرارًا معتمدًا.
+
+### العقد العام
+
+- `DependencyCandidateDisposition` قيمه المغلقة: `UNRESOLVED` و`UNIQUE` و`MULTIPLE_CANDIDATES`.
+- `DependencyResolutionCandidates` سجل immutable يحتوي فقط:
+  - `dependency_asset_id: str`
+  - `candidate_identities: tuple[CapabilityIdentity, ...]`
+  - `disposition: DependencyCandidateDisposition`
+- يضاف إلى `CapabilityDependencyGraphProtocol` والاستدعاء المحلي:
+
+```python
+dependency_resolution_candidates(
+    asset_id: str,
+    version: str,
+) -> tuple[DependencyResolutionCandidates, ...] | None
+```
+
+### دلالة المصدر والتحقق
+
+- المدخلان `asset_id` و`version` يتبعان validation contract نفسه في 6.2/6.3؛ الإدخال غير الصالح لا يتحول إلى `None` ولا ينشئ سلوكًا جديدًا.
+- `None` تعني فقط أن الهوية الدقيقة `(asset_id, version)` صالحة شكليًا لكنها غير موجودة في Snapshot.
+- `()` تعني أن المصدر موجود ولا يعلن dependencies.
+- النتيجة تحتوي سجلًا واحدًا لكل `dependency_asset_id` معلن، بترتيب حتمي.
+
+### المرشحون والتصنيف
+
+- `candidate_identities` هي جميع هويات `(asset_id, version)` الموجودة في Graph Snapshot المعزولة، سواء أُخذت من `catalog.list()` أو أُدخلت مباشرة وفق عقد 6.2، والتي يساوي `asset_id` فيها هدف dependency مطابقةً تامة وحساسة لحالة الأحرف.
+- المرشحون هم إصدارات **مسجلة فقط**، وليسوا إصدارات مؤهلة أو معتمدة للتشغيل.
+- لا تصفية حسب lifecycle؛ قد تشمل النتائج `SANDBOX` و`STAGING` و`ACTIVE` و`DEPRECATED` و`RETIRED` و`QUARANTINED`.
+- لا تدخل `risk_tier` أو `required_permissions` أو provenance أو capabilities في الترشيح.
+- صفر مرشحين → `UNRESOLVED` و`candidate_identities == ()`.
+- مرشح واحد → `UNIQUE`.
+- أكثر من مرشح → `MULTIPLE_CANDIDATES`.
+- `UNIQUE` لا تعني `RESOLVED` أو `APPROVED` أو قابلية التشغيل؛ تعني فقط وجود هوية إصدار واحدة مسجلة حاليًا.
+
+### Snapshot والفهرسة
+
+- تستخدم Graph الـSnapshot المعزولة نفسها في 6.2/6.3 ولا تحتفظ بمرجع حي إلى Catalog أو lock الخاص به.
+- يبنى مرة واحدة فهرس داخلي immutable بالشكل `asset_id -> tuple[CapabilityIdentity, ...]`.
+- تستخدم الاستعلامات الفهرس؛ لا يعاد مسح descriptors أو Catalog لكل dependency.
+- التسجيل اللاحق لا يغير Graph موجودة؛ يلزم بناء Snapshot جديدة.
+- كل tuples مرتبة حتميًا، ولا تُكشف dict أو set داخلية قابلة للتعديل.
+
+### الحدود الصريحة
+
+- لا اختيار latest أو preferred version، ولا version constraints أو compatibility ranking.
+- لا Resolver/Binding، ولا fallback/rollback، ولا adapter selection أو Runtime integration.
+- لا lifecycle eligibility أو transition، ولا Policy/permission enforcement.
+- لا mutation أو registration/update/delete/retirement/removal enforcement.
+- لا تغيير لسلوك direct graph أو SCC أو potential impact المثبت في 6.2/6.3.
+- لا يفرض العقد أن Binding هي الشريحة التالية؛ يعاد `NEXT_SLICE_DISCOVERY` بعد إغلاق 6.4.
+
+### ملفات التنفيذ المتوقعة
+
+- `core/capabilities/models.py`
+- `core/capabilities/contracts.py`
+- `core/capabilities/dependency_graph.py`
+- `core/capabilities/__init__.py`
+- `tests/test_stage6_capability_dependency_resolution_candidates.py`
+
+### بوابة RED ومعايير القبول
+
+يجب أن تثبت RED المستقلة قبل GREEN:
+
+1. إضافة واجهة القراءة المعتمدة فقط، دون API لاختيار أو اعتماد أو تشغيل مرشح، ودون أي API mutating.
+2. فصل input غير الصالح عن source الصحيح المفقود.
+3. فصل source المفقود `None` عن source بلا dependencies `()`.
+4. سجل واحد حتمي لكل dependency معلنة.
+5. `UNRESOLVED` و`UNIQUE` و`MULTIPLE_CANDIDATES` وفق عدد الهويات المسجلة.
+6. شمول جميع الإصدارات المسجلة وترتيبها دون lifecycle/risk/permission filtering.
+7. إثبات أن `UNIQUE` لا ينفذ اختيارًا أو اعتمادًا.
+8. exact case-sensitive matching دون fuzzy/prefix/substring/case folding.
+9. Snapshot isolation وبناء فهرس immutable مرة واحدة دون rescans لكل dependency.
+10. immutability وعدم تسريب المجموعات الداخلية.
+11. عدم إحداث regression في عقود واختبارات 6.1–6.3.
+12. عدم إضافة Resolver/Binding أو Runtime/Policy/lifecycle/removal semantics.
+13. full regression في Exit Gate فقط بعد نجاح targeted وaffected suites.
+
+### الإجراء التالي
+
+العقد محفوظ ومعتمد من المالك. لا يبدأ production code. الدفعة التالية المستقلة هي RED Entry Gate لـSlice 6.4، مع تحقق Git ونطاق واختبارات تفشل للأسباب المقصودة.
+
+<!-- STAGE6_SLICE6_4_CONTRACT_END -->
+
 
 <!-- CONTRACT_ADVERSARIAL_REVIEW_GATE_BEGIN -->
 ## Contract Adversarial Review Gate — Cross-Stage
