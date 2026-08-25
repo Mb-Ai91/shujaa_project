@@ -46,3 +46,19 @@ class CapabilityRegistrationDisposition(str, Enum):
 @dataclass(frozen=True)
 class CapabilityRegistrationResult:
     disposition: CapabilityRegistrationDisposition
+
+
+
+CapabilityIdentity = tuple[str, str]
+
+
+@dataclass(frozen=True)
+class UnresolvedDependency:
+    source_asset_id: str
+    source_version: str
+    dependency_asset_id: str
+
+
+@dataclass(frozen=True)
+class DependencyCycle:
+    asset_ids: tuple[str, ...]
