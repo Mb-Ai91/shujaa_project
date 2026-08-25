@@ -24,6 +24,23 @@ class InMemoryCapabilityDependencyGraph:
         self,
         descriptors: tuple[CapabilityDescriptor, ...],
     ) -> None:
+        self._stage62_init(descriptors)
+
+        reverse: dict[str, set[CapabilityIdentity]] = {}
+        for descriptor in descriptors:
+            source = (descriptor.asset_id, descriptor.version)
+            for dependency_asset_id in descriptor.dependency_asset_ids:
+                reverse.setdefault(dependency_asset_id, set()).add(source)
+
+        self._impact_reverse_adjacency = {
+            dependency_asset_id: tuple(sorted(identities))
+            for dependency_asset_id, identities in reverse.items()
+        }
+
+    def _stage62_init(
+        self,
+        descriptors: tuple[CapabilityDescriptor, ...],
+    ) -> None:
         if not isinstance(descriptors, tuple):
             raise TypeError("descriptors must be a tuple snapshot")
 
@@ -178,3 +195,33 @@ class InMemoryCapabilityDependencyGraph:
                     )
 
         return tuple(finished)
+
+    def potential_transitive_dependents(
+        self,
+        dependency_asset_id: str,
+    ) -> tuple[CapabilityIdentity, ...]:
+        target = _validated_query_string(
+            dependency_asset_id,
+            "dependency_asset_id",
+        )
+
+        impacted: set[CapabilityIdentity] = set()
+        visited_asset_ids = {target}
+        pending = [target]
+
+        while pending:
+            current = pending.pop()
+            for identity in self._impact_reverse_adjacency.get(
+                current,
+                (),
+            ):
+                source_asset_id, _ = identity
+
+                if source_asset_id != target:
+                    impacted.add(identity)
+
+                if source_asset_id not in visited_asset_ids:
+                    visited_asset_ids.add(source_asset_id)
+                    pending.append(source_asset_id)
+
+        return tuple(sorted(impacted))

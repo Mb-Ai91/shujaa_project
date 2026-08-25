@@ -78,17 +78,25 @@ def test_public_models_have_only_the_approved_fields(api):
     assert tuple(item.name for item in fields(api.Cycle)) == ("asset_ids",)
 
 
-def test_protocol_exposes_only_the_approved_queries(api):
-    public = {
+def test_protocol_exposes_only_the_approved_queries():
+    from core.capabilities.contracts import (
+        CapabilityDependencyGraphProtocol,
+    )
+
+    public_queries = {
         name
-        for name, value in vars(api.Protocol).items()
-        if callable(value) and not name.startswith("_")
+        for name, value in vars(
+            CapabilityDependencyGraphProtocol
+        ).items()
+        if not name.startswith("_") and callable(value)
     }
-    assert public == {
+
+    assert public_queries == {
         "direct_dependencies",
         "direct_dependents",
         "unresolved_dependencies",
         "dependency_cycles",
+        "potential_transitive_dependents",
     }
 
 
@@ -311,13 +319,26 @@ def test_results_and_records_are_immutable(api):
         unresolved[0].dependency_asset_id = "changed"
 
 
-def test_scope_does_not_expose_transitive_or_mutating_operations(api):
-    subject = graph(api)
-    for forbidden_name in (
-        "transitive_dependents",
-        "impact_analysis",
+def test_scope_does_not_expose_transitive_or_mutating_operations():
+    from core.capabilities.dependency_graph import (
+        InMemoryCapabilityDependencyGraph,
+    )
+
+    graph = InMemoryCapabilityDependencyGraph(())
+
+    assert hasattr(graph, "potential_transitive_dependents")
+
+    forbidden = (
+        "transitive_paths",
+        "impact_paths",
+        "impact_severity",
         "remove",
+        "delete",
+        "retire",
+        "enforce_removal",
         "resolve",
         "bind",
-    ):
-        assert not hasattr(subject, forbidden_name)
+        "set_lifecycle",
+    )
+    for name in forbidden:
+        assert not hasattr(graph, name)
