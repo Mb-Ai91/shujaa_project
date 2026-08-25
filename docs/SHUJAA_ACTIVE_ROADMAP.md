@@ -12,14 +12,14 @@
 
 | البند | الحالة الحالية |
 |---|---|
-| Repository checkpoint قبل الإغلاق التوثيقي لـSlice 6.2 | `683625b9c64d21b73a176928e3f19f7ddfd30e93`؛ تنفيذ Slice 6.2 محفوظ ومتطابق محليًا وبعيدًا وشجرة العمل نظيفة |
+| Repository checkpoint قبل حفظ عقد Slice 6.3 | `c00b30252b37c42a337ef27aef786c5bf23a547e`؛ المحلي = البعيد وشجرة العمل نظيفة عند Entry Gate |
 | مرجع Slice 6.1 المتحقق | implementation `fe3c97f96e6473791236d1804b5ab7f1d2520b2b`؛ verified checkpoint `988a82234cf8662e90a262e8baac8494ef69bf97` |
 | آخر شريحة مغلقة | Stage 6 / Slice 6.2 — `VERIFIED COMPLETE — LOCAL/IN-MEMORY SCOPE` |
 | الموقع الحالي | Stage 6 — `IN PROGRESS — SLICE 6.2 VERIFIED COMPLETE` |
-| الشريحة التالية | غير متعاقد عليها؛ تحتاج Owner Approval وEntry Gate مستقلًا |
+| الشريحة التالية | Stage 6 / Slice 6.3 — `APPROVED CONTRACT — RED NOT STARTED` |
 | baseline | Stage 5: `10 new + 126 affected + 367 full`؛ Slice 6.1: `74 targeted + 441 full`؛ Slice 6.2: `25 targeted + 74 affected + 466 full` |
 | Audit | Audit 01 مكتمل؛ حكم التوافق محفوظ في artifact مستقل |
-| الإجراء الحالي | تصميم واعتماد عقد الشريحة التالية في Stage 6؛ لا يبدأ RED أو production code قبل موافقة المالك |
+| الإجراء الحالي | RED Entry Gate مستقل لـSlice 6.3 وفق العقد المعتمد؛ لا يبدأ production code قبل إثبات RED وموافقة المالك على GREEN |
 
 ---
 
@@ -793,9 +793,120 @@ update/delete، lifecycle transitions، dependency graph/resolution، Resolver/B
 
 ### الإجراء التالي
 
-Slice 6.2 مغلقة ومتحققة. الشريحة التالية غير متعاقد عليها؛ يلزم Owner Approval وEntry Gate مستقل قبل RED أو production code.
+Slice 6.2 مغلقة ومتحققة. عقد Slice 6.3 محفوظ ومعتمد؛ الدفعة التالية RED Entry Gate مستقل، ولا يبدأ production code قبل إثبات RED وموافقة المالك على GREEN.
 
 <!-- STAGE6_SLICE6_2_CONTRACT_END -->
+
+<!-- STAGE6_SLICE6_3_CONTRACT_BEGIN -->
+## Slice 6.3 — Capability Dependency Impact Read Model
+
+**الحالة:** `APPROVED CONTRACT — RED NOT STARTED`
+
+### الغرض
+
+إضافة استعلام Local/In-Memory وحتمي فوق Dependency Graph في Slice 6.2 يعيد الهويات الدقيقة للقدرات المتأثرة **احتماليًا** بصورة مباشرة أو غير مباشرة بتغيّر asset ID، دون ادعاء impact تشغيلي قطعي قبل وجود version binding.
+
+### العقد العام
+
+```python
+potential_transitive_dependents(
+    dependency_asset_id: str,
+) -> tuple[CapabilityIdentity, ...]
+```
+
+- يضاف الاستعلام إلى `CapabilityDependencyGraphProtocol` و`InMemoryCapabilityDependencyGraph`؛ لا ينشأ Graph موازٍ ولا Snapshot ثانية.
+- يبقى الإدخال `asset_id` بلا version، وتبقى النتائج هويات مصادر دقيقة `(asset_id, version)`.
+- تستخدم validation semantics نفسها التي يستخدمها `direct_dependents()` في Slice 6.2.
+
+### دلالة potential والانتشار بين الإصدارات
+
+- النتيجة محافظة وتمثل **potential impact** فقط، لأن dependency declarations غير مرتبطة بإصدار ولا يوجد Resolver/Binding بعد.
+- يدرج في النتيجة فقط الإصدار الذي أعلن dependency فعلًا.
+- بعد إدراج هوية المصدر الدقيقة، يستخدم `asset_id` لذلك المصدر كنقطة انتشار إلى المستوى الأعلى.
+- إذا أعلن إصدار واحد من asset اعتمادًا ولم تعلنه إصداراته الأخرى، فلا تدرج الإصدارات الأخرى بسبب تلك الحافة، لكن قد تظهر مصادر أعلى تعتمد على asset ID للمصدر؛ وهذا سبب وصف النتيجة بأنها potential.
+- lifecycle وrisk tier وrequired permissions لا تدخل في الحساب.
+
+### الهدف المفقود واستبعاد الهدف
+
+- لا يشترط أن يكون `dependency_asset_id` الهدف مسجلًا؛ declarations التي تشير إلى هدف مفقود تدخل التحليل المباشر والمتعدي.
+- تستبعد من النتيجة كل `CapabilityIdentity` يكون `asset_id` لها مساويًا للهدف، مهما كان version.
+- يبدأ traversal من asset ID الهدف وتُعالج reverse adjacency الخاصة به مرة واحدة.
+- إذا أعادت cycle الوصول إلى الهدف، فلا يضاف إلى النتيجة ولا يعاد توسيعه؛ يبقى الهدف visited منذ البداية، وبذلك لا ينكسر traversal ولا ينشأ loop.
+- كشف الدورات وتمثيل SCC يبقيان من اختصاص `dependency_cycles()` في Slice 6.2؛ استعلام 6.3 لا يعيد cycles أو paths.
+
+### Snapshot والفهارس والتعقيد
+
+- تبني Snapshot معزولة reverse adjacency داخلية مرة واحدة عند إنشاء Graph، أو تعيد استخدام الفهرس الداخلي المعزول الموجود إن كان يحقق العقد.
+- لا يعاد مسح جميع descriptors عند كل مستوى من traversal، ولا يحتفظ التنفيذ بمرجع حي إلى Catalog أو lock الخاص به.
+- traversal تكراري لا recursive، ويستخدم `visited asset IDs` لمنع إعادة العمل والدوران.
+- تعقيد traversal للاستعلام هو `O(Vr + Er)` للعقد والحواف القابلة للوصول، ويضاف حتى `O(R log R)` لترتيب `R` نتيجة ترتيبًا حتميًا.
+- لا تكشف reverse adjacency أو visited sets أو أي collection داخلية قابلة للتعديل.
+
+### الحتمية وعدم القابلية للتعديل
+
+- تزيل النتائج التكرار وتُرتب lexicographically حسب `(asset_id, version)`.
+- النتيجة tuple immutable، ولا تتغير Graph القديمة بتسجيلات Catalog اللاحقة.
+- Snapshot الفارغة والهدف بلا dependents يعيدان `()`.
+
+### خارج النطاق
+
+- definite runtime impact أو severity أو explanations أو path enumeration.
+- removal/retirement enforcement، وupdate/delete، وlifecycle transitions.
+- version selection أو latest semantics أو version constraints.
+- Resolver/Binding أو fallback/rollback selection.
+- Policy/permission enforcement وStage 7 Access Graph.
+- Runtime adapters أو Manager/Dispatcher أو persistence أو distributed graph.
+- لا يثبت العقد ترتيب الشرائح التالية؛ أي ترتيب لاحق `CANDIDATE DIRECTION` فقط ويعاد حسمه عبر `NEXT_SLICE_DISCOVERY` بعد إغلاق 6.3.
+
+### ملفات التنفيذ المتوقعة
+
+- `core/capabilities/contracts.py`
+- `core/capabilities/dependency_graph.py`
+- `tests/test_stage6_capability_dependency_impact.py`
+- يعدل اختبار scope في Slice 6.2 بالحد الأدنى للسماح بالاستعلام الجديد، دون إضعاف منع العمليات المتعدية الأخرى أو عمليات mutation.
+
+### بوابة RED ومعايير القبول
+
+يجب أن تثبت RED المستقلة قبل GREEN:
+
+1. signature وإضافة الاستعلام العام فقط إلى Protocol والتنفيذ الحاليين.
+2. Snapshot فارغة، وهدف بلا dependents، وهدف غير مسجل.
+3. direct وmulti-hop potential dependents.
+4. دقة هوية المصدر عند تعدد الإصدارات، وعدم إدراج إصدار لم يعلن الحافة.
+5. الانتشار للأعلى عبر `asset_id` بعد إدراج الإصدار المعلن فقط.
+6. استبعاد جميع هويات asset ID الهدف عبر كل versions.
+7. cycles وself-loop تنتهي دون تكرار أو إعادة الهدف، مع بقاء SCC من اختصاص 6.2.
+8. deduplication والترتيب الحتمي والـimmutability.
+9. تجاهل lifecycle وrisk وpermissions.
+10. Snapshot isolation وعدم استخدام Catalog أو lock بعد البناء.
+11. deep chain يثبت traversal تكراريًا دون recursion failure.
+12. فحص بنيوي يثبت reverse adjacency مبنية مرة واحدة وعدم rescanning للـdescriptors في كل مستوى؛ لا يعتمد الحكم على timing test هش.
+13. عدم إضافة paths أو severity أو enforcement أو Resolver/Binding أو Runtime/persistence.
+14. تشغيل اختبارات Slice 6.2 المتأثرة بسبب تغيّر الـAPI، ثم full regression في Exit Gate.
+
+### الإجراء التالي
+
+العقد محفوظ ومعتمد من المالك. لا يبدأ production code. الدفعة التالية المستقلة هي RED Entry Gate لـSlice 6.3، مع تحقق Git ونطاق واختبارات تفشل للأسباب المقصودة.
+
+<!-- STAGE6_SLICE6_3_CONTRACT_END -->
+
+<!-- CONTRACT_ADVERSARIAL_REVIEW_GATE_BEGIN -->
+## Contract Adversarial Review Gate — Cross-Stage
+
+**الحالة:** `ADOPTED — DESIGN/CONTRACT GATES ONLY`
+
+قبل تقديم أي عقد Slice جديد أو تعديل عقد قائم للاعتماد، تنفذ مراجعة داخلية صامتة تغطي:
+
+- الهوية والإصدارات ودلالات missing/empty/duplicate.
+- cycles وtraversal وsnapshot isolation وimmutability وdeterminism.
+- تعقيد البناء والاستعلام وتكلفة canonical ordering دون ادعاء رقمي غير مثبت.
+- negative scope وحدود المراحل وanti-trigger tests.
+- فصل proposal عن authorization، وعدم تحويل الترتيب اللاحق إلى خطة ملزمة.
+
+تُحوّل النتائج المهمة إلى invariants ومعايير قبول قبل عرض العقد النهائي. تعمل هذه البوابة في مهام Design/Contract فقط، ولا تمنح إذن كتابة كود أو RED/GREEN أو commit/push، ولا تعدّل `Shujaa Development Skill` النشطة. أي ترتيب بعد الشريحة الحالية يبقى `CANDIDATE DIRECTION` حتى `NEXT_SLICE_DISCOVERY` مستقل.
+
+<!-- CONTRACT_ADVERSARIAL_REVIEW_GATE_END -->
+
 
 ## Development Tooling and External-Idea Backlog
 
