@@ -4,23 +4,23 @@
 
 > **وظيفة الوثيقة:** لقطة الاستمرارية الحالية ونقطة الاستئناف الوحيدة. القرارات طويلة العمر في سجل ADR، وترتيب المراحل في Active Roadmap، وخطة Stage 5 في وثيقتها المخصصة.
 >
-> **آخر تحديث موثق:** 23 أغسطس 2026
+> **آخر تحديث موثق:** 25 أغسطس 2026
 
 | البند | الحالة الحالية المثبتة |
 |---|---|
 | المستودع / الفرع | `Mb-Ai91/shujaa_project` / `refactor/modular-architecture` |
-| مرجع كود إغلاق Stage 5 | `afcba30fe74d6d9e6e28290f9868cb448633c593`؛ كان Local HEAD = Remote HEAD قبل تحديث الوثائق |
-| Worktree | كانت نظيفة عند بدء تحديث وثائق الإغلاق |
+| checkpoint الحالي | `988a82234cf8662e90a262e8baac8494ef69bf97`؛ تنفيذ Slice 6.1 عند `fe3c97f96e6473791236d1804b5ab7f1d2520b2b`؛ Local HEAD = Remote HEAD قبل المصالحة التوثيقية |
+| Worktree | نظيفة عند بدء المصالحة التوثيقية |
 | Stage 4 | `VERIFIED COMPLETE — LOCAL/MOCK SCOPE` |
 | Stage 5 | `VERIFIED COMPLETE — LOCAL/MOCK SCOPE` |
-| Stage 6 | `PLANNED — NOT STARTED` |
+| Stage 6 | `IN PROGRESS — SLICE 6.1 VERIFIED COMPLETE` |
 | Owner Constraint Gate | `GO — DEVELOPMENT COMMAND SCOPE`؛ السجل والـvalidator والاختبارات ملتزمة ومرفوعة |
-| الاختبارات | Stage 5: `10 new + 126 affected + 367 full`؛ failures/errors/skipped = `0/0/0` |
+| الاختبارات | Stage 5: `10 new + 126 affected + 367 full`؛ Slice 6.1: `74 targeted + 441 full` |
 | Audit 01 | `COMPLETE` باستخدام القيود والأدوات المعتمدة، والنتيجة الكاملة محفوظة في ملف التدقيق |
 | Compatibility | `COMPATIBLE — NO CHANGE BEFORE STAGE 5`؛ التحسينات غير المانعة migrations مخططة لمراحلها |
 | Shujaa Development Skill | النسخة النشطة `v0.6` لم تتغير؛ `v0.7` لم تُنشأ ولم تُستخدم |
-| الموانع المفتوحة | لا يوجد مانع مثبت أمام تخطيط Stage 6؛ التنفيذ يتطلب Entry Gate مستقلًا |
-| الإجراء التالي الوحيد | تثبيت هذا الإغلاق في Git والتحقق من remote، ثم Stage 6 Entry Gate فقط |
+| الموانع المفتوحة | لا يوجد مانع مثبت؛ الشريحة التالية غير متعاقد عليها وتحتاج Entry Gate مستقلًا |
+| الإجراء التالي الوحيد | تصميم واعتماد Entry Gate وعقد الشريحة التالية في Stage 6 فقط؛ لا يبدأ الكود قبل موافقة المالك |
 
 **مراجع السلطة:** ADR-024 وADR-025 وADR-026 وADR-027، و`SHUJAA_OWNER_CONSTRAINTS.yaml`، وخطة Stage 5، وActive Roadmap.
 
@@ -1203,7 +1203,20 @@ Preserve → Inspect → Compare:
 
 ### الاستئناف
 
-Stage 6 — `Catalog Foundation` هي المرحلة التالية المخططة. لا يبدأ كودها قبل Entry Gate مستقل.
+Stage 6 — `Catalog Foundation` بدأت ضمن نطاق Local/In-Memory، وأُغلقت Slice 6.1 كـ`VERIFIED COMPLETE`. الشريحة التالية غير مسماة أو متعاقد عليها بعد، ولا يبدأ كود جديد قبل Entry Gate مستقل وموافقة المالك.
+
+### Stage 6 / Slice 6.1 — Closure Receipt
+
+- الحالة: `VERIFIED COMPLETE — LOCAL/IN-MEMORY SCOPE`.
+- Implementation commit: `fe3c97f96e6473791236d1804b5ab7f1d2520b2b`.
+- Pre-reconciliation verified checkpoint: `988a82234cf8662e90a262e8baac8494ef69bf97`.
+- Slice 6.1 targeted suite: `74 passed`.
+- Full regression: `441 passed`.
+- ملفات التنفيذ: `core/capabilities/__init__.py` و`models.py` و`contracts.py` و`catalog.py`.
+- ملف الاختبارات: `tests/test_stage6_capability_catalog_foundation.py`.
+- لم تُعد الاختبارات في مصالحة الوثائق هذه لعدم وجود Trigger؛ بقي HEAD وكود الإنتاج دون تغيير.
+- لا يثبت هذا الإغلاق Runtime integration أو persistence أو distributed catalog أو Policy enforcement أو dependency resolution أو Resolver/Binding.
+- الإجراء التالي: تصميم عقد الشريحة التالية من مكونات Stage 6 المتبقية، ثم Owner Approval وEntry Gate مستقل.
 
 ---
 

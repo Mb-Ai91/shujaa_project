@@ -2,9 +2,9 @@
 
 > **الصفة:** خارطة التنفيذ الرسمية النشطة لمشروع شجاع
 > **الإصدار:** 1.3
-> **آخر تحديث موثق:** 23 أغسطس 2026
+> **آخر تحديث موثق:** 25 أغسطس 2026
 > **النطاق:** 19 مرحلة مترابطة بالاعتماديات، من Stage 0 إلى Stage 18
-> **مرجع كود إغلاق Stage 5:** commit `afcba30fe74d6d9e6e28290f9868cb448633c593`
+> **مرجع Stage 6 / Slice 6.1:** implementation `fe3c97f96e6473791236d1804b5ab7f1d2520b2b`؛ verified checkpoint `988a82234cf8662e90a262e8baac8494ef69bf97`
 
 ---
 
@@ -12,12 +12,12 @@
 
 | البند | الحالة الحالية |
 |---|---|
-| checkpoint | كود Stage 5 عند `afcba30fe74d6d9e6e28290f9868cb448633c593`؛ المحلي = البعيد قبل تحديث الوثائق |
-| آخر مرحلة مغلقة | Stage 5 — `VERIFIED COMPLETE — LOCAL/MOCK SCOPE` |
-| الموقع الحالي | Stage 6 — `PLANNED — NOT STARTED` |
-| baseline | Stage 5: `10 new + 126 affected + 367 full` |
+| checkpoint | `988a82234cf8662e90a262e8baac8494ef69bf97`؛ تنفيذ Slice 6.1 عند `fe3c97f96e6473791236d1804b5ab7f1d2520b2b`؛ المحلي = البعيد قبل المصالحة التوثيقية |
+| آخر شريحة مغلقة | Stage 6 / Slice 6.1 — `VERIFIED COMPLETE — LOCAL/IN-MEMORY SCOPE` |
+| الموقع الحالي | Stage 6 — `IN PROGRESS — SLICE 6.1 VERIFIED COMPLETE` |
+| baseline | Stage 5: `10 new + 126 affected + 367 full`؛ Slice 6.1: `74 targeted + 441 full` |
 | Audit | Audit 01 مكتمل؛ حكم التوافق محفوظ في artifact مستقل |
-| الإجراء الحالي | تثبيت إغلاق Stage 5 في Git/remote، ثم Stage 6 Entry Gate فقط |
+| الإجراء الحالي | تصميم واعتماد Entry Gate وعقد الشريحة التالية في Stage 6؛ لا يبدأ الكود قبل موافقة المالك |
 
 ---
 
@@ -94,7 +94,7 @@
 | 3 | Unified Execution Model | `VERIFIED COMPLETE` | مسار موحد: Manager → Work → Task → Execution → Dispatcher → Executor/Runner. |
 | 4 | Full Execution Lifecycle Control | `VERIFIED COMPLETE` | تحكم محلي/Mock في دورة التنفيذ وسباقات الحالات النهائية والإلغاء والمهلة وRetry الآمنة والتنظيف والملكية؛ Pause/Resume منقولة بالاعتماديات وفق ADR-023. |
 | 5 | Event Model + Audit Foundation | `VERIFIED COMPLETE — LOCAL/MOCK SCOPE` | Event/Audit منفصلان ومختبران مع Local stores خلف Protocols. |
-| 6 | Catalog Foundation | `PLANNED` | Capability Catalog موحد بهوية مستقرة وDescriptor وDependency Graph وLifecycle وResolver/Bindings لكل قدرة قابلة للإضافة والاستبدال والتقاعد. |
+| 6 | Catalog Foundation | `IN PROGRESS — SLICE 6.1 VERIFIED COMPLETE` | Capability Catalog موحد بهوية مستقرة وDescriptor وDependency Graph وLifecycle وResolver/Bindings لكل قدرة قابلة للإضافة والاستبدال والتقاعد. |
 | 7 | Policy & Access Control | `PLANNED` | Policy-as-Data وAccess Graph ونقطة إنفاذ موحدة والموافقات والصلاحيات المحدودة. |
 | 8 | Runtime Isolation & Safety | `PLANNED` | Runtime Adapters قابلة للاستبدال مع العزل وSandbox وحدود الموارد والأسرار وKill Switch دون branching دائم داخل Manager. |
 | 9 | Durable Workflows | `PLANNED` | Durable Engine خلف عقد شجاع للاستئناف والتعافي وRetry وReplay وCompensation وJournal، مع خطة خروج من المزود. |
@@ -562,7 +562,7 @@ Policy Enforcement وApprovals وDurable Journal وRecovery وObservability وdi
 | Metrics وLogs وTraces وAlerts | 10 |
 | Production storage وdistributed ordering وtamper resistance | 16 |
 
-Stage 6 تبقى `PLANNED` حتى Entry Gate مستقل.
+بدأت Stage 6 بعد Entry Gate مستقل، وأُغلقت Slice 6.1 ضمن نطاق Local/In-Memory. أي شريحة لاحقة تبقى `ENTRY GATE PENDING` حتى اعتماد عقدها صراحة.
 
 ---
 
@@ -572,7 +572,7 @@ Stage 6 تبقى `PLANNED` حتى Entry Gate مستقل.
 
 ### Slice 6.1 — Capability Catalog Foundation
 
-**الحالة:** `APPROVED CONTRACT — RED TESTS NOT WRITTEN`
+**الحالة:** `VERIFIED COMPLETE — LOCAL/IN-MEMORY SCOPE`
 
 **الغرض:** إنشاء أساس عام لـCapability Catalog يملكه شجاع، يعمل Local/In-Memory فقط، دون تكامل مع Runtime في هذه الشريحة.
 
@@ -658,6 +658,18 @@ update/delete، lifecycle transitions، dependency graph/resolution، Resolver/B
 - `core/capabilities/contracts.py`
 - `core/capabilities/catalog.py`
 - `tests/test_stage6_capability_catalog_foundation.py`
+
+#### أدلة الإغلاق
+
+- Implementation commit: `fe3c97f96e6473791236d1804b5ab7f1d2520b2b`.
+- Pre-reconciliation verified checkpoint: `988a82234cf8662e90a262e8baac8494ef69bf97`.
+- Slice 6.1 targeted suite: `74 passed`.
+- Full regression: `441 passed`.
+- `git diff --check`: ناجح عند checkpoint.
+- Local وremote متطابقان، وشجرة العمل نظيفة عند checkpoint.
+- لم تُعد الاختبارات في دفعة المصالحة التوثيقية لعدم وجود Trigger.
+- تبقى كل عناصر «خارج النطاق» أعلاه خارج Slice 6.1.
+- الشريحة التالية غير متعاقد عليها؛ يلزم Owner Approval وEntry Gate مستقل قبل RED أو production code.
 
 <!-- STAGE6_SLICE6_1_CONTRACT_END -->
 
