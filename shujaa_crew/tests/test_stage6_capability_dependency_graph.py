@@ -98,6 +98,7 @@ def test_protocol_exposes_only_the_approved_queries():
         "dependency_cycles",
         "potential_transitive_dependents",
         "dependency_resolution_candidates",
+        "validate_dependency_binding",
     }
 
 

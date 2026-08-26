@@ -75,3 +75,16 @@ class DependencyResolutionCandidates:
     dependency_asset_id: str
     candidate_identities: tuple[CapabilityIdentity, ...]
     disposition: DependencyCandidateDisposition
+
+
+class DependencyBindingDisposition(str, Enum):
+    STRUCTURALLY_VALID = "structurally_valid"
+    DEPENDENCY_NOT_DECLARED = "dependency_not_declared"
+    TARGET_NOT_FOUND = "target_not_found"
+
+
+@dataclass(frozen=True)
+class DependencyBindingValidation:
+    dependency_asset_id: str
+    target_identity: CapabilityIdentity
+    disposition: DependencyBindingDisposition

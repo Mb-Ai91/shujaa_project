@@ -7,6 +7,8 @@ from .catalog import _SchemaRejected, _canonical_descriptor
 from .models import (
     CapabilityDescriptor,
     CapabilityIdentity,
+    DependencyBindingDisposition,
+    DependencyBindingValidation,
     DependencyCandidateDisposition,
     DependencyCycle,
     DependencyResolutionCandidates,
@@ -175,6 +177,48 @@ class InMemoryCapabilityDependencyGraph:
                 )
             )
         return tuple(results)
+
+    def validate_dependency_binding(
+        self,
+        asset_id: str,
+        version: str,
+        dependency_asset_id: str,
+        target_version: str,
+    ) -> DependencyBindingValidation | None:
+        source_identity = (
+            _validated_query_string(asset_id, "asset_id"),
+            _validated_query_string(version, "version"),
+        )
+        canonical_dependency_asset_id = _validated_query_string(
+            dependency_asset_id,
+            "dependency_asset_id",
+        )
+        target_identity = (
+            canonical_dependency_asset_id,
+            _validated_query_string(target_version, "target_version"),
+        )
+
+        dependencies = self._dependencies_by_identity.get(source_identity)
+        if dependencies is None:
+            return None
+
+        if canonical_dependency_asset_id not in dependencies:
+            disposition = (
+                DependencyBindingDisposition.DEPENDENCY_NOT_DECLARED
+            )
+        elif target_identity not in self._candidate_identities_by_asset_id.get(
+            canonical_dependency_asset_id,
+            (),
+        ):
+            disposition = DependencyBindingDisposition.TARGET_NOT_FOUND
+        else:
+            disposition = DependencyBindingDisposition.STRUCTURALLY_VALID
+
+        return DependencyBindingValidation(
+            dependency_asset_id=canonical_dependency_asset_id,
+            target_identity=target_identity,
+            disposition=disposition,
+        )
 
     def unresolved_dependencies(
         self,
