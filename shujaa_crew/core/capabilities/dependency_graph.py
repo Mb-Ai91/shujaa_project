@@ -8,6 +8,10 @@ from .models import (
     CapabilityDescriptor,
     CapabilityIdentity,
     DependencyBindingDisposition,
+    DependencyBindingPlanIssue,
+    DependencyBindingPlanIssueKind,
+    DependencyBindingPlanValidation,
+    DependencyBindingProposal,
     DependencyBindingValidation,
     DependencyCandidateDisposition,
     DependencyCycle,
@@ -22,6 +26,15 @@ def _validated_query_string(value: object, field_name: str) -> str:
     if not value or not value.strip() or value != value.strip():
         raise ValueError(f"{field_name} must be a clean non-empty string")
     return value
+
+
+_BINDING_PLAN_ISSUE_KIND_ORDER = MappingProxyType(
+    {
+        DependencyBindingPlanIssueKind.MISSING_BINDING: 0,
+        DependencyBindingPlanIssueKind.DUPLICATE_BINDING: 1,
+        DependencyBindingPlanIssueKind.CONFLICTING_BINDING: 2,
+    }
+)
 
 
 class InMemoryCapabilityDependencyGraph:
@@ -218,6 +231,122 @@ class InMemoryCapabilityDependencyGraph:
             dependency_asset_id=canonical_dependency_asset_id,
             target_identity=target_identity,
             disposition=disposition,
+        )
+
+    def validate_dependency_binding_plan(
+        self,
+        asset_id: str,
+        version: str,
+        bindings: tuple[DependencyBindingProposal, ...],
+    ) -> DependencyBindingPlanValidation | None:
+        source_identity = (
+            _validated_query_string(asset_id, "asset_id"),
+            _validated_query_string(version, "version"),
+        )
+        if not isinstance(bindings, tuple):
+            raise TypeError("bindings must be a tuple")
+
+        canonical_bindings: list[tuple[str, str]] = []
+        for binding in bindings:
+            if not isinstance(binding, DependencyBindingProposal):
+                raise TypeError(
+                    "bindings must contain DependencyBindingProposal items"
+                )
+            canonical_bindings.append(
+                (
+                    _validated_query_string(
+                        binding.dependency_asset_id,
+                        "dependency_asset_id",
+                    ),
+                    _validated_query_string(
+                        binding.target_version,
+                        "target_version",
+                    ),
+                )
+            )
+
+        dependencies = self._dependencies_by_identity.get(source_identity)
+        if dependencies is None:
+            return None
+
+        grouped: dict[str, list[str]] = {}
+        for dependency_asset_id, target_version in canonical_bindings:
+            grouped.setdefault(dependency_asset_id, []).append(target_version)
+
+        binding_validations: list[DependencyBindingValidation] = []
+        for dependency_asset_id, target_version in sorted(
+            set(canonical_bindings)
+        ):
+            validation = self.validate_dependency_binding(
+                source_identity[0],
+                source_identity[1],
+                dependency_asset_id,
+                target_version,
+            )
+            if validation is None:
+                raise AssertionError("source disappeared from immutable snapshot")
+            binding_validations.append(validation)
+
+        issues: list[DependencyBindingPlanIssue] = []
+        for dependency_asset_id in dependencies:
+            if dependency_asset_id not in grouped:
+                issues.append(
+                    DependencyBindingPlanIssue(
+                        dependency_asset_id=dependency_asset_id,
+                        kind=DependencyBindingPlanIssueKind.MISSING_BINDING,
+                        target_versions=(),
+                    )
+                )
+
+        declared_dependencies = frozenset(dependencies)
+        for dependency_asset_id, target_versions in grouped.items():
+            if dependency_asset_id not in declared_dependencies:
+                continue
+            distinct_versions = tuple(sorted(set(target_versions)))
+            if len(distinct_versions) > 1:
+                issues.append(
+                    DependencyBindingPlanIssue(
+                        dependency_asset_id=dependency_asset_id,
+                        kind=(
+                            DependencyBindingPlanIssueKind.CONFLICTING_BINDING
+                        ),
+                        target_versions=distinct_versions,
+                    )
+                )
+            elif len(target_versions) > 1:
+                issues.append(
+                    DependencyBindingPlanIssue(
+                        dependency_asset_id=dependency_asset_id,
+                        kind=DependencyBindingPlanIssueKind.DUPLICATE_BINDING,
+                        target_versions=distinct_versions,
+                    )
+                )
+
+        ordered_issues = tuple(
+            sorted(
+                issues,
+                key=lambda item: (
+                    item.dependency_asset_id,
+                    _BINDING_PLAN_ISSUE_KIND_ORDER[item.kind],
+                    item.target_versions,
+                ),
+            )
+        )
+        ordered_validations = tuple(binding_validations)
+        structurally_complete = (
+            not ordered_issues
+            and all(
+                validation.disposition
+                is DependencyBindingDisposition.STRUCTURALLY_VALID
+                for validation in ordered_validations
+            )
+        )
+
+        return DependencyBindingPlanValidation(
+            source_identity=source_identity,
+            binding_validations=ordered_validations,
+            issues=ordered_issues,
+            structurally_complete=structurally_complete,
         )
 
     def unresolved_dependencies(

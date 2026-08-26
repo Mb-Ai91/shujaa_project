@@ -7,6 +7,8 @@ from .models import (
     CapabilityIdentity,
     CapabilityLifecycle,
     CapabilityRegistrationResult,
+    DependencyBindingPlanValidation,
+    DependencyBindingProposal,
     DependencyBindingValidation,
     DependencyCandidateDisposition,
     DependencyCycle,
@@ -71,3 +73,11 @@ class CapabilityDependencyGraphProtocol(Protocol):
         dependency_asset_id: str,
         target_version: str,
     ) -> DependencyBindingValidation | None: ...
+
+
+    def validate_dependency_binding_plan(
+        self,
+        asset_id: str,
+        version: str,
+        bindings: tuple[DependencyBindingProposal, ...],
+    ) -> DependencyBindingPlanValidation | None: ...

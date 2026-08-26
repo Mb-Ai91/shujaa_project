@@ -88,3 +88,30 @@ class DependencyBindingValidation:
     dependency_asset_id: str
     target_identity: CapabilityIdentity
     disposition: DependencyBindingDisposition
+
+
+@dataclass(frozen=True)
+class DependencyBindingProposal:
+    dependency_asset_id: str
+    target_version: str
+
+
+class DependencyBindingPlanIssueKind(str, Enum):
+    MISSING_BINDING = "missing_binding"
+    DUPLICATE_BINDING = "duplicate_binding"
+    CONFLICTING_BINDING = "conflicting_binding"
+
+
+@dataclass(frozen=True)
+class DependencyBindingPlanIssue:
+    dependency_asset_id: str
+    kind: DependencyBindingPlanIssueKind
+    target_versions: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class DependencyBindingPlanValidation:
+    source_identity: CapabilityIdentity
+    binding_validations: tuple[DependencyBindingValidation, ...]
+    issues: tuple[DependencyBindingPlanIssue, ...]
+    structurally_complete: bool
