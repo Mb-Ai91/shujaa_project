@@ -12,14 +12,14 @@
 
 | البند | الحالة الحالية |
 |---|---|
-| Repository checkpoint قبل الإغلاق التوثيقي لـSlice 6.5 | `256f781f8f14d880d74786dedd8417b1f28af3ea`؛ التنفيذ محفوظ ومتطابق محليًا وبعيدًا وشجرة العمل نظيفة |
+| Repository checkpoint قبل حفظ عقد Slice 6.6 | `522e7bc37b1962fd06aec1d34133cbecd6dd45ea`؛ المحلي = البعيد وشجرة العمل نظيفة عند Contract Entry Gate |
 | مرجع Slice 6.1 المتحقق | implementation `fe3c97f96e6473791236d1804b5ab7f1d2520b2b`؛ verified checkpoint `988a82234cf8662e90a262e8baac8494ef69bf97` |
 | آخر شريحة مغلقة | Stage 6 / Slice 6.5 — `VERIFIED COMPLETE — LOCAL/IN-MEMORY SCOPE` |
 | الموقع الحالي | Stage 6 — `IN PROGRESS — SLICE 6.5 VERIFIED COMPLETE` |
-| الشريحة التالية | غير متعاقد عليها؛ تحتاج NEXT_SLICE_DISCOVERY وOwner Approval وEntry Gate مستقلًا |
+| الشريحة التالية | Stage 6 / Slice 6.6 — `APPROVED CONTRACT — RED NOT STARTED` |
 | baseline | Stage 5: `10 new + 126 affected + 367 full`؛ Slice 6.1: `74 targeted + 441 full`؛ Slice 6.2: `25 targeted + 74 affected + 466 full`؛ Slice 6.3: `14 targeted + 25 affected + 480 full`؛ Slice 6.4: `18 targeted + 113 affected + 498 full`؛ Slice 6.5: `24 targeted + 131 affected + 522 full` |
 | Audit | Audit 01 مكتمل؛ حكم التوافق محفوظ في artifact مستقل |
-| الإجراء الحالي | NEXT_SLICE_DISCOVERY لـStage 6؛ لا يبدأ RED أو production code قبل عقد مستقل وموافقة المالك |
+| الإجراء الحالي | RED Entry Gate مستقل لـSlice 6.6 وفق العقد المعتمد؛ لا يبدأ production code قبل إثبات RED وموافقة المالك على GREEN |
 
 ---
 
@@ -1119,6 +1119,184 @@ validate_dependency_binding(
 Slice 6.5 مغلقة ومتحققة. الخطوة التالية هي `NEXT_SLICE_DISCOVERY` لـStage 6؛ لا يُعتمد ترتيب لاحق، ولا يبدأ RED أو production code قبل عقد مستقل وموافقة المالك.
 
 <!-- STAGE6_SLICE6_5_CONTRACT_END -->
+
+<!-- STAGE6_SLICE6_6_CONTRACT_BEGIN -->
+## Slice 6.6 — Explicit Dependency Binding Plan Validation Read Model
+
+**الحالة:** `APPROVED CONTRACT — RED NOT STARTED`
+
+### الغرض
+
+إضافة Read Model محلي/In-Memory وحتمي للتحقق البنيوي من خطة Bindings كاملة يقترحها المستدعي لهوية مصدر دقيقة. لا تختار Slice 6.6 أي target، ولا تكمل Binding ناقصة تلقائيًا، ولا تحفظ الخطة أو تعتمدها أو تجعلها قابلة للتشغيل، ولا تعيد تعريف قواعد Binding المنفردة المثبتة في Slice 6.5.
+
+### النماذج العامة
+
+```python
+@dataclass(frozen=True)
+class DependencyBindingProposal:
+    dependency_asset_id: str
+    target_version: str
+```
+
+الـBindings تدخل في `tuple` immutable تحفظ multiplicity؛ لا تستخدم `set` أو `frozenset` لأنهما يمحوان التكرار قبل اكتشافه.
+
+```python
+class DependencyBindingPlanIssueKind(str, Enum):
+    MISSING_BINDING = "missing_binding"
+    DUPLICATE_BINDING = "duplicate_binding"
+    CONFLICTING_BINDING = "conflicting_binding"
+```
+
+```python
+@dataclass(frozen=True)
+class DependencyBindingPlanIssue:
+    dependency_asset_id: str
+    kind: DependencyBindingPlanIssueKind
+    target_versions: tuple[str, ...]
+```
+
+دلالة `target_versions` مغلقة: `()` للـ`MISSING_BINDING`، وإصدار واحد للـ`DUPLICATE_BINDING`، وجميع الإصدارات المختلفة مرتبة حتميًا للـ`CONFLICTING_BINDING`. لا يضاف `duplicate_count` لعدم وجود حاجة مثبتة له.
+
+```python
+@dataclass(frozen=True)
+class DependencyBindingPlanValidation:
+    source_identity: CapabilityIdentity
+    binding_validations: tuple[DependencyBindingValidation, ...]
+    issues: tuple[DependencyBindingPlanIssue, ...]
+    structurally_complete: bool
+```
+
+### الاستعلام
+
+```python
+validate_dependency_binding_plan(
+    asset_id: str,
+    version: str,
+    bindings: tuple[DependencyBindingProposal, ...],
+) -> DependencyBindingPlanValidation | None
+```
+
+هوية المصدر الدقيقة `(asset_id, version)` تقدم مرة واحدة على مستوى الخطة، وكل Proposal تحتوي فقط `dependency_asset_id + target_version`.
+
+### Validation contract وترتيب القرار
+
+1. يخضع `asset_id` و`version` لعقد التحقق الحالي في 6.2–6.5.
+2. يجب أن تكون `bindings` من نوع `tuple`، ويجب أن يكون كل عنصر `DependencyBindingProposal`.
+3. تخضع حقول كل Proposal لعقد النصوص الحالي؛ النوع غير الصحيح ينتج `TypeError` والنص غير الصالح ينتج `ValueError`.
+4. تتحقق جميع المدخلات قبل فحص وجود المصدر، ولا تتحول المدخلات غير الصالحة إلى `None` أو تقرير منظم.
+5. إذا كانت هوية المصدر صالحة شكليًا لكنها غير موجودة في Snapshot، تعاد `None` فقط.
+6. إذا كان المصدر الدقيق موجودًا، يعاد تقرير immutable دائمًا.
+
+### تجميع الخطة والتصنيف المتبادل الاستبعاد
+
+تجمع Proposals حسب `dependency_asset_id` مع حفظ multiplicity والإصدارات المختلفة:
+
+- لا Proposal لاعتماد معلن: `MISSING_BINDING` واحدة.
+- أكثر من Proposal وجميعها لنفس `target_version`: `DUPLICATE_BINDING` واحدة.
+- أكثر من `target_version` مختلف: `CONFLICTING_BINDING` واحدة فقط، مهما كانت multiplicity الداخلية.
+
+لكل `dependency_asset_id` بحد أقصى Issue تجميع واحدة. لا تجتمع `MISSING_BINDING` أو`DUPLICATE_BINDING` أو`CONFLICTING_BINDING` معًا للdependency نفسها. وجود targets مختلفة يصنف `CONFLICTING_BINDING` فقط ولا يضيف duplicate للمجموعة نفسها.
+
+### إعادة استخدام Slice 6.5
+
+لكل زوج فريد `(dependency_asset_id, target_version)` تستخدم 6.6 مسار التحقق المعتمد نفسه في 6.5 وتعيد `DependencyBindingValidation` نفسها بنتائجها المغلقة:
+
+- `STRUCTURALLY_VALID`
+- `DEPENDENCY_NOT_DECLARED`
+- `TARGET_NOT_FOUND`
+
+لا تنشئ 6.6 تعريفًا ثانيًا للصلاحية البنيوية. يتحقق كل زوج فريد مرة واحدة فقط: التكرار المتطابق ينتج validation واحدة مع `DUPLICATE_BINDING`، والtargets المتعارضة تنتج validation لكل target فريد مع `CONFLICTING_BINDING`. يجوز اجتماع conflict مع `TARGET_NOT_FOUND` لأنهما مشكلتان مستقلتان. الاعتماد غير المعلن يظهر عبر نتيجة 6.5 `DEPENDENCY_NOT_DECLARED` ولا تضاف له Issue تجميع جديدة.
+
+### تعريف الاكتمال البنيوي
+
+تكون `structurally_complete=True` إذا وفقط إذا:
+
+1. لكل dependency معلنة Proposal واحدة بالضبط.
+2. لا توجد Proposal لاعتماد غير معلن.
+3. لا توجد duplicate أو conflicting bindings.
+4. جميع `binding_validations` هي `STRUCTURALLY_VALID`.
+
+في جميع الحالات الأخرى تكون `False`. لا يعني الاكتمال approved أو authorized أو eligible أو selected أو resolved automatically أو persisted أو executable أو runtime-capable.
+
+### الحالات الحدية
+
+- مصدر بلا dependencies مع خطة فارغة: مكتمل بنيويًا.
+- مصدر بلا dependencies مع خطة غير فارغة: تعيد كل Binding `DEPENDENCY_NOT_DECLARED` والخطة غير مكتملة.
+- Proposal لاعتماد غير معلن لا تصبح صالحة بسبب اكتمال بقية الاعتماديات.
+- self-dependency تعامل بنيويًا مثل غيرها عبر 6.5، ويبقى كشف cycles ضمن 6.2.
+- المطابقة exact وحساسة لحالة الأحرف، ولا يستخدم union اعتماديات إصدارات المصدر الأخرى.
+
+### الحتمية والترتيب
+
+لا يؤثر ترتيب المدخلات في ترتيب المخرجات:
+
+- ترتب `binding_validations` حسب `(dependency_asset_id, target_version)`.
+- يعرف العقد ترتيب Issue ثابتًا: `MISSING_BINDING` ثم `DUPLICATE_BINDING` ثم `CONFLICTING_BINDING`.
+- ترتب `issues` حسب `(dependency_asset_id, ISSUE_KIND_ORDER[kind], target_versions)` حيث الرتب `0، 1، 2` وفق الترتيب الثابت أعلاه، ولا يعتمد الترتيب على قابلية مقارنة Enum أو على تغير قيمها مستقبلًا.
+- ترتب `target_versions` داخل conflict تصاعديًا.
+- لا تكشف أي مجموعة داخلية قابلة للتعديل.
+
+### Snapshot isolation والفهرسة
+
+- تستخدم 6.6 Graph Snapshot نفسها وقواعد 6.5 نفسها.
+- لا قراءة لاحقة من Catalog، ولا Catalog live reference أو live lock أو hidden index update.
+- لا rescan كامل للCatalog أو جميع descriptors؛ تستخدم فهارس Snapshot القائمة.
+- التسجيل اللاحق في Catalog لا يغير نتيجة Snapshot قديمة؛ Snapshot جديدة فقط قد تنتج نتيجة مختلفة.
+- النتائج immutable وحتمية.
+
+### خارج النطاق
+
+- Binding storage أو persistence.
+- automatic Resolver أو automatic selection.
+- latest أو ranking أو version constraints.
+- Lifecycle filtering أو transitions.
+- Policy وpermissions وapprovals.
+- Runtime وAdapter integration.
+- fallback وrollback.
+- removal enforcement.
+- distributed behavior.
+- mutation لأي Catalog أو Graph.
+
+### ملفات التنفيذ المتوقعة
+
+- `core/capabilities/models.py`
+- `core/capabilities/contracts.py`
+- `core/capabilities/dependency_graph.py`
+- `core/capabilities/__init__.py`
+- `tests/test_stage6_capability_dependency_binding_plan_validation.py`
+
+### بوابة RED ومعايير القبول
+
+1. النماذج العامة مغلقة وimmutable ومحدودة الحقول، مع tuple تحفظ multiplicity.
+2. شكل API المعتمد فقط، دون storage أو selection أو mutation.
+3. Validation contract وترتيبه وفصل invalid input عن المصدر الصحيح المفقود.
+4. المصدر الدقيق المفقود يعيد `None`.
+5. خطة فارغة لمصدر بلا dependencies مكتملة بنيويًا.
+6. missing binding لاعتماد معلن.
+7. undeclared binding عبر نتيجة 6.5 نفسها.
+8. duplicate مطابق ينتج Issue واحدة وvalidation واحدة للزوج الفريد.
+9. targets مختلفة تنتج conflict واحدة فقط مهما كانت multiplicity ولا تنتج duplicate للمجموعة نفسها.
+10. إعادة جميع المشكلات المستقلة معًا بدل first-error disposition.
+11. target غير موجود يبقى `TARGET_NOT_FOUND` وفق 6.5.
+12. خطة صحيحة كاملة تنتج `structurally_complete=True` دون معنى approval أو Runtime.
+13. فحص Descriptor المصدر الدقيق وعدم استخدام union بين الإصدارات.
+14. إعادة استخدام دلالات ومسار 6.5 دون تعريف موازٍ أو drift.
+15. self-dependency وLifecycle تتبعان حدود 6.5 الحالية.
+16. ترتيب حتمي صريح مستقل عن ترتيب الإدخال وعن مقارنة Enum.
+17. بحد أقصى Issue تجميع واحدة لكل dependency، وعدم إضافة `duplicate_count`.
+18. Snapshot isolation واستخدام الفهارس بلا Catalog rescan أو live reference.
+19. immutability وعدم تسريب المجموعات الداخلية.
+20. عدم إحداث regression في عقود 6.1–6.5 وعدم إدخال أي عنصر من خارج النطاق.
+21. full regression في Exit Gate فقط بعد نجاح targeted وaffected suites.
+
+### الإجراء التالي
+
+العقد محفوظ ومعتمد من المالك. لا يبدأ production code. الدفعة التالية المستقلة هي RED Entry Gate لـSlice 6.6 بعد تحقق Git والنطاق، وتثبت الاختبارات الفشل للأسباب المقصودة فقط.
+
+بعد إغلاق Slice 6.6 يعاد `NEXT_SLICE_DISCOVERY`؛ لا يفترض مسبقًا أن Resolver أو Binding persistence أو Lifecycle هي الشريحة التالية.
+
+<!-- STAGE6_SLICE6_6_CONTRACT_END -->
+
 
 <!-- CONTRACT_ADVERSARIAL_REVIEW_GATE_BEGIN -->
 ## Contract Adversarial Review Gate — Cross-Stage
