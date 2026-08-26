@@ -4,7 +4,7 @@
 > **الإصدار:** 1.3
 > **آخر تحديث موثق:** 26 أغسطس 2026
 > **النطاق:** 19 مرحلة مترابطة بالاعتماديات، من Stage 0 إلى Stage 18
-> **مرجع Stage 6 / Slice 6.3:** implementation `1d20fced920cdff4b413392d3df78f27b1b8b1e4`؛ `14 targeted + 25 affected + 480 full`
+> **مرجع Stage 6 / Slice 6.4:** implementation `48027daa054c1b982cae30b2489978ad9531a2e9`؛ `18 targeted + 113 affected + 498 full`
 
 ---
 
@@ -12,14 +12,14 @@
 
 | البند | الحالة الحالية |
 |---|---|
-| Repository checkpoint قبل حفظ عقد Slice 6.4 | `d6fe09eab6cfa58784d6a59f841c89b651547760`؛ المحلي = البعيد وشجرة العمل نظيفة عند Entry Gate |
+| Repository checkpoint قبل الإغلاق التوثيقي لـSlice 6.4 | `48027daa054c1b982cae30b2489978ad9531a2e9`؛ التنفيذ محفوظ ومتطابق محليًا وبعيدًا وشجرة العمل نظيفة |
 | مرجع Slice 6.1 المتحقق | implementation `fe3c97f96e6473791236d1804b5ab7f1d2520b2b`؛ verified checkpoint `988a82234cf8662e90a262e8baac8494ef69bf97` |
-| آخر شريحة مغلقة | Stage 6 / Slice 6.3 — `VERIFIED COMPLETE — LOCAL/IN-MEMORY SCOPE` |
-| الموقع الحالي | Stage 6 — `IN PROGRESS — SLICE 6.3 VERIFIED COMPLETE` |
-| الشريحة التالية | Stage 6 / Slice 6.4 — `APPROVED CONTRACT — RED NOT STARTED` |
-| baseline | Stage 5: `10 new + 126 affected + 367 full`؛ Slice 6.1: `74 targeted + 441 full`؛ Slice 6.2: `25 targeted + 74 affected + 466 full`؛ Slice 6.3: `14 targeted + 25 affected + 480 full` |
+| آخر شريحة مغلقة | Stage 6 / Slice 6.4 — `VERIFIED COMPLETE — LOCAL/IN-MEMORY SCOPE` |
+| الموقع الحالي | Stage 6 — `IN PROGRESS — SLICE 6.4 VERIFIED COMPLETE` |
+| الشريحة التالية | غير متعاقد عليها؛ تحتاج NEXT_SLICE_DISCOVERY وOwner Approval وEntry Gate مستقلًا |
+| baseline | Stage 5: `10 new + 126 affected + 367 full`؛ Slice 6.1: `74 targeted + 441 full`؛ Slice 6.2: `25 targeted + 74 affected + 466 full`؛ Slice 6.3: `14 targeted + 25 affected + 480 full`؛ Slice 6.4: `18 targeted + 113 affected + 498 full` |
 | Audit | Audit 01 مكتمل؛ حكم التوافق محفوظ في artifact مستقل |
-| الإجراء الحالي | RED Entry Gate مستقل لـSlice 6.4 وفق العقد المعتمد؛ لا يبدأ production code قبل إثبات RED وموافقة المالك على GREEN |
+| الإجراء الحالي | NEXT_SLICE_DISCOVERY لـStage 6؛ لا يبدأ RED أو production code قبل عقد مستقل وموافقة المالك |
 
 ---
 
@@ -96,7 +96,7 @@
 | 3 | Unified Execution Model | `VERIFIED COMPLETE` | مسار موحد: Manager → Work → Task → Execution → Dispatcher → Executor/Runner. |
 | 4 | Full Execution Lifecycle Control | `VERIFIED COMPLETE` | تحكم محلي/Mock في دورة التنفيذ وسباقات الحالات النهائية والإلغاء والمهلة وRetry الآمنة والتنظيف والملكية؛ Pause/Resume منقولة بالاعتماديات وفق ADR-023. |
 | 5 | Event Model + Audit Foundation | `VERIFIED COMPLETE — LOCAL/MOCK SCOPE` | Event/Audit منفصلان ومختبران مع Local stores خلف Protocols. |
-| 6 | Catalog Foundation | `IN PROGRESS — SLICE 6.3 VERIFIED COMPLETE` | Capability Catalog موحد بهوية مستقرة وDescriptor وDependency Graph وLifecycle وResolver/Bindings لكل قدرة قابلة للإضافة والاستبدال والتقاعد. |
+| 6 | Catalog Foundation | `IN PROGRESS — SLICE 6.4 VERIFIED COMPLETE` | Capability Catalog موحد بهوية مستقرة وDescriptor وDependency Graph وLifecycle وResolver/Bindings لكل قدرة قابلة للإضافة والاستبدال والتقاعد. |
 | 7 | Policy & Access Control | `PLANNED` | Policy-as-Data وAccess Graph ونقطة إنفاذ موحدة والموافقات والصلاحيات المحدودة. |
 | 8 | Runtime Isolation & Safety | `PLANNED` | Runtime Adapters قابلة للاستبدال مع العزل وSandbox وحدود الموارد والأسرار وKill Switch دون branching دائم داخل Manager. |
 | 9 | Durable Workflows | `PLANNED` | Durable Engine خلف عقد شجاع للاستئناف والتعافي وRetry وReplay وCompensation وJournal، مع خطة خروج من المزود. |
@@ -901,7 +901,7 @@ Slice 6.3 مغلقة ومتحققة. عقد Slice 6.4 محفوظ ومعتمد؛ 
 <!-- STAGE6_SLICE6_4_CONTRACT_BEGIN -->
 ## Slice 6.4 — Capability Dependency Resolution Candidates Read Model
 
-**الحالة:** `APPROVED CONTRACT — RED NOT STARTED`
+**الحالة:** `VERIFIED COMPLETE — LOCAL/IN-MEMORY SCOPE`
 
 ### الغرض
 
@@ -986,9 +986,18 @@ dependency_resolution_candidates(
 12. عدم إضافة Resolver/Binding أو Runtime/Policy/lifecycle/removal semantics.
 13. full regression في Exit Gate فقط بعد نجاح targeted وaffected suites.
 
+### أدلة الإغلاق
+
+- Implementation commit: `48027daa054c1b982cae30b2489978ad9531a2e9`.
+- RED: `18 failed` للأسباب المقصودة.
+- GREEN: `18 targeted passed` و`113 affected passed`.
+- Full regression: `498 passed`؛ failures/errors/skipped = `0/0/0`.
+- `git diff --check`: ناجح، وLocal HEAD = Remote HEAD بعد push.
+- بقي النطاق Local/In-Memory وRead-only دون Resolver/Binding أو اختيار تشغيلي.
+
 ### الإجراء التالي
 
-العقد محفوظ ومعتمد من المالك. لا يبدأ production code. الدفعة التالية المستقلة هي RED Entry Gate لـSlice 6.4، مع تحقق Git ونطاق واختبارات تفشل للأسباب المقصودة.
+Slice 6.4 مغلقة ومتحققة. الخطوة التالية هي `NEXT_SLICE_DISCOVERY` لـStage 6؛ لا يُعتمد ترتيب لاحق، ولا يبدأ RED أو production code قبل عقد مستقل وموافقة المالك.
 
 <!-- STAGE6_SLICE6_4_CONTRACT_END -->
 

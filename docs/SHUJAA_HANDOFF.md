@@ -9,23 +9,23 @@
 | البند | الحالة الحالية المثبتة |
 |---|---|
 | المستودع / الفرع | `Mb-Ai91/shujaa_project` / `refactor/modular-architecture` |
-| Repository checkpoint قبل حفظ عقد Slice 6.4 | `d6fe09eab6cfa58784d6a59f841c89b651547760`؛ Local HEAD = Remote HEAD وشجرة العمل نظيفة عند Entry Gate |
+| Repository checkpoint قبل الإغلاق التوثيقي لـSlice 6.4 | `48027daa054c1b982cae30b2489978ad9531a2e9`؛ Local HEAD = Remote HEAD وشجرة العمل نظيفة بعد حفظ التنفيذ |
 | مرجع Slice 6.1 المتحقق | implementation `fe3c97f96e6473791236d1804b5ab7f1d2520b2b`؛ verified checkpoint `988a82234cf8662e90a262e8baac8494ef69bf97` |
 | Worktree | نظيفة عند بدء المصالحة التوثيقية |
 | Stage 4 | `VERIFIED COMPLETE — LOCAL/MOCK SCOPE` |
 | Stage 5 | `VERIFIED COMPLETE — LOCAL/MOCK SCOPE` |
-| Stage 6 | `IN PROGRESS — SLICE 6.3 VERIFIED COMPLETE` |
+| Stage 6 | `IN PROGRESS — SLICE 6.4 VERIFIED COMPLETE` |
 | Slice 6.2 | `VERIFIED COMPLETE — LOCAL/IN-MEMORY SCOPE` |
 | Slice 6.3 | `VERIFIED COMPLETE — LOCAL/IN-MEMORY SCOPE` |
-| Slice 6.4 | `APPROVED CONTRACT — RED NOT STARTED` |
+| Slice 6.4 | `VERIFIED COMPLETE — LOCAL/IN-MEMORY SCOPE` |
 | Contract Review Gate | `ADOPTED — DESIGN/CONTRACT GATES ONLY`؛ لا تعدّل Skill النشطة ولا تمنح إذن تنفيذ |
 | Owner Constraint Gate | `GO — DEVELOPMENT COMMAND SCOPE`؛ السجل والـvalidator والاختبارات ملتزمة ومرفوعة |
-| الاختبارات | Stage 5: `10 new + 126 affected + 367 full`؛ Slice 6.1: `74 targeted + 441 full`؛ Slice 6.2: `25 targeted + 74 affected + 466 full`؛ Slice 6.3: `14 targeted + 25 affected + 480 full` |
+| الاختبارات | Stage 5: `10 new + 126 affected + 367 full`؛ Slice 6.1: `74 targeted + 441 full`؛ Slice 6.2: `25 targeted + 74 affected + 466 full`؛ Slice 6.3: `14 targeted + 25 affected + 480 full`؛ Slice 6.4: `18 targeted + 113 affected + 498 full` |
 | Audit 01 | `COMPLETE` باستخدام القيود والأدوات المعتمدة، والنتيجة الكاملة محفوظة في ملف التدقيق |
 | Compatibility | `COMPATIBLE — NO CHANGE BEFORE STAGE 5`؛ التحسينات غير المانعة migrations مخططة لمراحلها |
 | Shujaa Development Skill | النسخة النشطة `v0.6` لم تتغير؛ `v0.7` لم تُنشأ ولم تُستخدم |
-| الموانع المفتوحة | لا يوجد مانع مثبت أمام RED Entry Gate لـSlice 6.4؛ التنفيذ لم يبدأ |
-| الإجراء التالي الوحيد | RED Entry Gate مستقل لـSlice 6.4 وفق العقد المعتمد؛ لا يبدأ production code قبل إثبات RED وموافقة المالك على GREEN |
+| الموانع المفتوحة | لا يوجد مانع مثبت؛ الشريحة التالية في Stage 6 غير متعاقد عليها |
+| الإجراء التالي الوحيد | NEXT_SLICE_DISCOVERY لـStage 6، ثم تصميم واعتماد عقد مستقل؛ لا يبدأ RED أو production code قبل موافقة المالك |
 
 **مراجع السلطة:** ADR-024 وADR-025 وADR-026 وADR-027، و`SHUJAA_OWNER_CONSTRAINTS.yaml`، وخطة Stage 5، وActive Roadmap.
 
@@ -1253,6 +1253,21 @@ Stage 6 — `Catalog Foundation` بدأت ضمن نطاق Local/In-Memory، وأ
 - بقي lifecycle وpaths وseverity وremoval enforcement وResolver/Binding وPolicy وRuntime وpersistence خارج النطاق.
 - ترتيب الشرائح اللاحقة اتجاه مرشح فقط؛ يلزم `NEXT_SLICE_DISCOVERY` جديد قبل اعتماد أي شريحة.
 
+
+
+### Stage 6 / Slice 6.4 — Closure Receipt
+
+- الحالة: `VERIFIED COMPLETE — LOCAL/IN-MEMORY SCOPE`.
+- Implementation commit: `48027daa054c1b982cae30b2489978ad9531a2e9`.
+- RED: `18 failed` للأسباب المقصودة قبل إضافة implementation.
+- GREEN: `18 targeted passed` و`113 affected passed` لمجمل 6.1–6.3.
+- Full regression: `498 passed`؛ failures/errors/skipped = `0/0/0`.
+- `git diff --check`: ناجح، والمحلي والبعيد متطابقان بعد push.
+- المرشحون جميع هويات الإصدارات الموجودة في Graph Snapshot دون lifecycle أو Policy filtering.
+- `UNIQUE` تعني مرشحًا مسجلًا واحدًا فقط، ولا تعني resolved أو approved أو اختيارًا تشغيليًا.
+- الفهرس الداخلي immutable ومبني مرة واحدة؛ لا مرجع حي إلى Catalog ولا rescan لكل dependency.
+- لا يثبت هذا الإغلاق Resolver/Binding أو fallback/rollback أو Runtime/Policy/lifecycle/removal enforcement.
+- الإجراء التالي: `NEXT_SLICE_DISCOVERY` لـStage 6 ثم Owner Approval وEntry Gate مستقل.
 
 ---
 
