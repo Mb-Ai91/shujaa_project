@@ -12,14 +12,14 @@
 
 | البند | الحالة الحالية |
 |---|---|
-| Repository checkpoint قبل الإغلاق التوثيقي لـSlice 6.4 | `48027daa054c1b982cae30b2489978ad9531a2e9`؛ التنفيذ محفوظ ومتطابق محليًا وبعيدًا وشجرة العمل نظيفة |
+| Repository checkpoint قبل حفظ عقد Slice 6.5 | `8b54c615117ba1cb5161c5f437575a1b81b546cd`؛ المحلي = البعيد وشجرة العمل نظيفة عند Entry Gate |
 | مرجع Slice 6.1 المتحقق | implementation `fe3c97f96e6473791236d1804b5ab7f1d2520b2b`؛ verified checkpoint `988a82234cf8662e90a262e8baac8494ef69bf97` |
 | آخر شريحة مغلقة | Stage 6 / Slice 6.4 — `VERIFIED COMPLETE — LOCAL/IN-MEMORY SCOPE` |
 | الموقع الحالي | Stage 6 — `IN PROGRESS — SLICE 6.4 VERIFIED COMPLETE` |
-| الشريحة التالية | غير متعاقد عليها؛ تحتاج NEXT_SLICE_DISCOVERY وOwner Approval وEntry Gate مستقلًا |
+| الشريحة التالية | Stage 6 / Slice 6.5 — `APPROVED CONTRACT — RED NOT STARTED` |
 | baseline | Stage 5: `10 new + 126 affected + 367 full`؛ Slice 6.1: `74 targeted + 441 full`؛ Slice 6.2: `25 targeted + 74 affected + 466 full`؛ Slice 6.3: `14 targeted + 25 affected + 480 full`؛ Slice 6.4: `18 targeted + 113 affected + 498 full` |
 | Audit | Audit 01 مكتمل؛ حكم التوافق محفوظ في artifact مستقل |
-| الإجراء الحالي | NEXT_SLICE_DISCOVERY لـStage 6؛ لا يبدأ RED أو production code قبل عقد مستقل وموافقة المالك |
+| الإجراء الحالي | RED Entry Gate مستقل لـSlice 6.5 وفق العقد المعتمد؛ لا يبدأ production code قبل إثبات RED وموافقة المالك على GREEN |
 
 ---
 
@@ -1001,6 +1001,117 @@ Slice 6.4 مغلقة ومتحققة. الخطوة التالية هي `NEXT_SLIC
 
 <!-- STAGE6_SLICE6_4_CONTRACT_END -->
 
+
+
+<!-- STAGE6_SLICE6_5_CONTRACT_BEGIN -->
+## Slice 6.5 — Explicit Dependency Binding Validation Read Model
+
+**الحالة:** `APPROVED CONTRACT — RED NOT STARTED`
+
+### الغرض وحدود معنى Binding
+
+إضافة Read Model محلي/In-Memory وحتمي للتحقق البنيوي من Binding صريح يقترحه المستدعي. لا تختار Slice 6.5 Binding، ولا تحفظها، ولا تعتمدها، ولا تجعلها قابلة للتشغيل.
+
+### العقد العام
+
+- `DependencyBindingDisposition` قيمه المغلقة: `STRUCTURALLY_VALID` و`DEPENDENCY_NOT_DECLARED` و`TARGET_NOT_FOUND`.
+- `DependencyBindingValidation` سجل immutable يحتوي فقط:
+  - `dependency_asset_id: str`
+  - `target_identity: CapabilityIdentity`
+  - `disposition: DependencyBindingDisposition`
+- يضاف إلى `CapabilityDependencyGraphProtocol` والتنفيذ المحلي:
+
+```python
+validate_dependency_binding(
+    asset_id: str,
+    version: str,
+    dependency_asset_id: str,
+    target_version: str,
+) -> DependencyBindingValidation | None
+```
+
+هوية الهدف مشتقة حتميًا بالشكل `(dependency_asset_id, target_version)`.
+
+### ترتيب القرار والتحقق
+
+1. كل مدخل يتبع validation contract الحالي في 6.2–6.4؛ الأنواع غير الصحيحة تنتج `TypeError` والنصوص غير الصالحة تنتج `ValueError`، ولا تتحول إلى نتيجة منظمة.
+2. إذا كانت هوية المصدر صالحة شكليًا لكنها غير موجودة في Snapshot، تعاد `None` فقط.
+3. إذا وجد Descriptor المصدر الدقيق لكنه لا يعلن `dependency_asset_id`، تعاد `DEPENDENCY_NOT_DECLARED` دون اعتبار لاعتماديات إصدارات المصدر الأخرى.
+4. إذا كانت dependency معلنة لكن هوية الهدف الدقيقة غير مسجلة، تعاد `TARGET_NOT_FOUND`.
+5. إذا كانت dependency معلنة وهوية الهدف الدقيقة مسجلة، تعاد `STRUCTURALLY_VALID`.
+
+### هوية المصدر وعدم استخدام union
+
+- يفحص إعلان dependency على Descriptor هوية المصدر الدقيقة `(asset_id, version)` فقط.
+- لا يستخدم union اعتماديات جميع إصدارات `asset_id`.
+- union المستخدم في 6.3 يخص potential impact ولا يغير دلالة Binding الخاصة بإصدار مصدر محدد في 6.5.
+
+### اتساق المرشحين مع Slice 6.4
+
+بعد صلاحية المدخل، ووجود المصدر الدقيق، وثبوت إعلانه dependency، تكون `STRUCTURALLY_VALID` صحيحة إذا وفقط إذا كانت `(dependency_asset_id, target_version)` ضمن `candidate_identities` للdependency نفسها في Snapshot نفسها وفق تعريف 6.4.
+
+- لا تنشئ 6.5 تعريفًا ثانيًا للمرشحين.
+- تستخدم الهوية والفهارس وSnapshot نفسها التي تعتمد عليها 6.4.
+- `TARGET_NOT_FOUND` تشمل غياب `dependency_asset_id` كليًا، أو وجود الأصل بإصدارات أخرى دون `target_version` المطلوبة.
+
+### معنى STRUCTURALLY_VALID
+
+تعني structural match فقط. لا تعني approved أو authorized أو eligible أو selected أو resolved automatically أو runtime-capable أو persisted binding.
+
+- Lifecycle لا تدخل في التحقق.
+- تبقى هوية `RETIRED` أو`QUARANTINED` structurally valid إذا كانت مسجلة بدقة وتحققت الشروط البنيوية.
+- تعامل self-dependency بنيويًا بصورة عادية؛ يبقى كشف cycles من اختصاص Slice 6.2.
+
+### Snapshot isolation والفهرسة
+
+- Snapshot بُنيت قبل تسجيل الهدف وتعيد `TARGET_NOT_FOUND` تبقى كذلك.
+- التسجيل اللاحق في Catalog لا يغير Snapshot القديمة.
+- Snapshot جديدة مبنية بعد التسجيل فقط قد تعيد `STRUCTURALLY_VALID`.
+- لا قراءة لاحقة من Catalog، ولا Catalog live reference، ولا live lock، ولا hidden index update.
+- تستخدم فهارس Snapshot القائمة؛ لا يعاد مسح Catalog أو جميع descriptors لكل validation.
+- النتائج immutable وحتمية، ولا تُكشف مجموعات داخلية قابلة للتعديل.
+
+### خارج النطاق
+
+- Binding persistence وautomatic Resolver وautomatic selection.
+- latest وranking وversion constraints.
+- Lifecycle transitions وPolicy وpermissions وapprovals.
+- Runtime وAdapter integration وfallback وrollback.
+- removal enforcement وpersistence وdistributed behavior.
+
+### ملفات التنفيذ المتوقعة
+
+- `core/capabilities/models.py`
+- `core/capabilities/contracts.py`
+- `core/capabilities/dependency_graph.py`
+- `core/capabilities/__init__.py`
+- `tests/test_stage6_capability_dependency_binding_validation.py`
+
+### بوابة RED ومعايير القبول
+
+1. واجهة التحقق المعتمدة فقط، دون تخزين أو اختيار أو اعتماد أو تشغيل Binding.
+2. validation الحالي وفصل invalid input عن source الصحيح المفقود.
+3. ترتيب القرار المثبت ونتائجه الثلاث فقط.
+4. فحص declaration على Descriptor المصدر بالإصدار الدقيق دون union بين الإصدارات.
+5. invariant مطابق لمرشحي 6.4 في Snapshot نفسها، دون تعريف مرشحين موازٍ.
+6. `TARGET_NOT_FOUND` للهدف الغائب وللإصدار الدقيق الغائب مع وجود إصدارات أخرى.
+7. إثبات أن `STRUCTURALLY_VALID` structural match فقط.
+8. عدم تصفية Lifecycle، بما فيها `RETIRED` و`QUARANTINED`.
+9. self-dependency عادية بنيويًا مع بقاء cycles ضمن 6.2.
+10. Snapshot قديمة تبقى `TARGET_NOT_FOUND` بعد التسجيل، وSnapshot جديدة فقط قد تصبح `STRUCTURALLY_VALID`.
+11. استخدام الفهارس القائمة بلا Catalog rescan أو live reference/lock/hidden update.
+12. immutability والحتمية وعدم تسريب المجموعات الداخلية.
+13. عدم إحداث regression في عقود 6.1–6.4.
+14. عدم إضافة أي عنصر من خارج النطاق.
+15. full regression في Exit Gate فقط بعد نجاح targeted وaffected suites.
+
+### الإجراء التالي
+
+العقد محفوظ ومعتمد من المالك. لا يبدأ production code. الدفعة التالية المستقلة هي RED Entry Gate لـSlice 6.5، مع تحقق Git ونطاق واختبارات تفشل للأسباب المقصودة.
+
+بعد إغلاق Slice 6.5 يعاد `NEXT_SLICE_DISCOVERY`، ولا يفترض مسبقًا أن Lifecycle أو Resolver أو Binding persistence هي الشريحة التالية.
+
+<!-- STAGE6_SLICE6_5_CONTRACT_END -->
 
 <!-- CONTRACT_ADVERSARIAL_REVIEW_GATE_BEGIN -->
 ## Contract Adversarial Review Gate — Cross-Stage
