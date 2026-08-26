@@ -4,7 +4,7 @@
 > **الإصدار:** 1.3
 > **آخر تحديث موثق:** 26 أغسطس 2026
 > **النطاق:** 19 مرحلة مترابطة بالاعتماديات، من Stage 0 إلى Stage 18
-> **مرجع Stage 6 / Slice 6.4:** implementation `48027daa054c1b982cae30b2489978ad9531a2e9`؛ `18 targeted + 113 affected + 498 full`
+> **مرجع Stage 6 / Slice 6.5:** implementation `256f781f8f14d880d74786dedd8417b1f28af3ea`؛ `24 targeted + 131 affected + 522 full`
 
 ---
 
@@ -12,14 +12,14 @@
 
 | البند | الحالة الحالية |
 |---|---|
-| Repository checkpoint قبل حفظ عقد Slice 6.5 | `8b54c615117ba1cb5161c5f437575a1b81b546cd`؛ المحلي = البعيد وشجرة العمل نظيفة عند Entry Gate |
+| Repository checkpoint قبل الإغلاق التوثيقي لـSlice 6.5 | `256f781f8f14d880d74786dedd8417b1f28af3ea`؛ التنفيذ محفوظ ومتطابق محليًا وبعيدًا وشجرة العمل نظيفة |
 | مرجع Slice 6.1 المتحقق | implementation `fe3c97f96e6473791236d1804b5ab7f1d2520b2b`؛ verified checkpoint `988a82234cf8662e90a262e8baac8494ef69bf97` |
-| آخر شريحة مغلقة | Stage 6 / Slice 6.4 — `VERIFIED COMPLETE — LOCAL/IN-MEMORY SCOPE` |
-| الموقع الحالي | Stage 6 — `IN PROGRESS — SLICE 6.4 VERIFIED COMPLETE` |
-| الشريحة التالية | Stage 6 / Slice 6.5 — `APPROVED CONTRACT — RED NOT STARTED` |
-| baseline | Stage 5: `10 new + 126 affected + 367 full`؛ Slice 6.1: `74 targeted + 441 full`؛ Slice 6.2: `25 targeted + 74 affected + 466 full`؛ Slice 6.3: `14 targeted + 25 affected + 480 full`؛ Slice 6.4: `18 targeted + 113 affected + 498 full` |
+| آخر شريحة مغلقة | Stage 6 / Slice 6.5 — `VERIFIED COMPLETE — LOCAL/IN-MEMORY SCOPE` |
+| الموقع الحالي | Stage 6 — `IN PROGRESS — SLICE 6.5 VERIFIED COMPLETE` |
+| الشريحة التالية | غير متعاقد عليها؛ تحتاج NEXT_SLICE_DISCOVERY وOwner Approval وEntry Gate مستقلًا |
+| baseline | Stage 5: `10 new + 126 affected + 367 full`؛ Slice 6.1: `74 targeted + 441 full`؛ Slice 6.2: `25 targeted + 74 affected + 466 full`؛ Slice 6.3: `14 targeted + 25 affected + 480 full`؛ Slice 6.4: `18 targeted + 113 affected + 498 full`؛ Slice 6.5: `24 targeted + 131 affected + 522 full` |
 | Audit | Audit 01 مكتمل؛ حكم التوافق محفوظ في artifact مستقل |
-| الإجراء الحالي | RED Entry Gate مستقل لـSlice 6.5 وفق العقد المعتمد؛ لا يبدأ production code قبل إثبات RED وموافقة المالك على GREEN |
+| الإجراء الحالي | NEXT_SLICE_DISCOVERY لـStage 6؛ لا يبدأ RED أو production code قبل عقد مستقل وموافقة المالك |
 
 ---
 
@@ -96,7 +96,7 @@
 | 3 | Unified Execution Model | `VERIFIED COMPLETE` | مسار موحد: Manager → Work → Task → Execution → Dispatcher → Executor/Runner. |
 | 4 | Full Execution Lifecycle Control | `VERIFIED COMPLETE` | تحكم محلي/Mock في دورة التنفيذ وسباقات الحالات النهائية والإلغاء والمهلة وRetry الآمنة والتنظيف والملكية؛ Pause/Resume منقولة بالاعتماديات وفق ADR-023. |
 | 5 | Event Model + Audit Foundation | `VERIFIED COMPLETE — LOCAL/MOCK SCOPE` | Event/Audit منفصلان ومختبران مع Local stores خلف Protocols. |
-| 6 | Catalog Foundation | `IN PROGRESS — SLICE 6.4 VERIFIED COMPLETE` | Capability Catalog موحد بهوية مستقرة وDescriptor وDependency Graph وLifecycle وResolver/Bindings لكل قدرة قابلة للإضافة والاستبدال والتقاعد. |
+| 6 | Catalog Foundation | `IN PROGRESS — SLICE 6.5 VERIFIED COMPLETE` | Capability Catalog موحد بهوية مستقرة وDescriptor وDependency Graph وLifecycle وResolver/Bindings لكل قدرة قابلة للإضافة والاستبدال والتقاعد. |
 | 7 | Policy & Access Control | `PLANNED` | Policy-as-Data وAccess Graph ونقطة إنفاذ موحدة والموافقات والصلاحيات المحدودة. |
 | 8 | Runtime Isolation & Safety | `PLANNED` | Runtime Adapters قابلة للاستبدال مع العزل وSandbox وحدود الموارد والأسرار وKill Switch دون branching دائم داخل Manager. |
 | 9 | Durable Workflows | `PLANNED` | Durable Engine خلف عقد شجاع للاستئناف والتعافي وRetry وReplay وCompensation وJournal، مع خطة خروج من المزود. |
@@ -1006,7 +1006,7 @@ Slice 6.4 مغلقة ومتحققة. الخطوة التالية هي `NEXT_SLIC
 <!-- STAGE6_SLICE6_5_CONTRACT_BEGIN -->
 ## Slice 6.5 — Explicit Dependency Binding Validation Read Model
 
-**الحالة:** `APPROVED CONTRACT — RED NOT STARTED`
+**الحالة:** `VERIFIED COMPLETE — LOCAL/IN-MEMORY SCOPE`
 
 ### الغرض وحدود معنى Binding
 
@@ -1105,11 +1105,18 @@ validate_dependency_binding(
 14. عدم إضافة أي عنصر من خارج النطاق.
 15. full regression في Exit Gate فقط بعد نجاح targeted وaffected suites.
 
+### أدلة الإغلاق
+
+- Implementation commit: `256f781f8f14d880d74786dedd8417b1f28af3ea`.
+- RED: `24 failed` للأسباب المقصودة.
+- GREEN: `24 targeted passed` و`131 affected passed`.
+- Full regression: `522 passed`؛ failures/errors/skipped = `0/0/0`.
+- `git diff --check`: ناجح، وLocal HEAD = Remote HEAD بعد push.
+- بقي النطاق Local/In-Memory وRead-only دون Binding persistence أو Resolver/selection أو Policy/Runtime.
+
 ### الإجراء التالي
 
-العقد محفوظ ومعتمد من المالك. لا يبدأ production code. الدفعة التالية المستقلة هي RED Entry Gate لـSlice 6.5، مع تحقق Git ونطاق واختبارات تفشل للأسباب المقصودة.
-
-بعد إغلاق Slice 6.5 يعاد `NEXT_SLICE_DISCOVERY`، ولا يفترض مسبقًا أن Lifecycle أو Resolver أو Binding persistence هي الشريحة التالية.
+Slice 6.5 مغلقة ومتحققة. الخطوة التالية هي `NEXT_SLICE_DISCOVERY` لـStage 6؛ لا يُعتمد ترتيب لاحق، ولا يبدأ RED أو production code قبل عقد مستقل وموافقة المالك.
 
 <!-- STAGE6_SLICE6_5_CONTRACT_END -->
 
