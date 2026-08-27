@@ -532,7 +532,7 @@ Policy Enforcement وApprovals وDurable Journal وRecovery وObservability وdi
 ### قيود أولية ملزمة
 
 - `SC-ASSUME-001`: لا افتراض؛ المجهول يبقى غير مؤكد ويوقف الإجراء المتأثر.
-- `SC-TOOL-001`: لا `rg/ripgrep` في Codespace؛ `grep/find` فقط، بلا إعادة فحص أو اقتراح تثبيت إلا بأمر المالك.
+- `SC-TOOL-001`: يسمح بـ`rg/ripgrep` للبحث المحلي Read-only داخل مساحة العمل ونطاق المهمة فقط؛ يمنع استهداف الأسرار وخيار `--pre`، وتبقى Data Egress Policy منفصلة.
 - `SC-OUTPUT-001`: المخرجات الضخمة إلى ملف قابل للتنزيل.
 - `SC-OWNER-001`: لا تغيير لمسار المالك بلا إذن.
 - `SC-SAVE-001`: لا ادعاء حفظ بلا تحقق موثق.

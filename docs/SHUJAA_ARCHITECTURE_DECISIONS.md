@@ -857,6 +857,14 @@ ADR-028 `ADOPTED`: ادعاءات الحفظ والاختبار والرفع و�
 - نطاق التنفيذ: أوامر التطوير المحددة فقط؛ لا ادعاء Policy Engine أو Runtime gate شامل.
 - `v0.7`: لم تُنشأ ولم تُستخدم؛ النسخة النشطة `v0.6` لم تتغير.
 
+### Owner Amendment — 2026-08-27
+
+- استُبدل الحظر المطلق في `SC-TOOL-001` بسماح مشروط لـ`rg/ripgrep` للبحث المحلي Read-only داخل مساحة العمل ونطاق المهمة.
+- يفشل الاستخدام مغلقًا دون أدلة `search_read_only` و`search_within_workspace` و`search_within_task_scope` و`no_sensitive_targets`.
+- يحظر خيار `--pre`، وتظل `grep/find` بدائل مسموحة.
+- Tool Policy لا تستبدل Data Egress Policy؛ إخراج البيانات والوجهات المعتمدة يظلان قيدًا مستقلًا.
+- السجل التنفيذي والـvalidator والاختبارات هي الإنفاذ الحالي. تبقى صياغات Stage 5 السابقة سجلًا تاريخيًا للحالة التي كانت نافذة عند إغلاقها.
+
 ---
 
 ## 34) ADR-028 — Completion State and Evidence Provenance Gate

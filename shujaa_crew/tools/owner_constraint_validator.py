@@ -68,6 +68,10 @@ class ProposedCodespaceAction:
     save_receipt_complete: bool = False
     proposal_approved: bool = True
     evidence_verified: bool = True
+    search_read_only: bool = False
+    search_within_workspace: bool = False
+    search_within_task_scope: bool = False
+    search_targets_sensitive: bool = True
 
 
 @dataclass(frozen=True)
@@ -195,6 +199,82 @@ def _forbidden_tool_invoked(
     )
 
 
+def _conditional_tool_policy_violated(
+    command: str,
+    conditional_rules: object,
+    action: ProposedCodespaceAction,
+) -> bool:
+    if not isinstance(conditional_rules, list):
+        return True
+
+    evidence = {
+        "search_read_only": action.search_read_only,
+        "search_within_workspace": (
+            action.search_within_workspace
+        ),
+        "search_within_task_scope": (
+            action.search_within_task_scope
+        ),
+        "no_sensitive_targets": (
+            not action.search_targets_sensitive
+        ),
+    }
+
+    for segment in _COMMAND_SEPARATOR.split(command):
+        try:
+            tokens = shlex.split(segment)
+        except ValueError:
+            return True
+
+        while tokens and "=" in tokens[0]:
+            name, _, _ = tokens[0].partition("=")
+            if not name.isidentifier():
+                break
+            tokens.pop(0)
+
+        if not tokens:
+            continue
+
+        invoked = Path(tokens[0]).name
+
+        for rule in conditional_rules:
+            if not isinstance(rule, Mapping):
+                return True
+
+            commands = rule.get("commands")
+            required = rule.get("required_evidence")
+            denied_options = rule.get("deny_options")
+
+            if not all(
+                isinstance(items, list)
+                for items in (
+                    commands,
+                    required,
+                    denied_options,
+                )
+            ):
+                return True
+
+            if invoked not in commands:
+                continue
+
+            if any(
+                token == option
+                or token.startswith(f"{option}=")
+                for token in tokens[1:]
+                for option in denied_options
+            ):
+                return True
+
+            if any(
+                not evidence.get(requirement, False)
+                for requirement in required
+            ):
+                return True
+
+    return False
+
+
 def validate_action(
     registry_path: Path,
     action: ProposedCodespaceAction,
@@ -214,11 +294,23 @@ def validate_action(
 
     reasons: list[str] = []
 
+    tool_constraint = constraints["SC-TOOL-001"]
+
     if (
         _is_active(constraints, "SC-TOOL-001")
-        and _forbidden_tool_invoked(
-            action.command,
-            constraints["SC-TOOL-001"]["deny"],
+        and (
+            _forbidden_tool_invoked(
+                action.command,
+                tool_constraint["deny"],
+            )
+            or (
+                "conditional_allow" in tool_constraint
+                and _conditional_tool_policy_violated(
+                    action.command,
+                    tool_constraint["conditional_allow"],
+                    action,
+                )
+            )
         )
     ):
         reasons.append("SC-TOOL-001")
@@ -401,6 +493,22 @@ def _build_parser() -> argparse.ArgumentParser:
         "--unknown-evidence",
         action="store_true",
     )
+    parser.add_argument(
+        "--search-read-only",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--search-within-workspace",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--search-within-task-scope",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--no-sensitive-search-targets",
+        action="store_true",
+    )
     return parser
 
 
@@ -436,6 +544,16 @@ def main(argv: Sequence[str] | None = None) -> int:
             ),
             evidence_verified=(
                 not args.unknown_evidence
+            ),
+            search_read_only=args.search_read_only,
+            search_within_workspace=(
+                args.search_within_workspace
+            ),
+            search_within_task_scope=(
+                args.search_within_task_scope
+            ),
+            search_targets_sensitive=(
+                not args.no_sensitive_search_targets
             ),
         ),
     )

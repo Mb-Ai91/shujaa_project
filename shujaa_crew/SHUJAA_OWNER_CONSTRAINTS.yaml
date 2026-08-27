@@ -33,16 +33,31 @@
       "id": "SC-TOOL-001",
       "status": "active",
       "scope": "codespace-command",
-      "deny": [
-        "rg",
-        "ripgrep"
+      "deny": [],
+      "conditional_allow": [
+        {
+          "commands": [
+            "rg",
+            "ripgrep"
+          ],
+          "purpose": "local_read_only_search",
+          "required_evidence": [
+            "search_read_only",
+            "search_within_workspace",
+            "search_within_task_scope",
+            "no_sensitive_targets"
+          ],
+          "deny_options": [
+            "--pre"
+          ]
+        }
       ],
       "allowed_alternative": [
         "grep",
         "find"
       ],
       "authority": "owner",
-      "reason": "Only approved search tools may be used."
+      "reason": "rg/ripgrep require scoped local read-only search."
     },
     {
       "id": "SC-OUTPUT-001",
