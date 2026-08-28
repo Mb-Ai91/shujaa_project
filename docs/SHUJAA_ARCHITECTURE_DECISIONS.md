@@ -7,13 +7,16 @@
 
 ---
 
-## CURRENT AUTHORITATIVE STATE
+## AUTHORITY SCOPE
 
-هذه الوثيقة هي سلطة **القرارات طويلة العمر فقط**، وليست سجل الحالة اليومية. عند code checkpoint `afcba30fe74d6d9e6e28290f9868cb448633c593`: Stage 5 مكتملة ومتحققة ضمن Local/Mock، والـfull regression هو `367 passed`. Stage 6 ما زالت `PLANNED — NOT STARTED`.
+هذه الوثيقة تملك القرارات المعمارية طويلة العمر وأسبابها وبدائلها وحالات supersession فقط. لا تملك Stage/Slice اليومية أو Worktree أو HEAD أو نتائج الاختبارات الحالية.
 
-ADR-027 حالته `IMPLEMENTED + VERIFIED — DEVELOPMENT COMMAND SCOPE`: سجل القيود والـvalidator واختباراته موجودة ومرفوعة. لا يعني ذلك Policy Engine عامًا. Audit 01 مكتمل، وحكم التوافق الموثق في artifact مستقل. النسخة النشطة من Shujaa Development هي `v0.6`؛ لم تُنشأ `v0.7` ولم تُستخدم.
+- الحالة التشغيلية ونقطة الاستئناف: `SHUJAA_HANDOFF.md`.
+- ترتيب المراحل ومرآة الحالة المختصرة: `SHUJAA_ACTIVE_ROADMAP.md`.
+- Runtime truth: Git/Codespace.
+- قواعد المالك التنفيذية: `SHUJAA_OWNER_CONSTRAINTS.yaml`.
 
-ADR-028 `ADOPTED`: ادعاءات الحفظ والاختبار والرفع والتحقق تخضع لسلسلة حالة صريحة وEvidence Receipts. اعتماد القرار لا يثبت وحده أن تعديل السجل والـvalidator قد وصل إلى Codespace أو Git؛ حالة التنفيذ تُثبت فقط بالمخرجات التشغيلية المطلوبة في ADR-028.
+لا يُعدّل ADR عند كل Slice أو Closure؛ يحدث ذلك فقط عند قرار معماري طويل العمر جديد أو تعديل حقيقي لقرار قائم.
 
 ---
 
@@ -928,6 +931,59 @@ ADR-028 `ADOPTED`: ادعاءات الحفظ والاختبار والرفع و�
 - قرار المالك: `ADOPTED` بإفادة صريحة.
 - ملفات الحزمة في مساحة المحادثة: `GENERATED` فقط.
 - `WRITTEN_TO_CODESPACE / TRACKED / COMMITTED / PUSHED / VERIFIED`: `HOLD — NOT VERIFIED` حتى تصل Receipts من Codespace.
+
+---
+
+## 35) ADR-029 — Information Ownership and State Closure Discipline
+
+**التاريخ:** 28 أغسطس 2026
+**الحالة:** `ACCEPTED — OWNER APPROVED AND CODESPACE VERIFIED`
+**صاحب القرار:** مالك شجاع
+
+### المشكلة
+
+نسخ Current State وEvidence كاملة بين Handoff وRoadmap وADR يجعل المصادر تنحرف، ويحول الاستئناف إلى مصالحة يدوية مكلفة.
+
+### التصميم المقترح للتحقق
+
+يعتمد شجاع المبدأ:
+
+`ONE FACT → ONE AUTHORITATIVE OWNER`
+
+- Git/Codespace يملكان Runtime truth.
+- Handoff تملك Current Project State والاستئناف والبنود المفتوحة.
+- Active Roadmap تملك ترتيب المراحل وتعكس Stage/Slice/status باختصار.
+- ADR تملك القرارات طويلة العمر فقط.
+- Owner Constraints تملك قواعد المالك والسياسات.
+- Evidence/Receipts تملك النتائج الخام، وتربط بها الوثائق بدل نسخها.
+
+أي قيمة مكررة لسبب عملي تكون Mirror مختصرة. اختلافها عن المالك هو `DRIFT` ولا يحل بالافتراض.
+
+### State Change Transaction
+
+قبل إغلاق تغير حالة فعلي:
+
+1. تحقق من Git/Runtime وEvidence المطلوبة.
+2. حدّد المالك السلطوي للمعلومة.
+3. حدّث المصدر المالك.
+4. حدّث Mirrors اللازمة فقط.
+5. اربط Evidence دون نسخها.
+6. نفّذ State Drift Check.
+
+إذا وُجد implementation دون اكتمال التوثيق أو Evidence اللازمة، تستخدم `IMPLEMENTED — CLOSURE PENDING`.
+
+### State Closure Gate
+
+يمنع `SC-STATE-001` إعلان Stage/Slice/milestone closure عند Drift نشط أو Mirror قديمة أو Evidence مطلوبة غير مربوطة. لا يفرض هذا القيد تعديل ADR في الإغلاق التشغيلي العادي.
+
+يُحدّث ADR فقط عندما يظهر قرار معماري طويل العمر جديد أو يتغير قرار قائم فعليًا. وتُحدّث Owner Constraints فقط عندما تتغير سياسة المالك.
+
+### التحقق والتناسب
+
+- يفحص validator markers الحالة الحالية فقط؛ لا يحلل Markdown التاريخي كله.
+- الاستئناف الافتراضي: Checkpoint → Delta → المصادر المتأثرة فقط.
+- المراجعة الأوسع تحتاج Trigger مثل milestone أو architecture change أو discrepancy أو migration أو promotion أو طلب المالك.
+- اعتُمد القرار نهائيًا بعد موافقة المالك واجتياز Patch اختبارات Codespace المستقلة.
 
 ---
 

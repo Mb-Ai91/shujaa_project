@@ -2,24 +2,24 @@
 
 > **الصفة:** خارطة التنفيذ الرسمية النشطة لمشروع شجاع
 > **الإصدار:** 1.3
-> **آخر تحديث موثق:** 26 أغسطس 2026
+> **آخر تحديث موثق:** 28 أغسطس 2026
 > **النطاق:** 19 مرحلة مترابطة بالاعتماديات، من Stage 0 إلى Stage 18
-> **مرجع Stage 6 / Slice 6.5:** implementation `256f781f8f14d880d74786dedd8417b1f28af3ea`؛ `24 targeted + 131 affected + 522 full`
 
 ---
 
-## CURRENT AUTHORITATIVE STATE
+## CURRENT STATE MIRROR
 
-| البند | الحالة الحالية |
+> مرآة مختصرة فقط. الحالة التشغيلية وEvidence والبنود المفتوحة يملكها `SHUJAA_HANDOFF.md`.
+
+<!-- SHUJAA_CURRENT_STATE_MIRROR_BEGIN -->
+| الحقل | القيمة |
 |---|---|
-| Repository checkpoint قبل حفظ عقد Slice 6.6 | `522e7bc37b1962fd06aec1d34133cbecd6dd45ea`؛ المحلي = البعيد وشجرة العمل نظيفة عند Contract Entry Gate |
-| مرجع Slice 6.1 المتحقق | implementation `fe3c97f96e6473791236d1804b5ab7f1d2520b2b`؛ verified checkpoint `988a82234cf8662e90a262e8baac8494ef69bf97` |
-| آخر شريحة مغلقة | Stage 6 / Slice 6.5 — `VERIFIED COMPLETE — LOCAL/IN-MEMORY SCOPE` |
-| الموقع الحالي | Stage 6 — `IN PROGRESS — SLICE 6.5 VERIFIED COMPLETE` |
-| الشريحة التالية | Stage 6 / Slice 6.6 — `APPROVED CONTRACT — RED NOT STARTED` |
-| baseline | Stage 5: `10 new + 126 affected + 367 full`؛ Slice 6.1: `74 targeted + 441 full`؛ Slice 6.2: `25 targeted + 74 affected + 466 full`؛ Slice 6.3: `14 targeted + 25 affected + 480 full`؛ Slice 6.4: `18 targeted + 113 affected + 498 full`؛ Slice 6.5: `24 targeted + 131 affected + 522 full` |
-| Audit | Audit 01 مكتمل؛ حكم التوافق محفوظ في artifact مستقل |
-| الإجراء الحالي | RED Entry Gate مستقل لـSlice 6.6 وفق العقد المعتمد؛ لا يبدأ production code قبل إثبات RED وموافقة المالك على GREEN |
+| CURRENT_STAGE | Stage 6 — Catalog Foundation |
+| CURRENT_SLICE | Slice 6.6 — Explicit Dependency Binding Plan Validation Read Model |
+| SLICE_STATUS | IMPLEMENTED — CLOSURE PENDING |
+<!-- SHUJAA_CURRENT_STATE_MIRROR_END -->
+
+الإجراء الحالي: إغلاق Drift و`SC-STATE-001` عبر بوابة مستقلة؛ لا تبدأ Slice جديدة.
 
 ---
 
@@ -37,11 +37,11 @@
 
 عند تعارض مستند قديم مع قرار أحدث موثق، تكون الأولوية بالترتيب:
 
-1. دليل Git والاختبارات الحالي.
+1. Git/Codespace لحقيقة Runtime.
 2. قرار مالك المشروع الأحدث.
-3. هذه الخارطة النشطة.
-4. `01-SHUJAA_HANDOFF.md` المحدث.
-5. القرارات المعمارية في `03-SHUJAA_ARCHITECTURE_DECISIONS.md`.
+3. `SHUJAA_HANDOFF.md` للحالة التشغيلية الحالية.
+4. هذه الخارطة لترتيب المراحل ومرآة الحالة المختصرة.
+5. سجل ADR للقرارات طويلة العمر فقط.
 6. السجلات والخرائط التاريخية.
 
 أي تعارض يُكشف ويُوثق، ولا يُحل بالافتراض.
@@ -96,7 +96,7 @@
 | 3 | Unified Execution Model | `VERIFIED COMPLETE` | مسار موحد: Manager → Work → Task → Execution → Dispatcher → Executor/Runner. |
 | 4 | Full Execution Lifecycle Control | `VERIFIED COMPLETE` | تحكم محلي/Mock في دورة التنفيذ وسباقات الحالات النهائية والإلغاء والمهلة وRetry الآمنة والتنظيف والملكية؛ Pause/Resume منقولة بالاعتماديات وفق ADR-023. |
 | 5 | Event Model + Audit Foundation | `VERIFIED COMPLETE — LOCAL/MOCK SCOPE` | Event/Audit منفصلان ومختبران مع Local stores خلف Protocols. |
-| 6 | Catalog Foundation | `IN PROGRESS — SLICE 6.5 VERIFIED COMPLETE` | Capability Catalog موحد بهوية مستقرة وDescriptor وDependency Graph وLifecycle وResolver/Bindings لكل قدرة قابلة للإضافة والاستبدال والتقاعد. |
+| 6 | Catalog Foundation | `IN PROGRESS — SLICE 6.6 CLOSURE PENDING` | Capability Catalog موحد بهوية مستقرة وDescriptor وDependency Graph وLifecycle وResolver/Bindings لكل قدرة قابلة للإضافة والاستبدال والتقاعد. |
 | 7 | Policy & Access Control | `PLANNED` | Policy-as-Data وAccess Graph ونقطة إنفاذ موحدة والموافقات والصلاحيات المحدودة. |
 | 8 | Runtime Isolation & Safety | `PLANNED` | Runtime Adapters قابلة للاستبدال مع العزل وSandbox وحدود الموارد والأسرار وKill Switch دون branching دائم داخل Manager. |
 | 9 | Durable Workflows | `PLANNED` | Durable Engine خلف عقد شجاع للاستئناف والتعافي وRetry وReplay وCompensation وJournal، مع خطة خروج من المزود. |
@@ -1123,7 +1123,7 @@ Slice 6.5 مغلقة ومتحققة. الخطوة التالية هي `NEXT_SLIC
 <!-- STAGE6_SLICE6_6_CONTRACT_BEGIN -->
 ## Slice 6.6 — Explicit Dependency Binding Plan Validation Read Model
 
-**الحالة:** `APPROVED CONTRACT — RED NOT STARTED`
+**الحالة:** `IMPLEMENTED — CLOSURE PENDING`
 
 ### الغرض
 
@@ -1291,9 +1291,9 @@ validate_dependency_binding_plan(
 
 ### الإجراء التالي
 
-العقد محفوظ ومعتمد من المالك. لا يبدأ production code. الدفعة التالية المستقلة هي RED Entry Gate لـSlice 6.6 بعد تحقق Git والنطاق، وتثبت الاختبارات الفشل للأسباب المقصودة فقط.
+التنفيذ موجود في `6f94b3af2c03ad3f849a86cb86cf3f8f302ffbc5`، وEvidence التشغيلية مفصلة في Handoff. لا تستخدم `VERIFIED COMPLETE` قبل اكتمال Closure Receipt ومصالحة الحالة.
 
-بعد إغلاق Slice 6.6 يعاد `NEXT_SLICE_DISCOVERY`؛ لا يفترض مسبقًا أن Resolver أو Binding persistence أو Lifecycle هي الشريحة التالية.
+بعد إغلاق Slice 6.6 فقط يعاد `NEXT_SLICE_DISCOVERY`؛ لا يفترض مسبقًا أن Resolver أو Binding persistence أو Lifecycle هي الشريحة التالية.
 
 <!-- STAGE6_SLICE6_6_CONTRACT_END -->
 

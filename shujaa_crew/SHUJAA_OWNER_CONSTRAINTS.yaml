@@ -159,6 +159,22 @@
       ],
       "sandbox_is_not_codespace_evidence": true,
       "missing_evidence_result": "HOLD — NOT VERIFIED"
+    },
+    {
+      "id": "SC-STATE-001",
+      "status": "active",
+      "scope": "state-closure",
+      "deny": [
+        "closure_with_active_state_drift",
+        "stale_authoritative_mirror",
+        "unreferenced_required_evidence"
+      ],
+      "allowed_alternative": [
+        "reconcile_and_verify",
+        "closure_pending"
+      ],
+      "authority": "owner",
+      "reason": "Stage, slice, and milestone closure require synchronized active state and referenced evidence."
     }
   ]
 }

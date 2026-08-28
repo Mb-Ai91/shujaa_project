@@ -20,6 +20,7 @@ _REQUIRED_CONSTRAINT_IDS = frozenset(
         "SC-SAVE-001",
         "SC-PROPOSAL-001",
         "SC-COMPLETION-001",
+        "SC-STATE-001",
     }
 )
 
@@ -54,6 +55,22 @@ _REQUIRED_CONSTRAINT_FIELDS = frozenset(
 )
 
 _COMMAND_SEPARATOR = re.compile(r"(?:&&|\|\||[;|\n])")
+_STATE_ROW = re.compile(
+    r"^\|\s*([A-Z][A-Z0-9_]*)\s*\|\s*(.*?)\s*\|\s*$"
+)
+_HANDOFF_STATE_BEGIN = "<!-- SHUJAA_CURRENT_STATE_BEGIN -->"
+_HANDOFF_STATE_END = "<!-- SHUJAA_CURRENT_STATE_END -->"
+_ROADMAP_STATE_BEGIN = (
+    "<!-- SHUJAA_CURRENT_STATE_MIRROR_BEGIN -->"
+)
+_ROADMAP_STATE_END = (
+    "<!-- SHUJAA_CURRENT_STATE_MIRROR_END -->"
+)
+_MIRRORED_STATE_FIELDS = (
+    "CURRENT_STAGE",
+    "CURRENT_SLICE",
+    "SLICE_STATUS",
+)
 
 
 @dataclass(frozen=True)
@@ -102,6 +119,13 @@ class CompletionReceipt:
     independent_codespace_verification: bool = False
     requested_items: tuple[str, ...] = ()
     coverage: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class StateClosureRequest:
+    handoff_path: Path
+    roadmap_path: Path
+    closure_requested: bool = False
 
 
 def _load_registry(
@@ -160,6 +184,59 @@ def _is_active(
         constraints[constraint_id].get("status")
         == "active"
     )
+
+
+def _marker_block(
+    content: str,
+    begin_marker: str,
+    end_marker: str,
+) -> str:
+    if (
+        content.count(begin_marker) != 1
+        or content.count(end_marker) != 1
+    ):
+        raise ValueError("state markers must be unique")
+
+    before, block_and_after = content.split(begin_marker, 1)
+    del before
+    block, after = block_and_after.split(end_marker, 1)
+    del after
+    return block
+
+
+def _normalize_state_value(value: str) -> str:
+    normalized = value.strip()
+    if (
+        len(normalized) >= 2
+        and normalized[0] == "`"
+        and normalized[-1] == "`"
+    ):
+        return normalized[1:-1].strip()
+    return normalized
+
+
+def _read_state_fields(
+    path: Path,
+    begin_marker: str,
+    end_marker: str,
+    required_fields: Sequence[str],
+) -> Mapping[str, str]:
+    content = path.read_text(encoding="utf-8")
+    block = _marker_block(content, begin_marker, end_marker)
+    fields: dict[str, str] = {}
+
+    for line in block.splitlines():
+        match = _STATE_ROW.match(line)
+        if match is None:
+            continue
+        key, raw_value = match.groups()
+        if key in fields:
+            raise ValueError("duplicate state field")
+        fields[key] = _normalize_state_value(raw_value)
+
+    if any(not fields.get(key) for key in required_fields):
+        raise ValueError("required state field missing")
+    return fields
 
 
 def _invoked_commands(command: str) -> tuple[str, ...]:
@@ -444,6 +521,90 @@ def validate_completion_receipt(
             for status in receipt.coverage
         ):
             reasons.append("INVALID_COVERAGE_STATE")
+
+    unique_reasons = tuple(dict.fromkeys(reasons))
+    return ValidationResult(
+        gate="HOLD" if unique_reasons else "GO",
+        reason_ids=unique_reasons,
+    )
+
+
+def validate_state_closure(
+    registry_path: Path,
+    request: StateClosureRequest,
+) -> ValidationResult:
+    try:
+        constraints = _load_registry(registry_path)
+    except FileNotFoundError:
+        return ValidationResult(
+            gate="HOLD",
+            reason_ids=("MISSING_REGISTRY",),
+        )
+    except (OSError, json.JSONDecodeError, ValueError):
+        return ValidationResult(
+            gate="HOLD",
+            reason_ids=("INVALID_REGISTRY",),
+        )
+
+    try:
+        handoff = _read_state_fields(
+            request.handoff_path,
+            _HANDOFF_STATE_BEGIN,
+            _HANDOFF_STATE_END,
+            (*_MIRRORED_STATE_FIELDS, "EVIDENCE_REFERENCES"),
+        )
+        roadmap = _read_state_fields(
+            request.roadmap_path,
+            _ROADMAP_STATE_BEGIN,
+            _ROADMAP_STATE_END,
+            _MIRRORED_STATE_FIELDS,
+        )
+    except FileNotFoundError:
+        return ValidationResult(
+            gate="HOLD",
+            reason_ids=("MISSING_STATE_SOURCE",),
+        )
+    except (OSError, ValueError):
+        return ValidationResult(
+            gate="HOLD",
+            reason_ids=("INVALID_STATE_SOURCE",),
+        )
+
+    if not _is_active(constraints, "SC-STATE-001"):
+        return ValidationResult(
+            gate="HOLD",
+            reason_ids=("SC-STATE-001",),
+        )
+
+    reasons: list[str] = []
+    mismatched = tuple(
+        field
+        for field in _MIRRORED_STATE_FIELDS
+        if handoff[field] != roadmap[field]
+    )
+    if mismatched:
+        reasons.extend(
+            (
+                "CLOSURE_WITH_ACTIVE_STATE_DRIFT",
+                "STALE_AUTHORITATIVE_MIRROR",
+            )
+        )
+
+    handoff_status = handoff["SLICE_STATUS"]
+    roadmap_status = roadmap["SLICE_STATUS"]
+    statuses = (handoff_status, roadmap_status)
+    if (
+        any("VERIFIED COMPLETE" in value for value in statuses)
+        and any("RED NOT STARTED" in value for value in statuses)
+    ):
+        reasons.append("VERIFIED_COMPLETE_WITH_RED_NOT_STARTED")
+
+    evidence = handoff["EVIDENCE_REFERENCES"].strip().upper()
+    closure_claimed = request.closure_requested or (
+        "VERIFIED COMPLETE" in handoff_status
+    )
+    if closure_claimed and evidence in {"", "NONE", "NOT FOUND"}:
+        reasons.append("UNREFERENCED_REQUIRED_EVIDENCE")
 
     unique_reasons = tuple(dict.fromkeys(reasons))
     return ValidationResult(

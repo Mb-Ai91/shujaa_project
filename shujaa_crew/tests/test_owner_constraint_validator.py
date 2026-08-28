@@ -6,9 +6,11 @@ import pytest
 from tools.owner_constraint_validator import (
     CompletionReceipt,
     ProposedCodespaceAction,
+    StateClosureRequest,
     validate_action,
     validate_batch,
     validate_completion_receipt,
+    validate_state_closure,
 )
 
 
@@ -93,6 +95,22 @@ def registry_path(tmp_path):
                 "allowed_alternative": ["hold_not_verified"],
                 "authority": "owner",
                 "reason": "Completion claims require evidence.",
+            },
+            {
+                "id": "SC-STATE-001",
+                "status": "active",
+                "scope": "state-closure",
+                "deny": [
+                    "closure_with_active_state_drift",
+                    "stale_authoritative_mirror",
+                    "unreferenced_required_evidence",
+                ],
+                "allowed_alternative": [
+                    "reconcile_and_verify",
+                    "closure_pending",
+                ],
+                "authority": "owner",
+                "reason": "Closure requires synchronized state.",
             },
         ],
     }
@@ -489,3 +507,193 @@ def test_project_registry_persists_completion_policy():
         "architecture_decision",
         "stage_state_change",
     ]
+
+
+def _write_state_sources(
+    tmp_path,
+    *,
+    handoff_status="IMPLEMENTED — CLOSURE PENDING",
+    roadmap_status="IMPLEMENTED — CLOSURE PENDING",
+    evidence="tests/targeted.txt; tests/full.txt",
+    historical="",
+):
+    handoff = tmp_path / "SHUJAA_HANDOFF.md"
+    roadmap = tmp_path / "SHUJAA_ACTIVE_ROADMAP.md"
+    handoff.write_text(
+        "\n".join(
+            (
+                "<!-- SHUJAA_CURRENT_STATE_BEGIN -->",
+                "| الحقل | القيمة |",
+                "|---|---|",
+                "| CURRENT_STAGE | Stage 6 |",
+                "| CURRENT_SLICE | Slice 6.6 |",
+                f"| SLICE_STATUS | {handoff_status} |",
+                f"| EVIDENCE_REFERENCES | {evidence} |",
+                "<!-- SHUJAA_CURRENT_STATE_END -->",
+                historical,
+            )
+        ),
+        encoding="utf-8",
+    )
+    roadmap.write_text(
+        "\n".join(
+            (
+                "<!-- SHUJAA_CURRENT_STATE_MIRROR_BEGIN -->",
+                "| الحقل | القيمة |",
+                "|---|---|",
+                "| CURRENT_STAGE | Stage 6 |",
+                "| CURRENT_SLICE | Slice 6.6 |",
+                f"| SLICE_STATUS | {roadmap_status} |",
+                "<!-- SHUJAA_CURRENT_STATE_MIRROR_END -->",
+                historical,
+            )
+        ),
+        encoding="utf-8",
+    )
+    return handoff, roadmap
+
+
+def test_matching_closure_pending_state_can_pass(
+    registry_path,
+    tmp_path,
+):
+    handoff, roadmap = _write_state_sources(tmp_path)
+    result = validate_state_closure(
+        registry_path,
+        StateClosureRequest(handoff, roadmap),
+    )
+    assert result.gate == "GO"
+    assert result.reason_ids == ()
+
+
+def test_state_mismatch_detects_stale_mirror(
+    registry_path,
+    tmp_path,
+):
+    handoff, roadmap = _write_state_sources(
+        tmp_path,
+        roadmap_status="APPROVED CONTRACT — RED NOT STARTED",
+    )
+    result = validate_state_closure(
+        registry_path,
+        StateClosureRequest(handoff, roadmap),
+    )
+    assert result.gate == "HOLD"
+    assert result.reason_ids == (
+        "CLOSURE_WITH_ACTIVE_STATE_DRIFT",
+        "STALE_AUTHORITATIVE_MIRROR",
+    )
+
+
+def test_verified_complete_without_evidence_is_held(
+    registry_path,
+    tmp_path,
+):
+    handoff, roadmap = _write_state_sources(
+        tmp_path,
+        handoff_status="VERIFIED COMPLETE",
+        roadmap_status="VERIFIED COMPLETE",
+        evidence="NONE",
+    )
+    result = validate_state_closure(
+        registry_path,
+        StateClosureRequest(
+            handoff,
+            roadmap,
+            closure_requested=True,
+        ),
+    )
+    assert result.gate == "HOLD"
+    assert result.reason_ids == (
+        "UNREFERENCED_REQUIRED_EVIDENCE",
+    )
+
+
+def test_verified_complete_conflicting_with_red_is_explicit(
+    registry_path,
+    tmp_path,
+):
+    handoff, roadmap = _write_state_sources(
+        tmp_path,
+        handoff_status="VERIFIED COMPLETE",
+        roadmap_status="APPROVED CONTRACT — RED NOT STARTED",
+    )
+    result = validate_state_closure(
+        registry_path,
+        StateClosureRequest(handoff, roadmap),
+    )
+    assert result.gate == "HOLD"
+    assert result.reason_ids == (
+        "CLOSURE_WITH_ACTIVE_STATE_DRIFT",
+        "STALE_AUTHORITATIVE_MIRROR",
+        "VERIFIED_COMPLETE_WITH_RED_NOT_STARTED",
+    )
+
+
+def test_historical_state_outside_markers_is_ignored(
+    registry_path,
+    tmp_path,
+):
+    handoff, roadmap = _write_state_sources(
+        tmp_path,
+        historical="Historical: RED NOT STARTED",
+    )
+    result = validate_state_closure(
+        registry_path,
+        StateClosureRequest(handoff, roadmap),
+    )
+    assert result.gate == "GO"
+
+
+def test_missing_state_markers_fail_closed(
+    registry_path,
+    tmp_path,
+):
+    handoff = tmp_path / "SHUJAA_HANDOFF.md"
+    roadmap = tmp_path / "SHUJAA_ACTIVE_ROADMAP.md"
+    handoff.write_text("CURRENT_SLICE=Slice 6.6", encoding="utf-8")
+    roadmap.write_text("CURRENT_SLICE=Slice 6.6", encoding="utf-8")
+    result = validate_state_closure(
+        registry_path,
+        StateClosureRequest(handoff, roadmap),
+    )
+    assert result.gate == "HOLD"
+    assert result.reason_ids == ("INVALID_STATE_SOURCE",)
+
+
+def test_project_registry_persists_state_policy():
+    registry = json.loads(
+        Path("SHUJAA_OWNER_CONSTRAINTS.yaml").read_text(
+            encoding="utf-8"
+        )
+    )
+    state = next(
+        item
+        for item in registry["constraints"]
+        if item["id"] == "SC-STATE-001"
+    )
+    assert state["deny"] == [
+        "closure_with_active_state_drift",
+        "stale_authoritative_mirror",
+        "unreferenced_required_evidence",
+    ]
+    assert state["allowed_alternative"] == [
+        "reconcile_and_verify",
+        "closure_pending",
+    ]
+
+
+def test_project_state_sources_are_synchronized():
+    project_root = Path(__file__).resolve().parents[2]
+    result = validate_state_closure(
+        project_root
+        / "shujaa_crew"
+        / "SHUJAA_OWNER_CONSTRAINTS.yaml",
+        StateClosureRequest(
+            project_root / "docs" / "SHUJAA_HANDOFF.md",
+            project_root / "docs" / "SHUJAA_ACTIVE_ROADMAP.md",
+        ),
+    )
+
+    assert result.gate == "GO"
+    assert result.reason_ids == ()

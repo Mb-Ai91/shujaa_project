@@ -2,34 +2,45 @@
 
 ## CURRENT AUTHORITATIVE STATE
 
-> **وظيفة الوثيقة:** لقطة الاستمرارية الحالية ونقطة الاستئناف الوحيدة. القرارات طويلة العمر في سجل ADR، وترتيب المراحل في Active Roadmap، وخطة Stage 5 في وثيقتها المخصصة.
+> **الوظيفة:** هذا القسم هو المالك البشري الوحيد لحالة المشروع الحالية ونقطة الاستئناف. Git/Codespace يملكان Runtime truth، وActive Roadmap تعكس الحالة المختصرة فقط، وADR تحفظ القرارات طويلة العمر.
 >
-> **آخر تحديث موثق:** 26 أغسطس 2026
+> **آخر مصالحة Read-only:** 28 أغسطس 2026. لم تُعد الاختبارات؛ استُخدمت Evidence المحفوظة وحالة Git الحالية.
 
-| البند | الحالة الحالية المثبتة |
+<!-- SHUJAA_CURRENT_STATE_BEGIN -->
+| الحقل | القيمة |
 |---|---|
-| المستودع / الفرع | `Mb-Ai91/shujaa_project` / `refactor/modular-architecture` |
-| Repository checkpoint قبل حفظ عقد Slice 6.6 | `522e7bc37b1962fd06aec1d34133cbecd6dd45ea`؛ Local HEAD = Remote HEAD وشجرة العمل نظيفة عند Contract Entry Gate |
-| مرجع Slice 6.1 المتحقق | implementation `fe3c97f96e6473791236d1804b5ab7f1d2520b2b`؛ verified checkpoint `988a82234cf8662e90a262e8baac8494ef69bf97` |
-| Worktree | نظيفة عند بدء المصالحة التوثيقية |
-| Stage 4 | `VERIFIED COMPLETE — LOCAL/MOCK SCOPE` |
-| Stage 5 | `VERIFIED COMPLETE — LOCAL/MOCK SCOPE` |
-| Stage 6 | `IN PROGRESS — SLICE 6.5 VERIFIED COMPLETE` |
-| Slice 6.2 | `VERIFIED COMPLETE — LOCAL/IN-MEMORY SCOPE` |
-| Slice 6.3 | `VERIFIED COMPLETE — LOCAL/IN-MEMORY SCOPE` |
-| Slice 6.4 | `VERIFIED COMPLETE — LOCAL/IN-MEMORY SCOPE` |
-| Slice 6.5 | `VERIFIED COMPLETE — LOCAL/IN-MEMORY SCOPE` |
-| Slice 6.6 | `APPROVED CONTRACT — RED NOT STARTED` |
-| Contract Review Gate | `ADOPTED — DESIGN/CONTRACT GATES ONLY`؛ لا تعدّل Skill النشطة ولا تمنح إذن تنفيذ |
-| Owner Constraint Gate | `GO — DEVELOPMENT COMMAND SCOPE`؛ السجل والـvalidator والاختبارات ملتزمة ومرفوعة |
-| الاختبارات | Stage 5: `10 new + 126 affected + 367 full`؛ Slice 6.1: `74 targeted + 441 full`؛ Slice 6.2: `25 targeted + 74 affected + 466 full`؛ Slice 6.3: `14 targeted + 25 affected + 480 full`؛ Slice 6.4: `18 targeted + 113 affected + 498 full`؛ Slice 6.5: `24 targeted + 131 affected + 522 full` |
-| Audit 01 | `COMPLETE` باستخدام القيود والأدوات المعتمدة، والنتيجة الكاملة محفوظة في ملف التدقيق |
-| Compatibility | `COMPATIBLE — NO CHANGE BEFORE STAGE 5`؛ التحسينات غير المانعة migrations مخططة لمراحلها |
-| Shujaa Development Skill | النسخة النشطة `v0.6` لم تتغير؛ `v0.7` لم تُنشأ ولم تُستخدم |
-| الموانع المفتوحة | لا يوجد مانع مثبت أمام RED Entry Gate لـSlice 6.6؛ التنفيذ لم يبدأ |
-| الإجراء التالي الوحيد | RED Entry Gate مستقل لـSlice 6.6 وفق العقد المعتمد؛ لا يبدأ production code قبل إثبات RED وموافقة المالك على GREEN |
+| CURRENT_STAGE | Stage 6 — Catalog Foundation |
+| CURRENT_SLICE | Slice 6.6 — Explicit Dependency Binding Plan Validation Read Model |
+| SLICE_STATUS | IMPLEMENTED — CLOSURE PENDING |
+| LAST_TRUSTED_CHECKPOINT | `0b1fcb8c75575ee176d7d0a1b9ed592df4954331`؛ Local HEAD = Upstream = Remote HEAD، Ahead/Behind `0/0`، Worktree نظيفة عند L0 Reality Gate |
+| OPEN_GATE | HOLD — CLOSURE INCOMPLETE |
+| NEXT_ACTION | تطبيق واختبار Patch المصالحة و`SC-STATE-001` في Codespace؛ لا تبدأ Slice جديدة |
+| EVIDENCE_REFERENCES | implementation `6f94b3af2c03ad3f849a86cb86cf3f8f302ffbc5`؛ RED `/workspaces/shujaa_handoff_bundle/stage6_6_red/20260826T143515Z_1861/targeted_red.txt`؛ targeted `/workspaces/shujaa_handoff_bundle/stage6_6_green/recovery_20260826_01/targeted_6_6.txt`؛ affected `/workspaces/shujaa_handoff_bundle/stage6_6_green/recovery_20260826_01/affected_6_1_to_6_5.txt`؛ full `/workspaces/shujaa_handoff_bundle/stage6_6_exit/20260826T151641Z_1861/full_regression.txt` |
+<!-- SHUJAA_CURRENT_STATE_END -->
 
-**مراجع السلطة:** ADR-024 وADR-025 وADR-026 وADR-027، و`SHUJAA_OWNER_CONSTRAINTS.yaml`، وخطة Stage 5، وActive Roadmap.
+### Evidence summary
+
+- RED: `31 failed in 0.69s` للأسباب المقصودة قبل implementation.
+- GREEN: `31 passed in 0.13s`، والمتأثرة `155 passed in 0.46s`.
+- Full regression: `553 passed in 40.76s`؛ لم يظهر exit code صريح في المقتطف المتاح.
+- لا يوجد Closure Receipt مكتمل؛ لذلك لا تستخدم `VERIFIED COMPLETE` بعد.
+
+## OPEN ITEMS
+
+| ID | STATUS | WHY_IT_MATTERS | TRIGGER_TO_REOPEN | SOURCE_REFERENCE |
+|---|---|---|---|---|
+| `STATE-0066-CLOSE` | `OPEN` | تنفيذ 6.6 مثبت لكن الإغلاق ومرآة الحالة غير مكتملين | اكتمال State Drift Check وEvidence Receipt المطلوبة | Current State وEvidence references أعلاه |
+| `SC-STATE-001-VERIFY` | `PROPOSED DESIGN — OWNER APPROVED FOR VERIFICATION` | يمنع إغلاق Stage/Slice مع Drift أو Evidence غير مربوطة | تطبيق Patch المرشح واجتياز الاختبارات في Codespace | ADR-029 و`SHUJAA_OWNER_CONSTRAINTS.yaml` |
+
+## DEFERRED ITEMS
+
+| ID | STATUS | WHY_IT_MATTERS | TRIGGER_TO_REOPEN | SOURCE_REFERENCE |
+|---|---|---|---|---|
+| `SKILL-V071` | `DEFERRED — NOT STARTED` | يثبت أسلوب الشرح ونموذج الحالة في المهارة دون تعديل v0.7 النشطة | بوابة Skill مستقلة بعد إغلاق Patch المشروع | Change Proposal `0.7.1-candidate` |
+
+## OWNER DECISIONS PENDING
+
+لا يوجد قرار مالك معلق داخل Patch المصالحة الحالي. Commit وPush وSkill candidate تحتاج بوابات مستقلة.
 
 ---
 
