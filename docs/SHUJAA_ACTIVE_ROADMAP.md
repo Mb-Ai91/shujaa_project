@@ -19,8 +19,6 @@
 | SLICE_STATUS | IMPLEMENTED — CLOSURE PENDING |
 <!-- SHUJAA_CURRENT_STATE_MIRROR_END -->
 
-الإجراء الحالي: إغلاق Drift و`SC-STATE-001` عبر بوابة مستقلة؛ لا تبدأ Slice جديدة.
-
 ---
 
 ## 1) الغرض والسلطة
