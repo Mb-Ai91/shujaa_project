@@ -4,32 +4,30 @@
 
 > **الوظيفة:** هذا القسم هو المالك البشري الوحيد لحالة المشروع الحالية ونقطة الاستئناف. Git/Codespace يملكان Runtime truth، وActive Roadmap تعكس الحالة المختصرة فقط، وADR تحفظ القرارات طويلة العمر.
 >
-> **آخر تحديث موثق:** 28 أغسطس 2026 بعد اعتماد واختبار ورفع `SC-STATE-001`.
+> **آخر تحديث موثق:** 28 أغسطس 2026 بعد اجتياز Closure Gate لـSlice 6.6.
 
 <!-- SHUJAA_CURRENT_STATE_BEGIN -->
 | الحقل | القيمة |
 |---|---|
 | CURRENT_STAGE | Stage 6 — Catalog Foundation |
 | CURRENT_SLICE | Slice 6.6 — Explicit Dependency Binding Plan Validation Read Model |
-| SLICE_STATUS | IMPLEMENTED — CLOSURE PENDING |
-| LAST_TRUSTED_CHECKPOINT | `584dcc42f05ec7fe05aa8d60348a76d2ce4a306a`؛ Local HEAD = Upstream = Remote HEAD، Ahead/Behind `0/0`، Worktree نظيفة بعد Push المتحقق |
-| OPEN_GATE | HOLD — CLOSURE INCOMPLETE |
-| NEXT_ACTION | استكمال Closure Receipt لـSlice 6.6 ومراجعة Evidence الناقصة؛ لا تبدأ Slice جديدة |
-| EVIDENCE_REFERENCES | implementation `6f94b3af2c03ad3f849a86cb86cf3f8f302ffbc5`؛ RED `/workspaces/shujaa_handoff_bundle/stage6_6_red/20260826T143515Z_1861/targeted_red.txt`؛ targeted `/workspaces/shujaa_handoff_bundle/stage6_6_green/recovery_20260826_01/targeted_6_6.txt`؛ affected `/workspaces/shujaa_handoff_bundle/stage6_6_green/recovery_20260826_01/affected_6_1_to_6_5.txt`؛ full `/workspaces/shujaa_handoff_bundle/stage6_6_exit/20260826T151641Z_1861/full_regression.txt` |
-<!-- SHUJAA_CURRENT_STATE_END -->
+| SLICE_STATUS | VERIFIED COMPLETE — LOCAL/IN-MEMORY SCOPE |
+| LAST_TRUSTED_CHECKPOINT | Slice 6.6 implementation `6f94b3af2c03ad3f849a86cb86cf3f8f302ffbc5` مع Closure Evidence في `/workspaces/shujaa_handoff_bundle/stage6_6_closure/20260828T225400Z_826/closure_receipt_final.txt`؛ Current HEAD وUpstream وWorktree تُقرأ من Git/Runtime |
+| OPEN_GATE | GO — SLICE 6.6 VERIFIED COMPLETE |
+| NEXT_ACTION | تنفيذ NEXT_SLICE_DISCOVERY مستقل لـStage 6؛ لا يبدأ RED أو production code قبل عقد مستقل وموافقة المالك |
+| EVIDENCE_REFERENCES | implementation `6f94b3af2c03ad3f849a86cb86cf3f8f302ffbc5`؛ RED `/workspaces/shujaa_handoff_bundle/stage6_6_red/20260826T143515Z_1861/targeted_red.txt`؛ targeted `/workspaces/shujaa_handoff_bundle/stage6_6_green/recovery_20260826_01/targeted_6_6.txt`؛ affected `/workspaces/shujaa_handoff_bundle/stage6_6_green/recovery_20260826_01/affected_6_1_to_6_5.txt`؛ closure full `/workspaces/shujaa_handoff_bundle/stage6_6_closure/20260828T225400Z_826/full_regression_with_exit_code.txt`؛ metadata `/workspaces/shujaa_handoff_bundle/stage6_6_closure/20260828T225400Z_826/verification_metadata_corrected.txt`؛ receipt `/workspaces/shujaa_handoff_bundle/stage6_6_closure/20260828T225400Z_826/closure_receipt_final.txt` |<!-- SHUJAA_CURRENT_STATE_END -->
 
 ### Evidence summary
 
 - RED: `31 failed in 0.69s` للأسباب المقصودة قبل implementation.
 - GREEN: `31 passed in 0.13s`، والمتأثرة `155 passed in 0.46s`.
-- Full regression: `553 passed in 40.76s`؛ لم يظهر exit code صريح في المقتطف المتاح.
-- لا يوجد Closure Receipt مكتمل؛ لذلك لا تستخدم `VERIFIED COMPLETE` بعد.
+- Historical full regression: `553 passed in 40.76s`.
+- Closure verification: `571 passed in 19.63s`؛ Exit Code `0`؛ Worktree نظيفة.
+- Closure Receipt النهائية: `/workspaces/shujaa_handoff_bundle/stage6_6_closure/20260828T225400Z_826/closure_receipt_final.txt`.
 
 ## OPEN ITEMS
 
-| ID | STATUS | WHY_IT_MATTERS | TRIGGER_TO_REOPEN | SOURCE_REFERENCE |
-|---|---|---|---|---|
-| `STATE-0066-CLOSE` | `OPEN` | تنفيذ 6.6 مثبت لكن Closure Receipt المطلوبة غير مكتملة | اكتمال Evidence Receipt والتحقق من Git state | Current State وEvidence references أعلاه |
+لا توجد بنود مفتوحة لـSlice 6.6 بعد اجتياز Closure Gate.
 
 ## DEFERRED ITEMS
 

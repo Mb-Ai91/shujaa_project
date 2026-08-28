@@ -16,8 +16,7 @@
 |---|---|
 | CURRENT_STAGE | Stage 6 — Catalog Foundation |
 | CURRENT_SLICE | Slice 6.6 — Explicit Dependency Binding Plan Validation Read Model |
-| SLICE_STATUS | IMPLEMENTED — CLOSURE PENDING |
-<!-- SHUJAA_CURRENT_STATE_MIRROR_END -->
+| SLICE_STATUS | VERIFIED COMPLETE — LOCAL/IN-MEMORY SCOPE |<!-- SHUJAA_CURRENT_STATE_MIRROR_END -->
 
 ---
 
@@ -94,7 +93,7 @@
 | 3 | Unified Execution Model | `VERIFIED COMPLETE` | مسار موحد: Manager → Work → Task → Execution → Dispatcher → Executor/Runner. |
 | 4 | Full Execution Lifecycle Control | `VERIFIED COMPLETE` | تحكم محلي/Mock في دورة التنفيذ وسباقات الحالات النهائية والإلغاء والمهلة وRetry الآمنة والتنظيف والملكية؛ Pause/Resume منقولة بالاعتماديات وفق ADR-023. |
 | 5 | Event Model + Audit Foundation | `VERIFIED COMPLETE — LOCAL/MOCK SCOPE` | Event/Audit منفصلان ومختبران مع Local stores خلف Protocols. |
-| 6 | Catalog Foundation | `IN PROGRESS — SLICE 6.6 CLOSURE PENDING` | Capability Catalog موحد بهوية مستقرة وDescriptor وDependency Graph وLifecycle وResolver/Bindings لكل قدرة قابلة للإضافة والاستبدال والتقاعد. |
+| 6 | Catalog Foundation | `IN PROGRESS — SLICE 6.6 VERIFIED COMPLETE` | Capability Catalog موحد بهوية مستقرة وDescriptor وDependency Graph وLifecycle وResolver/Bindings لكل قدرة قابلة للإضافة والاستبدال والتقاعد. |
 | 7 | Policy & Access Control | `PLANNED` | Policy-as-Data وAccess Graph ونقطة إنفاذ موحدة والموافقات والصلاحيات المحدودة. |
 | 8 | Runtime Isolation & Safety | `PLANNED` | Runtime Adapters قابلة للاستبدال مع العزل وSandbox وحدود الموارد والأسرار وKill Switch دون branching دائم داخل Manager. |
 | 9 | Durable Workflows | `PLANNED` | Durable Engine خلف عقد شجاع للاستئناف والتعافي وRetry وReplay وCompensation وJournal، مع خطة خروج من المزود. |
@@ -1121,7 +1120,7 @@ Slice 6.5 مغلقة ومتحققة. الخطوة التالية هي `NEXT_SLIC
 <!-- STAGE6_SLICE6_6_CONTRACT_BEGIN -->
 ## Slice 6.6 — Explicit Dependency Binding Plan Validation Read Model
 
-**الحالة:** `IMPLEMENTED — CLOSURE PENDING`
+**الحالة:** `VERIFIED COMPLETE — LOCAL/IN-MEMORY SCOPE`
 
 ### الغرض
 
@@ -1289,9 +1288,9 @@ validate_dependency_binding_plan(
 
 ### الإجراء التالي
 
-التنفيذ موجود في `6f94b3af2c03ad3f849a86cb86cf3f8f302ffbc5`، وEvidence التشغيلية مفصلة في Handoff. لا تستخدم `VERIFIED COMPLETE` قبل اكتمال Closure Receipt ومصالحة الحالة.
+Slice 6.6 مغلقة ومتحققة ضمن Local/In-Memory scope. Evidence التفصيلية وClosure Receipt مربوطة في Handoff: `/workspaces/shujaa_handoff_bundle/stage6_6_closure/20260828T225400Z_826/closure_receipt_final.txt`.
 
-بعد إغلاق Slice 6.6 فقط يعاد `NEXT_SLICE_DISCOVERY`؛ لا يفترض مسبقًا أن Resolver أو Binding persistence أو Lifecycle هي الشريحة التالية.
+الخطوة التالية هي `NEXT_SLICE_DISCOVERY` مستقل؛ لا يفترض مسبقًا أن Resolver أو Binding persistence أو Lifecycle هي الشريحة التالية، ولا يبدأ RED قبل عقد وموافقة مستقلين.
 
 <!-- STAGE6_SLICE6_6_CONTRACT_END -->
 
