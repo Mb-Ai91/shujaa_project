@@ -9,6 +9,8 @@ from .models import (
     CapabilityRegistrationResult,
     DependencyBindingPlanValidation,
     DependencyBindingProposal,
+    DependencyBindingRegistrationResult,
+    ExplicitDependencyBindingSet,
     DependencyBindingValidation,
     DependencyCandidateDisposition,
     DependencyCycle,
@@ -81,3 +83,20 @@ class CapabilityDependencyGraphProtocol(Protocol):
         version: str,
         bindings: tuple[DependencyBindingProposal, ...],
     ) -> DependencyBindingPlanValidation | None: ...
+
+
+class ExplicitDependencyBindingRegistryProtocol(Protocol):
+    def register(
+        self,
+        asset_id: str,
+        version: str,
+        bindings: tuple[DependencyBindingProposal, ...],
+    ) -> DependencyBindingRegistrationResult: ...
+
+    def get(
+        self,
+        asset_id: str,
+        version: str,
+    ) -> ExplicitDependencyBindingSet | None: ...
+
+    def list(self) -> tuple[ExplicitDependencyBindingSet, ...]: ...

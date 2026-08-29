@@ -4,33 +4,33 @@
 
 > **الوظيفة:** هذا القسم هو المالك البشري الوحيد لحالة المشروع الحالية ونقطة الاستئناف. Git/Codespace يملكان Runtime truth، وActive Roadmap تعكس الحالة المختصرة فقط، وADR تحفظ القرارات طويلة العمر.
 >
-> **آخر تحديث موثق:** 29 أغسطس 2026 بعد اعتماد عقد Slice 6.7؛ RED لم يبدأ.
+> **آخر تحديث موثق:** 29 أغسطس 2026 بعد تنفيذ Slice 6.7 والتحقق منها.
 
 <!-- SHUJAA_CURRENT_STATE_BEGIN -->
 | الحقل | القيمة |
 |---|---|
 | CURRENT_STAGE | Stage 6 — Catalog Foundation |
 | CURRENT_SLICE | Slice 6.7 — In-Memory Explicit Dependency Binding Registry |
-| SLICE_STATUS | CONTRACT APPROVED — RED NOT STARTED |
-| LAST_TRUSTED_CHECKPOINT | Slice 6.6 بقيت `VERIFIED COMPLETE`؛ اعتمد المالك عقد Slice 6.7 عند base HEAD `8e7377f502e696b7d294765c85b246c463f401a0`؛ Current HEAD وUpstream وWorktree تُقرأ من Git/Runtime |
-| OPEN_GATE | HOLD — RED NOT AUTHORIZED |
-| NEXT_ACTION | التوقف بعد حفظ العقد وCommit/Push؛ يبدأ RED فقط عبر موافقة مالك مستقلة |
-| EVIDENCE_REFERENCES | Slice 6.6 closure receipt `/workspaces/shujaa_handoff_bundle/stage6_6_closure/20260828T225400Z_826/closure_receipt_final.txt`؛ عقد Slice 6.7 بين markers `STAGE6_SLICE6_7_CONTRACT_BEGIN/END` في `SHUJAA_ACTIVE_ROADMAP.md` |
+| SLICE_STATUS | IMPLEMENTED AND VERIFIED |
+| LAST_TRUSTED_CHECKPOINT | Slice 6.7 implemented and verified؛ targeted `21 passed`؛ full regression `592 passed` و`0 failed`؛ conformance review `PASS`؛ State Sync `1 passed` |
+| OPEN_GATE | يحددها Git HEAD وupstream عند الاستئناف |
+| NEXT_ACTION | إذا لم يطابق upstream قيمة Git HEAD فالبوابة التالية Push؛ وإذا تطابقا فاستأنف من الشريحة التالية المعتمدة |
+| EVIDENCE_REFERENCES | RED amendment: `20 passed` و`1 expected failed`؛ GREEN repair: `21 passed`؛ VERIFY repair: `CONFORMANCE_REVIEW=PASS`؛ full regression: `592 passed` و`0 failed`؛ State Sync: `1 passed`؛ عقد Slice 6.7 بين markers `STAGE6_SLICE6_7_CONTRACT_BEGIN/END` في `SHUJAA_ACTIVE_ROADMAP.md` |
 <!-- SHUJAA_CURRENT_STATE_END -->
 
 ### Evidence summary
 
-- RED: `31 failed in 0.69s` للأسباب المقصودة قبل implementation.
-- GREEN: `31 passed in 0.13s`، والمتأثرة `155 passed in 0.46s`.
-- Historical full regression: `553 passed in 40.76s`.
-- Closure verification: `571 passed in 19.63s`؛ Exit Code `0`؛ Worktree نظيفة.
-- Closure Receipt النهائية: `/workspaces/shujaa_handoff_bundle/stage6_6_closure/20260828T225400Z_826/closure_receipt_final.txt`.
+- Slice 6.7 implemented and verified.
+- Targeted result: `21 passed`.
+- Full regression: `592 passed` و`0 failed`.
+- Conformance review: `PASS`.
+- State Sync: `1 passed`.
+- Git HEAD وupstream هما المرجع السلطوي لحالة Commit/Push عند الاستئناف: إذا لم يتطابقا فالبوابة التالية Push؛ وإذا تطابقا فاستأنف من الشريحة التالية المعتمدة.
 
 ## OPEN ITEMS
 
 | ID | STATUS | WHY_IT_MATTERS | TRIGGER_TO_REOPEN | SOURCE_REFERENCE |
 |---|---|---|---|---|
-| `S6.7-RED` | `PENDING AUTHORIZATION` | عقد Slice 6.7 محفوظ، لكن لا implementation قبل RED مستقل | موافقة مالك صريحة على RED | عقد Slice 6.7 في Active Roadmap |
 
 ## DEFERRED ITEMS
 
@@ -40,7 +40,6 @@
 
 ## OWNER DECISIONS PENDING
 
-- `S6.7-RED`: لم تُمنح موافقة RED بعد؛ يتطلب بوابة مالك مستقلة.
 - `SKILL-V071`: مجمدة ولا يعاد فتحها إلا عند Trigger معتمد.
 
 ---

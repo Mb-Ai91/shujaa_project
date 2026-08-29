@@ -1,7 +1,9 @@
 from .catalog import InMemoryCapabilityCatalog
+from .binding_registry import InMemoryExplicitDependencyBindingRegistry
 from .contracts import (
     CapabilityCatalogProtocol,
     CapabilityDependencyGraphProtocol,
+    ExplicitDependencyBindingRegistryProtocol,
 )
 from .dependency_graph import InMemoryCapabilityDependencyGraph
 from .models import (
@@ -16,10 +18,14 @@ from .models import (
     DependencyBindingPlanIssueKind,
     DependencyBindingPlanValidation,
     DependencyBindingProposal,
+    DependencyBindingRegistrationDisposition,
+    DependencyBindingRegistrationResult,
     DependencyBindingValidation,
     DependencyCandidateDisposition,
     DependencyCycle,
     DependencyResolutionCandidates,
+    ExplicitDependencyBinding,
+    ExplicitDependencyBindingSet,
     UnresolvedDependency,
 )
 
@@ -32,6 +38,8 @@ __all__ = (
     "CapabilityLifecycle",
     "CapabilityRegistrationDisposition",
     "CapabilityRegistrationResult",
+    "DependencyBindingRegistrationDisposition",
+    "DependencyBindingRegistrationResult",
     "DependencyBindingDisposition",
     "DependencyBindingPlanIssue",
     "DependencyBindingPlanIssueKind",
@@ -41,7 +49,11 @@ __all__ = (
     "DependencyCandidateDisposition",
     "DependencyCycle",
     "DependencyResolutionCandidates",
+    "ExplicitDependencyBinding",
+    "ExplicitDependencyBindingRegistryProtocol",
+    "ExplicitDependencyBindingSet",
     "InMemoryCapabilityCatalog",
     "InMemoryCapabilityDependencyGraph",
+    "InMemoryExplicitDependencyBindingRegistry",
     "UnresolvedDependency",
 )

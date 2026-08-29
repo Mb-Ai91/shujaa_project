@@ -2,7 +2,7 @@
 
 > **الصفة:** خارطة التنفيذ الرسمية النشطة لمشروع شجاع
 > **الإصدار:** 1.3
-> **آخر تحديث موثق:** 28 أغسطس 2026
+> **آخر تحديث موثق:** 29 أغسطس 2026
 > **النطاق:** 19 مرحلة مترابطة بالاعتماديات، من Stage 0 إلى Stage 18
 
 ---
@@ -16,7 +16,7 @@
 |---|---|
 | CURRENT_STAGE | Stage 6 — Catalog Foundation |
 | CURRENT_SLICE | Slice 6.7 — In-Memory Explicit Dependency Binding Registry |
-| SLICE_STATUS | CONTRACT APPROVED — RED NOT STARTED |
+| SLICE_STATUS | IMPLEMENTED AND VERIFIED |
 <!-- SHUJAA_CURRENT_STATE_MIRROR_END -->
 
 ---
@@ -94,7 +94,7 @@
 | 3 | Unified Execution Model | `VERIFIED COMPLETE` | مسار موحد: Manager → Work → Task → Execution → Dispatcher → Executor/Runner. |
 | 4 | Full Execution Lifecycle Control | `VERIFIED COMPLETE` | تحكم محلي/Mock في دورة التنفيذ وسباقات الحالات النهائية والإلغاء والمهلة وRetry الآمنة والتنظيف والملكية؛ Pause/Resume منقولة بالاعتماديات وفق ADR-023. |
 | 5 | Event Model + Audit Foundation | `VERIFIED COMPLETE — LOCAL/MOCK SCOPE` | Event/Audit منفصلان ومختبران مع Local stores خلف Protocols. |
-| 6 | Catalog Foundation | `IN PROGRESS — SLICE 6.7 CONTRACT APPROVED` | Capability Catalog موحد بهوية مستقرة وDescriptor وDependency Graph وLifecycle وResolver/Bindings لكل قدرة قابلة للإضافة والاستبدال والتقاعد. |
+| 6 | Catalog Foundation | `IN PROGRESS — SLICE 6.7 IMPLEMENTED AND VERIFIED` | Capability Catalog موحد بهوية مستقرة وDescriptor وDependency Graph وLifecycle وResolver/Bindings لكل قدرة قابلة للإضافة والاستبدال والتقاعد. |
 | 7 | Policy & Access Control | `PLANNED` | Policy-as-Data وAccess Graph ونقطة إنفاذ موحدة والموافقات والصلاحيات المحدودة. |
 | 8 | Runtime Isolation & Safety | `PLANNED` | Runtime Adapters قابلة للاستبدال مع العزل وSandbox وحدود الموارد والأسرار وKill Switch دون branching دائم داخل Manager. |
 | 9 | Durable Workflows | `PLANNED` | Durable Engine خلف عقد شجاع للاستئناف والتعافي وRetry وReplay وCompensation وJournal، مع خطة خروج من المزود. |
@@ -1298,7 +1298,7 @@ Slice 6.6 مغلقة ومتحققة ضمن Local/In-Memory scope. Evidence ال�
 <!-- STAGE6_SLICE6_7_CONTRACT_BEGIN -->
 ### Slice 6.7 — In-Memory Explicit Dependency Binding Registry
 
-**الحالة:** `CONTRACT APPROVED — RED NOT STARTED`
+**الحالة:** `IMPLEMENTED AND VERIFIED`
 
 **الغرض:** حفظ خطة ربط صريحة اجتازت تحقق Slice 6.6 داخل Registry محلية وفي الذاكرة، دون اختيار تلقائي أو سلوك Runtime.
 

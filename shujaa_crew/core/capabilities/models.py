@@ -115,3 +115,29 @@ class DependencyBindingPlanValidation:
     binding_validations: tuple[DependencyBindingValidation, ...]
     issues: tuple[DependencyBindingPlanIssue, ...]
     structurally_complete: bool
+
+
+@dataclass(frozen=True)
+class ExplicitDependencyBinding:
+    dependency_asset_id: str
+    target_identity: CapabilityIdentity
+
+
+@dataclass(frozen=True)
+class ExplicitDependencyBindingSet:
+    source_identity: CapabilityIdentity
+    bindings: tuple[ExplicitDependencyBinding, ...]
+
+
+class DependencyBindingRegistrationDisposition(str, Enum):
+    REGISTERED = "registered"
+    IDEMPOTENT_REPLAY = "idempotent_replay"
+    IDENTITY_CONFLICT = "identity_conflict"
+    SOURCE_NOT_FOUND = "source_not_found"
+    PLAN_REJECTED = "plan_rejected"
+
+
+@dataclass(frozen=True)
+class DependencyBindingRegistrationResult:
+    disposition: DependencyBindingRegistrationDisposition
+    validation: DependencyBindingPlanValidation | None
