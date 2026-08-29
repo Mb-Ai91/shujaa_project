@@ -4,28 +4,32 @@
 
 > **الوظيفة:** هذا القسم هو المالك البشري الوحيد لحالة المشروع الحالية ونقطة الاستئناف. Git/Codespace يملكان Runtime truth، وActive Roadmap تعكس الحالة المختصرة فقط، وADR تحفظ القرارات طويلة العمر.
 >
-> **آخر تحديث موثق:** 29 أغسطس 2026 بعد تنفيذ Slice 6.7 والتحقق منها.
+> **آخر تحديث موثق:** 29 أغسطس 2026 بعد إغلاق Stage 6 توثيقيًا بنتيجة Exit Gate تساوي `GO`.
 
 <!-- SHUJAA_CURRENT_STATE_BEGIN -->
 | الحقل | القيمة |
 |---|---|
-| CURRENT_STAGE | Stage 6 — Catalog Foundation |
-| CURRENT_SLICE | Slice 6.7 — In-Memory Explicit Dependency Binding Registry |
-| SLICE_STATUS | IMPLEMENTED AND VERIFIED |
-| LAST_TRUSTED_CHECKPOINT | Slice 6.7 implemented and verified؛ targeted `21 passed`؛ full regression `592 passed` و`0 failed`؛ conformance review `PASS`؛ State Sync `1 passed` |
-| OPEN_GATE | يحددها Git HEAD وupstream عند الاستئناف |
-| NEXT_ACTION | إذا لم يطابق upstream قيمة Git HEAD فالبوابة التالية Push؛ وإذا تطابقا فاستأنف من الشريحة التالية المعتمدة |
-| EVIDENCE_REFERENCES | RED amendment: `20 passed` و`1 expected failed`؛ GREEN repair: `21 passed`؛ VERIFY repair: `CONFORMANCE_REVIEW=PASS`؛ full regression: `592 passed` و`0 failed`؛ State Sync: `1 passed`؛ عقد Slice 6.7 بين markers `STAGE6_SLICE6_7_CONTRACT_BEGIN/END` في `SHUJAA_ACTIVE_ROADMAP.md` |
+| CURRENT_STAGE | Stage 6 — Catalog Foundation (CLOSED) |
+| CURRENT_SLICE | Slices 6.1–6.7 — COMPLETE؛ Slice 6.8 — DEFERRED NON-BLOCKING |
+| SLICE_STATUS | VERIFIED COMPLETE — LOCAL/IN-MEMORY CATALOG & EXPLICIT BINDING FOUNDATION |
+| LAST_TRUSTED_CHECKPOINT | Stage 6 closed and verified at `734ae282678a40189ab4d4343436682a21233da2`؛ Slices 6.1–6.7 complete؛ targeted `21 passed`؛ full regression `592 passed` و`0 failed`؛ conformance review `PASS`؛ State Sync `1 passed`؛ `STAGE6_EXIT_GAP_AUDIT=PASS`؛ `STAGE6_EXIT_GATE=GO` |
+| OPEN_GATE | Stage 7 Entry Gate Design — PENDING OWNER APPROVAL |
+| NEXT_ACTION | `NEXT=STAGE7_ENTRY_GATE_DESIGN_PENDING_OWNER_APPROVAL` |
+| EVIDENCE_REFERENCES | Stage 6 Exit Gate contract بين markers `STAGE6_EXIT_GATE_CONTRACT_BEGIN/END`؛ `BASE_HEAD=734ae282678a40189ab4d4343436682a21233da2`؛ targeted `21 passed`؛ full regression `592 passed` و`0 failed`؛ conformance review `PASS`؛ State Sync `1 passed`؛ `STAGE6_EXIT_GAP_AUDIT=PASS`؛ `STAGE6_EXIT_GATE=GO` |
 <!-- SHUJAA_CURRENT_STATE_END -->
 
 ### Evidence summary
 
-- Slice 6.7 implemented and verified.
+- Stage 6 مغلقة ومتحقق منها ضمن `LOCAL/IN-MEMORY CATALOG & EXPLICIT BINDING FOUNDATION`.
+- Slices 6.1–6.7 مكتملة.
+- Slice 6.8 مؤجلة لعدم وجود مستهلك وظيفي مباشر، وليست فجوة خروج.
+- `STAGE6_EXIT_GATE=GO`.
 - Targeted result: `21 passed`.
 - Full regression: `592 passed` و`0 failed`.
 - Conformance review: `PASS`.
 - State Sync: `1 passed`.
-- Git HEAD وupstream هما المرجع السلطوي لحالة Commit/Push عند الاستئناف: إذا لم يتطابقا فالبوابة التالية Push؛ وإذا تطابقا فاستأنف من الشريحة التالية المعتمدة.
+- Stage 7 لم تبدأ.
+- `NEXT=STAGE7_ENTRY_GATE_DESIGN_PENDING_OWNER_APPROVAL`.
 
 ## OPEN ITEMS
 

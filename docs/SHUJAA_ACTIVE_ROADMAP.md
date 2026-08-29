@@ -14,9 +14,9 @@
 <!-- SHUJAA_CURRENT_STATE_MIRROR_BEGIN -->
 | الحقل | القيمة |
 |---|---|
-| CURRENT_STAGE | Stage 6 — Catalog Foundation |
-| CURRENT_SLICE | Slice 6.7 — In-Memory Explicit Dependency Binding Registry |
-| SLICE_STATUS | IMPLEMENTED AND VERIFIED |
+| CURRENT_STAGE | Stage 6 — Catalog Foundation (CLOSED) |
+| CURRENT_SLICE | Slices 6.1–6.7 — COMPLETE؛ Slice 6.8 — DEFERRED NON-BLOCKING |
+| SLICE_STATUS | VERIFIED COMPLETE — LOCAL/IN-MEMORY CATALOG & EXPLICIT BINDING FOUNDATION |
 <!-- SHUJAA_CURRENT_STATE_MIRROR_END -->
 
 ---
@@ -562,7 +562,7 @@ Policy Enforcement وApprovals وDurable Journal وRecovery وObservability وdi
 | Metrics وLogs وTraces وAlerts | 10 |
 | Production storage وdistributed ordering وtamper resistance | 16 |
 
-بدأت Stage 6 بعد Entry Gate مستقل، وأُغلقت Slice 6.1 ضمن نطاق Local/In-Memory. أي شريحة لاحقة تبقى `ENTRY GATE PENDING` حتى اعتماد عقدها صراحة.
+أُغلقت Stage 6 بعد اكتمال Slices 6.1–6.7 ضمن نطاق Local/In-Memory؛ Slice 6.8 مؤجلة لعدم وجود مستهلك وظيفي مباشر وليست فجوة خروج.
 
 ---
 
@@ -1354,6 +1354,64 @@ Slice 6.6 مغلقة ومتحققة ضمن Local/In-Memory scope. Evidence ال�
 **البوابة التالية:** موافقة مستقلة على RED. حفظ هذا العقد لا يمنح RED أو GREEN أو implementation أو Commit للكود.
 
 <!-- STAGE6_SLICE6_7_CONTRACT_END -->
+
+
+<!-- STAGE6_EXIT_GATE_CONTRACT_BEGIN -->
+## Stage 6 Exit Gate Contract
+
+### الهدف
+
+إغلاق Stage 6 بالحالة:
+
+`VERIFIED COMPLETE — LOCAL/IN-MEMORY CATALOG & EXPLICIT BINDING FOUNDATION`
+
+### الأحكام
+
+- `GO`: Git مطابق، الأدلة مكتملة ومربوطة بالـcheckpoint نفسه، المراجعات ناجحة، `STAGE6_EXIT_GAP_AUDIT=PASS`، ولا drift أو فجوة مانعة.
+- `HOLD`: دليل ناقص/قديم، اختلاف Git أو State Sync، provenance غير قابلة للتحقق، أو غموض يمنع الحكم.
+- `FAIL`: regression مثبت، فجوة مانعة، خرق الهوية/الذرية/العزل، hidden selection، اقتران بمزود، أو إدخال مسؤوليات Stage 7/8.
+- الأولوية: `FAIL` ثم `HOLD` ثم `GO`. لا `CONDITIONAL GO`.
+
+### النطاق المثبت
+
+- Catalog بهوية وإصدار وDescriptor وLifecycle واعتماديات وصفية.
+- permissions داخل Catalog metadata وصفية فقط؛ لا Policy Enforcement في Stage 6.
+- Dependency Graph وimpact analysis وresolution candidates كـread models حتمية ومعزولة.
+- Binding validation وخطة كاملة وRegistry محلية ذرية وimmutable.
+- لا automatic selection أو implicit dependency أو provider coupling.
+- Slice 6.8 مؤجلة بلا مستهلك وظيفي مباشر وليست فجوة خروج.
+
+### الأدلة الحالية المرتبطة بـBASE_HEAD
+
+- `BASE_HEAD=734ae282678a40189ab4d4343436682a21233da2`.
+- targeted: `21 passed`.
+- full regression: `592 passed` و`0 failed`.
+- conformance review: `PASS`.
+- State Sync: `1 passed`.
+- `STAGE6_EXIT_GAP_AUDIT=PASS — NO BLOCKING GAPS`.
+- Git/remote synchronized وworktree كانت نظيفة عند بوابة الدخول.
+
+### قاعدة الاقتصاد
+
+- الأدلة السابقة أدلة حالية مرتبطة بالـHEAD نفسه.
+- لا يُعاد أي اختبار ناجح؛ لا يوجد trigger جديد لأن Production وHEAD لم يتغيرا.
+- حفظ الوثائق لا يثبت اجتياز Exit Gate؛ التنفيذ والتحقق لهما موافقة مستقلة.
+
+### الحدود
+
+- Stage 7: Policy-as-Data وAccess Graph وauthorization وapprovals وlifecycle eligibility وPolicy Enforcement.
+- Stage 8: Runtime Adapters والعزل والموارد والأسرار وKill Switch والتحكم الآمن.
+- لا يمنح `GO` إذن Stage 7 أو RED/GREEN.
+
+### نتيجة الإغلاق
+
+- `STAGE6_EXIT_GATE=GO`.
+- Slices 6.1–6.7 مكتملة.
+- Slice 6.8 مؤجلة لعدم وجود مستهلك وظيفي مباشر، وليست فجوة خروج.
+- Stage 6: `VERIFIED COMPLETE — LOCAL/IN-MEMORY CATALOG & EXPLICIT BINDING FOUNDATION`.
+- Stage 7 لم تبدأ، ولا يمنح هذا الإغلاق إذن Stage 7 أو RED/GREEN.
+
+<!-- STAGE6_EXIT_GATE_CONTRACT_END -->
 
 
 <!-- CONTRACT_ADVERSARIAL_REVIEW_GATE_BEGIN -->
