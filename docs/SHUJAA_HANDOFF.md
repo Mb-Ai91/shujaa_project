@@ -4,18 +4,18 @@
 
 > **الوظيفة:** هذا القسم هو المالك البشري الوحيد لحالة المشروع الحالية ونقطة الاستئناف. Git/Codespace يملكان Runtime truth، وActive Roadmap تعكس الحالة المختصرة فقط، وADR تحفظ القرارات طويلة العمر.
 >
-> **آخر تحديث موثق:** 28 أغسطس 2026 بعد اجتياز Closure Gate لـSlice 6.6.
+> **آخر تحديث موثق:** 29 أغسطس 2026 بعد اعتماد عقد Slice 6.7؛ RED لم يبدأ.
 
 <!-- SHUJAA_CURRENT_STATE_BEGIN -->
 | الحقل | القيمة |
 |---|---|
 | CURRENT_STAGE | Stage 6 — Catalog Foundation |
-| CURRENT_SLICE | Slice 6.6 — Explicit Dependency Binding Plan Validation Read Model |
-| SLICE_STATUS | VERIFIED COMPLETE — LOCAL/IN-MEMORY SCOPE |
-| LAST_TRUSTED_CHECKPOINT | Slice 6.6 implementation `6f94b3af2c03ad3f849a86cb86cf3f8f302ffbc5` مع Closure Evidence في `/workspaces/shujaa_handoff_bundle/stage6_6_closure/20260828T225400Z_826/closure_receipt_final.txt`؛ Current HEAD وUpstream وWorktree تُقرأ من Git/Runtime |
-| OPEN_GATE | GO — SLICE 6.6 VERIFIED COMPLETE |
-| NEXT_ACTION | تنفيذ NEXT_SLICE_DISCOVERY مستقل لـStage 6؛ لا يبدأ RED أو production code قبل عقد مستقل وموافقة المالك |
-| EVIDENCE_REFERENCES | implementation `6f94b3af2c03ad3f849a86cb86cf3f8f302ffbc5`؛ RED `/workspaces/shujaa_handoff_bundle/stage6_6_red/20260826T143515Z_1861/targeted_red.txt`؛ targeted `/workspaces/shujaa_handoff_bundle/stage6_6_green/recovery_20260826_01/targeted_6_6.txt`؛ affected `/workspaces/shujaa_handoff_bundle/stage6_6_green/recovery_20260826_01/affected_6_1_to_6_5.txt`؛ closure full `/workspaces/shujaa_handoff_bundle/stage6_6_closure/20260828T225400Z_826/full_regression_with_exit_code.txt`؛ metadata `/workspaces/shujaa_handoff_bundle/stage6_6_closure/20260828T225400Z_826/verification_metadata_corrected.txt`؛ receipt `/workspaces/shujaa_handoff_bundle/stage6_6_closure/20260828T225400Z_826/closure_receipt_final.txt` |
+| CURRENT_SLICE | Slice 6.7 — In-Memory Explicit Dependency Binding Registry |
+| SLICE_STATUS | CONTRACT APPROVED — RED NOT STARTED |
+| LAST_TRUSTED_CHECKPOINT | Slice 6.6 بقيت `VERIFIED COMPLETE`؛ اعتمد المالك عقد Slice 6.7 عند base HEAD `8e7377f502e696b7d294765c85b246c463f401a0`؛ Current HEAD وUpstream وWorktree تُقرأ من Git/Runtime |
+| OPEN_GATE | HOLD — RED NOT AUTHORIZED |
+| NEXT_ACTION | التوقف بعد حفظ العقد وCommit/Push؛ يبدأ RED فقط عبر موافقة مالك مستقلة |
+| EVIDENCE_REFERENCES | Slice 6.6 closure receipt `/workspaces/shujaa_handoff_bundle/stage6_6_closure/20260828T225400Z_826/closure_receipt_final.txt`؛ عقد Slice 6.7 بين markers `STAGE6_SLICE6_7_CONTRACT_BEGIN/END` في `SHUJAA_ACTIVE_ROADMAP.md` |
 <!-- SHUJAA_CURRENT_STATE_END -->
 
 ### Evidence summary
@@ -28,17 +28,20 @@
 
 ## OPEN ITEMS
 
-لا توجد بنود مفتوحة لـSlice 6.6 بعد اجتياز Closure Gate.
+| ID | STATUS | WHY_IT_MATTERS | TRIGGER_TO_REOPEN | SOURCE_REFERENCE |
+|---|---|---|---|---|
+| `S6.7-RED` | `PENDING AUTHORIZATION` | عقد Slice 6.7 محفوظ، لكن لا implementation قبل RED مستقل | موافقة مالك صريحة على RED | عقد Slice 6.7 في Active Roadmap |
 
 ## DEFERRED ITEMS
 
 | ID | STATUS | WHY_IT_MATTERS | TRIGGER_TO_REOPEN | SOURCE_REFERENCE |
 |---|---|---|---|---|
-| `SKILL-V071` | `DEFERRED — NOT STARTED` | يثبت أسلوب الشرح ونموذج الحالة في المهارة دون تعديل v0.7 النشطة | بوابة Skill مستقلة بعد إغلاق Patch المشروع | Change Proposal `0.7.1-candidate` |
+| `SKILL-V071` | `EXPERIMENTAL / DEFERRED — FROZEN` | تحسين جانبي لا يوقف بناء شجاع؛ v0.7 تبقى النشطة | خطأ أمني، مشكلة متكررة، False Block متكرر، فشل جوهري، Milestone مخصص، أو طلب مالك صريح | Candidate `0.7.1` غير مثبت وغير مروّج |
 
 ## OWNER DECISIONS PENDING
 
-لا يوجد قرار مالك معلق حاليًا. تبقى Skill v0.7.1 مؤجلة وتتطلب بوابة مستقلة عند إعادة فتحها.
+- `S6.7-RED`: لم تُمنح موافقة RED بعد؛ يتطلب بوابة مالك مستقلة.
+- `SKILL-V071`: مجمدة ولا يعاد فتحها إلا عند Trigger معتمد.
 
 ---
 

@@ -15,8 +15,8 @@
 | الحقل | القيمة |
 |---|---|
 | CURRENT_STAGE | Stage 6 — Catalog Foundation |
-| CURRENT_SLICE | Slice 6.6 — Explicit Dependency Binding Plan Validation Read Model |
-| SLICE_STATUS | VERIFIED COMPLETE — LOCAL/IN-MEMORY SCOPE |
+| CURRENT_SLICE | Slice 6.7 — In-Memory Explicit Dependency Binding Registry |
+| SLICE_STATUS | CONTRACT APPROVED — RED NOT STARTED |
 <!-- SHUJAA_CURRENT_STATE_MIRROR_END -->
 
 ---
@@ -94,7 +94,7 @@
 | 3 | Unified Execution Model | `VERIFIED COMPLETE` | مسار موحد: Manager → Work → Task → Execution → Dispatcher → Executor/Runner. |
 | 4 | Full Execution Lifecycle Control | `VERIFIED COMPLETE` | تحكم محلي/Mock في دورة التنفيذ وسباقات الحالات النهائية والإلغاء والمهلة وRetry الآمنة والتنظيف والملكية؛ Pause/Resume منقولة بالاعتماديات وفق ADR-023. |
 | 5 | Event Model + Audit Foundation | `VERIFIED COMPLETE — LOCAL/MOCK SCOPE` | Event/Audit منفصلان ومختبران مع Local stores خلف Protocols. |
-| 6 | Catalog Foundation | `IN PROGRESS — SLICE 6.6 VERIFIED COMPLETE` | Capability Catalog موحد بهوية مستقرة وDescriptor وDependency Graph وLifecycle وResolver/Bindings لكل قدرة قابلة للإضافة والاستبدال والتقاعد. |
+| 6 | Catalog Foundation | `IN PROGRESS — SLICE 6.7 CONTRACT APPROVED` | Capability Catalog موحد بهوية مستقرة وDescriptor وDependency Graph وLifecycle وResolver/Bindings لكل قدرة قابلة للإضافة والاستبدال والتقاعد. |
 | 7 | Policy & Access Control | `PLANNED` | Policy-as-Data وAccess Graph ونقطة إنفاذ موحدة والموافقات والصلاحيات المحدودة. |
 | 8 | Runtime Isolation & Safety | `PLANNED` | Runtime Adapters قابلة للاستبدال مع العزل وSandbox وحدود الموارد والأسرار وKill Switch دون branching دائم داخل Manager. |
 | 9 | Durable Workflows | `PLANNED` | Durable Engine خلف عقد شجاع للاستئناف والتعافي وRetry وReplay وCompensation وJournal، مع خطة خروج من المزود. |
@@ -1294,6 +1294,66 @@ Slice 6.6 مغلقة ومتحققة ضمن Local/In-Memory scope. Evidence ال�
 الخطوة التالية هي `NEXT_SLICE_DISCOVERY` مستقل؛ لا يفترض مسبقًا أن Resolver أو Binding persistence أو Lifecycle هي الشريحة التالية، ولا يبدأ RED قبل عقد وموافقة مستقلين.
 
 <!-- STAGE6_SLICE6_6_CONTRACT_END -->
+
+<!-- STAGE6_SLICE6_7_CONTRACT_BEGIN -->
+### Slice 6.7 — In-Memory Explicit Dependency Binding Registry
+
+**الحالة:** `CONTRACT APPROVED — RED NOT STARTED`
+
+**الغرض:** حفظ خطة ربط صريحة اجتازت تحقق Slice 6.6 داخل Registry محلية وفي الذاكرة، دون اختيار تلقائي أو سلوك Runtime.
+
+#### Public boundary
+
+- `ExplicitDependencyBindingRegistryProtocol` هو العقد العام ويعرض `register()` و`get()` و`list()`.
+- `InMemoryExplicitDependencyBindingRegistry` هو التنفيذ المحلي لهذه الشريحة.
+- السجل مرتبط بـimmutable Dependency Graph snapshot ولا يحتفظ بمرجع حي إلى Catalog.
+
+النماذج العامة:
+
+- `ExplicitDependencyBinding`: `dependency_asset_id` و`target_identity`.
+- `ExplicitDependencyBindingSet`: `source_identity` وcanonical immutable bindings.
+- `DependencyBindingRegistrationResult`: `disposition` و`validation`.
+- dispositions: `REGISTERED`، `IDEMPOTENT_REPLAY`، `IDENTITY_CONFLICT`، `SOURCE_NOT_FOUND`، `PLAN_REJECTED`.
+
+#### register contract
+
+المدخلات هي هوية المصدر الدقيقة و`tuple[DependencyBindingProposal, ...]`. قواعد الأنواع والقيم والأخطاء تبقى متوافقة مع Slice 6.6.
+
+الترتيب الملزم:
+
+1. validate input.
+2. استدعاء `validate_dependency_binding_plan()` مرة واحدة.
+3. `None` يعيد `SOURCE_NOT_FOUND`.
+4. `structurally_complete=False` يعيد `PLAN_REJECTED`.
+5. اشتقاق canonical binding set من نتيجة Validation، لا من ترتيب إدخال المستدعي.
+6. اكتساب Registry lock.
+7. المفتاح غير موجود: تخزين وإرجاع `REGISTERED`.
+8. الموجود يساوي canonical set: `IDEMPOTENT_REPLAY`.
+9. الموجود مختلف: `IDENTITY_CONFLICT` دون استبدال الفائز.
+
+#### Result and read semantics
+
+- `SOURCE_NOT_FOUND` فقط يعيد `validation=None`.
+- `REGISTERED` و`IDEMPOTENT_REPLAY` و`IDENTITY_CONFLICT` و`PLAN_REJECTED` تحمل نتيجة Validation الداخلية للمحاولة الحالية.
+- `get(asset_id, version)` يعيد `None` للهوية غير المسجلة.
+- `list()` تعيد Binding Sets immutable مرتبة حتميًا حسب `(asset_id, version)`.
+- replay وconflict ورفض الخطة لا تغير الحالة المخزنة، ولا توجد partial writes.
+
+#### Atomicity and concurrency
+
+- Validation وCanonicalization يحدثان خارج Registry lock.
+- القفل يغطي `compare/store` الذري فقط.
+- في محاولات متزامنة متطابقة: تسجيل واحد `REGISTERED` والبقية `IDEMPOTENT_REPLAY`.
+- في خطط صحيحة مختلفة لنفس المصدر: تسجيل واحد `REGISTERED` والبقية `IDENTITY_CONFLICT`.
+- أول من يكتسب القفل يفوز؛ الفائز scheduling-dependent، ولا تفترض الاختبارات هوية الخطة الفائزة.
+
+#### خارج النطاق
+
+لا Resolver، ولا automatic version selection، ولا Lifecycle أو permissions/policy، ولا Runtime أو Persistence، ولا update/delete/rebind، ولا مسؤوليات Stage 7 أو Stage 8.
+
+**البوابة التالية:** موافقة مستقلة على RED. حفظ هذا العقد لا يمنح RED أو GREEN أو implementation أو Commit للكود.
+
+<!-- STAGE6_SLICE6_7_CONTRACT_END -->
 
 
 <!-- CONTRACT_ADVERSARIAL_REVIEW_GATE_BEGIN -->
