@@ -2,7 +2,7 @@
 
 > **الصفة:** خارطة التنفيذ الرسمية النشطة لمشروع شجاع
 > **الإصدار:** 1.3
-> **آخر تحديث موثق:** 30 أغسطس 2026 بعد اجتياز Stage 7 Entry Gate والدخول إلى DESIGN/RESEARCH؛ First Slice لم تُصمم ولم يبدأ RED أو Production.
+> **آخر تحديث موثق:** 30 أغسطس 2026 بعد حفظ عقد Slice 7.1 بانتظار موافقة RED؛ لم يبدأ RED أو GREEN أو Production.
 > **النطاق:** 19 مرحلة مترابطة بالاعتماديات، من Stage 0 إلى Stage 18
 
 ---
@@ -15,14 +15,16 @@
 | الحقل | القيمة |
 |---|---|
 | CURRENT_STAGE | STAGE7_POLICY_AND_ACCESS_CONTROL |
-| CURRENT_SLICE | NOT_DESIGNED |
-| SLICE_STATUS | NOT_STARTED |
+| CURRENT_SLICE | Slice 7.1 — Single-Action Authorization Boundary for cancel_task |
+| SLICE_STATUS | CONTRACT_SAVED_PENDING_RED_APPROVAL |
 | STAGE7_STATUS | IN_PROGRESS_DESIGN_RESEARCH |
 | STAGE7_ENTRY_GATE | GO |
-| FIRST_SLICE | NOT_DESIGNED |
+| SLICE_7_1 | CONTRACT_SAVED_PENDING_RED_APPROVAL |
+| FIRST_ACTION | TASK_CANCEL |
 | RED_STARTED | NO |
+| GREEN_STARTED | NO |
 | PRODUCTION_STARTED | NO |
-| NEXT | STAGE7_BATCH_PLAN_DESIGN |
+| NEXT | WAIT_FOR_OWNER_SLICE7_1_CONTRACT_COMMIT_APPROVAL |
 <!-- SHUJAA_CURRENT_STATE_MIRROR_END -->
 
 ---
@@ -1454,6 +1456,169 @@ Slice 6.6 مغلقة ومتحققة ضمن Local/In-Memory scope. Evidence ال�
 - لا فعل معتمد؛ تُقارن `cancel_task` و`submit` و`retry` لاحقًا عند First Slice Design بحسب الحاجة الوظيفية والمخاطر ووضوح actor/action/resource ومقدار تغيير العقود وقابلية الاختبار والرجوع.
 
 <!-- STAGE7_ENTRY_GATE_CONTRACT_END -->
+
+
+<!-- STAGE7_SLICE7_1_CONTRACT_BEGIN -->
+## Slice 7.1 — Single-Action Authorization Boundary for cancel_task
+
+**الحالة:** `SAVED — PENDING RED APPROVAL`
+
+### 1. الحاجة والمستهلك
+
+- حماية `cancel_task` قبل lifecycle mutation أو cleanup.
+- المستهلك المباشر: `POST /tasks/<task_id>/cancel`.
+- أي runtime caller لاحق ملزم بالمرور عبر command path نفسها.
+- بقية Slices 7.2–7.5 تبقى `PROPOSAL_ONLY` غير معتمدة، وتُعاد الحاجة بعد 7.1.
+
+### 2. Actor المعتمد لهذه الشريحة
+
+- principal خدمي محلي واحد، stable وopaque وغير سري، يمثل قناة API المصادق عليها.
+- لا يدّعي تمثيل المستخدم البشري.
+- لا تُخزن API key ولا قيمتها ولا hash أو اشتقاق منها داخل Actor أو Policy أو Audit.
+- API key تبقى credential للتحقق فقط، وليست actor identity.
+- تعدد principals وidentity federation مؤجلان حتى مستهلك وظيفي مثبت.
+
+### 3. موضع Enforcement
+
+- enforcement إلزامية داخل `ShujaaManager.cancel_task` command entry عبر evaluator محقون.
+- API-only enforcement ممنوعة لأنها قابلة للتجاوز من direct in-process caller.
+- غياب evaluator أو exception أو malformed/unknown decision ينتج fail-closed.
+- لا permissive/default allow.
+- lifecycle helpers وExecution Registry تبقى داخلية ولا تتجاوز command entry.
+- Manager command entry لا يتجاوز سلامة state machine أو terminal winner.
+
+### 4. العقود الدنيا
+
+Immutable Shujaa-owned contracts:
+
+- `ActorRef`.
+- `ResourceRef`.
+- `AuthorizationContext`.
+- `AuthorizationRequest`.
+- `AuthorizationDecision`.
+- `CancelAuthorizationEvaluatorProtocol`.
+
+الحد الأدنى فقط:
+
+- actor.
+- action=`task.cancel`.
+- resource type=`task`.
+- resource ID.
+- request/operation identity.
+- effect=`ALLOW|DENY`.
+- reason code.
+- policy version.
+
+لا headers أو payload عام أو command/result/error خام أو secrets.
+
+### 5. دلالة القرار
+
+- Missing evaluator أو exception أو malformed/unknown decision: `EVALUATOR_UNAVAILABLE`.
+- `DENY`: `POLICY_DENIED`.
+- الحالتان لا تنفذان mutation أو cleanup.
+
+### 6. التسلسل الأمني الإلزامي
+
+1. Evaluate.
+2. عند `ALLOW`، سجّل authorization evidence إلزامية قبل الفعل.
+3. فقط نجاح append أو idempotent replay يسمح بالفعل.
+4. فشل التسجيل السابق للفعل ينتج `AUDIT_UNAVAILABLE`، ولا cancel أو mutation أو cleanup.
+5. نفّذ lifecycle/race reconciliation الحالية مرة واحدة منطقيًا.
+6. سجل outcome audit منفصلة مرتبطة بالقرار والعملية.
+
+يجب استخدام هويتين deterministic منفصلتين:
+
+- authorization evidence identity.
+- outcome audit identity.
+
+لا تدّع atomicity أو durability أو exactly-once موزع.
+
+### 7. فشل Outcome Audit بعد الفعل
+
+إذا فشل التسجيل بعد حدوث الفعل:
+
+- لا تعكس lifecycle winner.
+- لا تدّع أن الفعل لم يحدث.
+- لا تعيد تنفيذ cleanup بسبب فشل Audit.
+- أعد نتيجة الفعل الحقيقية مع `audit_status=FAILED` و`warning_code=POST_ACTION_AUDIT_FAILED`.
+- حافظ على HTTP status الذي يعكس نتيجة الفعل الحقيقية.
+- لا تستخدم generic 500 يوحي بأن الإلغاء لم يحدث.
+- التفاصيل الخارجية sanitized؛ التفاصيل اللازمة للتشخيص تبقى داخليًا دون secrets.
+
+### 8. Idempotency والسباقات
+
+- `ALLOW` لا يتجاوز terminal authority أو first-winner semantics.
+- السماح مرتبط بالactor/action/resource/operation داخل الاستدعاء نفسه.
+- لا يتحول إلى token عام ولا يعبر لفعل أو مورد آخر.
+- replay/conflict/stale dispositions الحالية تبقى سلطوية.
+
+### 9. REQUIRED_NOW
+
+- immutable contracts وProtocol.
+- actor mapping في composition root.
+- evaluator إلزامي منطقيًا لمسار cancel.
+- pre-action evidence وpost-action outcome منفصلتان.
+- الأخطاء المنظمة: `POLICY_DENIED` و`EVALUATOR_UNAVAILABLE` و`AUDIT_UNAVAILABLE` و`POST_ACTION_AUDIT_FAILED`.
+- API wiring واختبارات anti-bypass والفشل والسباق.
+- الحفاظ على عقود Stage 4/5 الحالية.
+
+### 10. DEFERRED_WITH_TRIGGER
+
+- فعل ثانٍ: عند مستهلك مباشر مثبت.
+- RBAC/ABAC/ReBAC أو DSL/Framework/Engine: عند حاجة مثبتة وبعد Research Gate.
+- approvals: عند فعل يحتاج موافقة بشرية.
+- multi-principal/federation: عند تجاوز principal الخدمي الواحد.
+- Runtime isolation: Stage 8.
+- durability/recovery/outbox: Stage 9.
+- Stage 6 permissions integration: بوابة مستقلة عند مستهلك مثبت.
+
+### 11. النطاق السلبي
+
+لا:
+
+- Security Model عام.
+- Framework أو dependency خارجية.
+- approval workflow.
+- Stage 8/9.
+- تعديل Stage 6.
+- تعميم enforcement لفعل آخر.
+- Full Regression في RED/GREEN الموجهة دون trigger.
+
+### 12. RED contract
+
+Matrix الاختبارات المقترحة، دون إنشاء الاختبارات الآن:
+
+- immutability وvalidation.
+- missing/exception/malformed evaluator.
+- `DENY` بلا mutation/cleanup.
+- `ALLOW` مع فشل pre-action evidence بلا أثر.
+- evidence قبل transition.
+- applied/replay/conflicting terminal winner.
+- post-action audit failure يحفظ النتيجة.
+- no cross-action/resource permit reuse.
+- minimal actor/policy/resource بلا secrets.
+- API key لا تصبح identity أو Audit data.
+- anti-bypass call-site coverage.
+- الحفاظ على Stage 5 post-action audit semantics.
+
+### 13. Research Gate
+
+`RESEARCH_GATE=NOT_TRIGGERED`
+
+طالما بقي العقد framework-neutral ومحليًا وقابلًا للرجوع. يتحول إلى `REQUIRED` قبل تجميد Security Model عام أو اعتماد DSL/Framework/Engine.
+
+### 14. Hard Stops
+
+- actor غير محسوم أو تسريب credential.
+- bypass لمسار Manager command.
+- default allow.
+- mutation بعد فشل pre-action evidence.
+- تغيير lifecycle winner بسبب post-action Audit failure.
+- Framework/Security Model trigger.
+- Stage 6/8/9 scope.
+- تغير HEAD أو Worktree غير متوقعة.
+
+<!-- STAGE7_SLICE7_1_CONTRACT_END -->
 
 
 <!-- CONTRACT_ADVERSARIAL_REVIEW_GATE_BEGIN -->
