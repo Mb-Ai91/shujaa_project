@@ -4,18 +4,20 @@
 
 > **الوظيفة:** هذا القسم هو المالك البشري الوحيد لحالة المشروع الحالية ونقطة الاستئناف. Git/Codespace يملكان Runtime truth، وActive Roadmap تعكس الحالة المختصرة فقط، وADR تحفظ القرارات طويلة العمر.
 >
-> **آخر تحديث موثق:** 29 أغسطس 2026 بعد إغلاق Stage 6 توثيقيًا بنتيجة Exit Gate تساوي `GO`.
+> **آخر تحديث موثق:** 30 أغسطس 2026 بعد حفظ عقد Stage 7 Entry Gate وتصحيح State Drift في صف Stage 6؛ Stage 7 لم تبدأ.
 
 <!-- SHUJAA_CURRENT_STATE_BEGIN -->
 | الحقل | القيمة |
 |---|---|
-| CURRENT_STAGE | Stage 6 — Catalog Foundation (CLOSED) |
+| CURRENT_STAGE | STAGE6_CLOSED |
 | CURRENT_SLICE | Slices 6.1–6.7 — COMPLETE؛ Slice 6.8 — DEFERRED NON-BLOCKING |
 | SLICE_STATUS | VERIFIED COMPLETE — LOCAL/IN-MEMORY CATALOG & EXPLICIT BINDING FOUNDATION |
 | LAST_TRUSTED_CHECKPOINT | Stage 6 closed and verified at `734ae282678a40189ab4d4343436682a21233da2`؛ Slices 6.1–6.7 complete؛ targeted `21 passed`؛ full regression `592 passed` و`0 failed`؛ conformance review `PASS`؛ State Sync `1 passed`؛ `STAGE6_EXIT_GAP_AUDIT=PASS`؛ `STAGE6_EXIT_GATE=GO` |
-| OPEN_GATE | Stage 7 Entry Gate Design — PENDING OWNER APPROVAL |
-| NEXT_ACTION | `NEXT=STAGE7_ENTRY_GATE_DESIGN_PENDING_OWNER_APPROVAL` |
-| EVIDENCE_REFERENCES | Stage 6 Exit Gate contract بين markers `STAGE6_EXIT_GATE_CONTRACT_BEGIN/END`؛ `BASE_HEAD=734ae282678a40189ab4d4343436682a21233da2`؛ targeted `21 passed`؛ full regression `592 passed` و`0 failed`؛ conformance review `PASS`؛ State Sync `1 passed`؛ `STAGE6_EXIT_GAP_AUDIT=PASS`؛ `STAGE6_EXIT_GATE=GO` |
+| STAGE7_ENTRY_GATE_CONTRACT | SAVED_PENDING_ENTRY_EXECUTION |
+| STAGE7_STARTED | NO |
+| OPEN_GATE | Stage 7 Entry Gate Execution — PENDING OWNER APPROVAL |
+| NEXT_ACTION | `NEXT=WAIT_FOR_OWNER_STAGE7_ENTRY_GATE_EXECUTION_APPROVAL` |
+| EVIDENCE_REFERENCES | Stage 6 Exit Gate contract بين markers `STAGE6_EXIT_GATE_CONTRACT_BEGIN/END`؛ Stage 7 Entry Gate contract بين markers `STAGE7_ENTRY_GATE_CONTRACT_BEGIN/END`؛ `BASE_HEAD=734ae282678a40189ab4d4343436682a21233da2`؛ targeted `21 passed`؛ full regression `592 passed` و`0 failed`؛ conformance review `PASS`؛ State Sync `1 passed`؛ `STAGE6_EXIT_GAP_AUDIT=PASS`؛ `STAGE6_EXIT_GATE=GO` |
 <!-- SHUJAA_CURRENT_STATE_END -->
 
 ### Evidence summary
@@ -28,8 +30,10 @@
 - Full regression: `592 passed` و`0 failed`.
 - Conformance review: `PASS`.
 - State Sync: `1 passed`.
-- Stage 7 لم تبدأ.
-- `NEXT=STAGE7_ENTRY_GATE_DESIGN_PENDING_OWNER_APPROVAL`.
+- `STAGE7_ENTRY_GATE_CONTRACT=SAVED_PENDING_ENTRY_EXECUTION`.
+- `CURRENT_STAGE=STAGE6_CLOSED`.
+- `STAGE7_STARTED=NO`.
+- `NEXT=WAIT_FOR_OWNER_STAGE7_ENTRY_GATE_EXECUTION_APPROVAL`.
 
 ## OPEN ITEMS
 

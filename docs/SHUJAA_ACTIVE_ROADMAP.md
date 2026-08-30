@@ -14,7 +14,7 @@
 <!-- SHUJAA_CURRENT_STATE_MIRROR_BEGIN -->
 | الحقل | القيمة |
 |---|---|
-| CURRENT_STAGE | Stage 6 — Catalog Foundation (CLOSED) |
+| CURRENT_STAGE | STAGE6_CLOSED |
 | CURRENT_SLICE | Slices 6.1–6.7 — COMPLETE؛ Slice 6.8 — DEFERRED NON-BLOCKING |
 | SLICE_STATUS | VERIFIED COMPLETE — LOCAL/IN-MEMORY CATALOG & EXPLICIT BINDING FOUNDATION |
 <!-- SHUJAA_CURRENT_STATE_MIRROR_END -->
@@ -94,7 +94,7 @@
 | 3 | Unified Execution Model | `VERIFIED COMPLETE` | مسار موحد: Manager → Work → Task → Execution → Dispatcher → Executor/Runner. |
 | 4 | Full Execution Lifecycle Control | `VERIFIED COMPLETE` | تحكم محلي/Mock في دورة التنفيذ وسباقات الحالات النهائية والإلغاء والمهلة وRetry الآمنة والتنظيف والملكية؛ Pause/Resume منقولة بالاعتماديات وفق ADR-023. |
 | 5 | Event Model + Audit Foundation | `VERIFIED COMPLETE — LOCAL/MOCK SCOPE` | Event/Audit منفصلان ومختبران مع Local stores خلف Protocols. |
-| 6 | Catalog Foundation | `IN PROGRESS — SLICE 6.7 IMPLEMENTED AND VERIFIED` | Capability Catalog موحد بهوية مستقرة وDescriptor وDependency Graph وLifecycle وResolver/Bindings لكل قدرة قابلة للإضافة والاستبدال والتقاعد. |
+| 6 | Catalog Foundation | `VERIFIED COMPLETE — LOCAL/IN-MEMORY CATALOG & EXPLICIT BINDING FOUNDATION` | Capability Catalog بهوية وإصدار وDescriptor وLifecycle واعتماديات وصفية، وDependency Graph وimpact/candidate read models، وExplicit Binding validation/registry محلية؛ دون automatic selection أو Policy Enforcement أو Runtime integration. |
 | 7 | Policy & Access Control | `PLANNED` | Policy-as-Data وAccess Graph ونقطة إنفاذ موحدة والموافقات والصلاحيات المحدودة. |
 | 8 | Runtime Isolation & Safety | `PLANNED` | Runtime Adapters قابلة للاستبدال مع العزل وSandbox وحدود الموارد والأسرار وKill Switch دون branching دائم داخل Manager. |
 | 9 | Durable Workflows | `PLANNED` | Durable Engine خلف عقد شجاع للاستئناف والتعافي وRetry وReplay وCompensation وJournal، مع خطة خروج من المزود. |
@@ -1412,6 +1412,42 @@ Slice 6.6 مغلقة ومتحققة ضمن Local/In-Memory scope. Evidence ال�
 - Stage 7 لم تبدأ، ولا يمنح هذا الإغلاق إذن Stage 7 أو RED/GREEN.
 
 <!-- STAGE6_EXIT_GATE_CONTRACT_END -->
+
+
+<!-- STAGE7_ENTRY_GATE_CONTRACT_BEGIN -->
+## Stage 7 Entry Gate Contract
+
+**الحالة:** `SAVED — PENDING ENTRY EXECUTION`
+
+### السلطة والحكم
+
+- حفظ هذا العقد أو Commit/Push لا يبدأ Stage 7.
+- بعد حفظ العقد والتزامه ومزامنته يلزم: موافقة مالك مستقلة لتنفيذ Entry Gate، ثم تنفيذها على baseline الجديد، ثم حكم `GO` قبل تغيير Stage 7 إلى `DESIGN/RESEARCH`.
+- `GO` يسمح بدخول Stage 7 إلى `DESIGN/RESEARCH` فقط. First Slice Design وRED يحتاجان عقدًا وموافقة مالك مستقلين.
+- الأولوية `FAIL` ثم `HOLD` ثم `GO`. اختلاف branch أو HEAD/upstream أو نظافة Worktree أو Stage 6 prerequisite ينتج `HOLD`؛ الخرق الأمني أو تجاوز حدود المراحل ينتج `FAIL`.
+
+### Stage 6 والـEvidence
+
+- Stage 6 prerequisite هو `CLOSED_VERIFIED_COMMITTED_AND_SYNCED`، وتستهلك Stage 7 عقود Catalog وDescriptor وDependency Graph وExplicit Binding الحالية دون تغييرها.
+- `required_permissions` وصفية وليست Policy Enforcement.
+- أي Production Delta لاحقة لا تبطل Evidence Stage 6 تلقائيًا؛ targeted impact review/revalidation فقط عند أثر مادي على عقود Stage 6 أو افتراضاتها أو الحدود التي تستهلكها Stage 7.
+- لا Full Regression دون trigger واسع أو غير قابل للحصر أو trigger آخر مثبت.
+
+### النطاق والملكية
+
+- النطاق الإيجابي: Policy-as-Data وAccess Graph وauthorization وapprovals وlifecycle eligibility ونقطة enforcement موحدة وfail-closed.
+- Stage 7 قد تقرر lifecycle eligibility/authorization، لكن القرار وحده لا يغيّر `CapabilityLifecycle` ولا ينقل ملكية Catalog أو lifecycle mutation إلى Stage 7.
+- خارج النطاق: Runtime Adapters وsandbox وresource isolation وsecrets وKill Switch implementation في Stage 8؛ durability وrecovery في Stage 9؛ distributed production runtime؛ automatic capability/version selection؛ وتعديل Catalog أو Binding contracts دون فجوة مثبتة وبوابة مستقلة.
+
+### القرارات والبحث وأول Slice
+
+- OPEN_DECISIONS تُغلق بحسب صلتها المادية بالـSlice فقط؛ والبقية `DEFERRED_WITH_TRIGGER`، ولا يؤجل Slice قرار لا يستهلكه.
+- `RESEARCH_GATE_REQUIRED=CONDITIONAL`: تصبح Research Gate إلزامية قبل اعتماد Policy Language أو DSL أو Framework أو Engine، أو تجميد Security Model مؤثر داخل public contract.
+- لا يلزم بحث خارجي لحفظ Entry Gate، أو دخول `DESIGN/RESEARCH`، أو Slice محلي قابل للرجوع وframework-neutral لا يجمّد اختيارًا أمنيًا.
+- اتجاه أول Slice فقط: `framework-neutral single-action authorization/enforcement vertical slice`.
+- لا فعل معتمد؛ تُقارن `cancel_task` و`submit` و`retry` لاحقًا عند First Slice Design بحسب الحاجة الوظيفية والمخاطر ووضوح actor/action/resource ومقدار تغيير العقود وقابلية الاختبار والرجوع.
+
+<!-- STAGE7_ENTRY_GATE_CONTRACT_END -->
 
 
 <!-- CONTRACT_ADVERSARIAL_REVIEW_GATE_BEGIN -->
