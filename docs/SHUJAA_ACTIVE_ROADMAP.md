@@ -2,7 +2,7 @@
 
 > **الصفة:** خارطة التنفيذ الرسمية النشطة لمشروع شجاع
 > **الإصدار:** 1.3
-> **آخر تحديث موثق:** 29 أغسطس 2026
+> **آخر تحديث موثق:** 30 أغسطس 2026 بعد اجتياز Stage 7 Entry Gate والدخول إلى DESIGN/RESEARCH؛ First Slice لم تُصمم ولم يبدأ RED أو Production.
 > **النطاق:** 19 مرحلة مترابطة بالاعتماديات، من Stage 0 إلى Stage 18
 
 ---
@@ -14,9 +14,15 @@
 <!-- SHUJAA_CURRENT_STATE_MIRROR_BEGIN -->
 | الحقل | القيمة |
 |---|---|
-| CURRENT_STAGE | STAGE6_CLOSED |
-| CURRENT_SLICE | Slices 6.1–6.7 — COMPLETE؛ Slice 6.8 — DEFERRED NON-BLOCKING |
-| SLICE_STATUS | VERIFIED COMPLETE — LOCAL/IN-MEMORY CATALOG & EXPLICIT BINDING FOUNDATION |
+| CURRENT_STAGE | STAGE7_POLICY_AND_ACCESS_CONTROL |
+| CURRENT_SLICE | NOT_DESIGNED |
+| SLICE_STATUS | NOT_STARTED |
+| STAGE7_STATUS | IN_PROGRESS_DESIGN_RESEARCH |
+| STAGE7_ENTRY_GATE | GO |
+| FIRST_SLICE | NOT_DESIGNED |
+| RED_STARTED | NO |
+| PRODUCTION_STARTED | NO |
+| NEXT | STAGE7_BATCH_PLAN_DESIGN |
 <!-- SHUJAA_CURRENT_STATE_MIRROR_END -->
 
 ---
@@ -95,7 +101,7 @@
 | 4 | Full Execution Lifecycle Control | `VERIFIED COMPLETE` | تحكم محلي/Mock في دورة التنفيذ وسباقات الحالات النهائية والإلغاء والمهلة وRetry الآمنة والتنظيف والملكية؛ Pause/Resume منقولة بالاعتماديات وفق ADR-023. |
 | 5 | Event Model + Audit Foundation | `VERIFIED COMPLETE — LOCAL/MOCK SCOPE` | Event/Audit منفصلان ومختبران مع Local stores خلف Protocols. |
 | 6 | Catalog Foundation | `VERIFIED COMPLETE — LOCAL/IN-MEMORY CATALOG & EXPLICIT BINDING FOUNDATION` | Capability Catalog بهوية وإصدار وDescriptor وLifecycle واعتماديات وصفية، وDependency Graph وimpact/candidate read models، وExplicit Binding validation/registry محلية؛ دون automatic selection أو Policy Enforcement أو Runtime integration. |
-| 7 | Policy & Access Control | `PLANNED` | Policy-as-Data وAccess Graph ونقطة إنفاذ موحدة والموافقات والصلاحيات المحدودة. |
+| 7 | Policy & Access Control | `IN PROGRESS — DESIGN/RESEARCH — FIRST SLICE NOT STARTED` | Policy-as-Data وAccess Graph ونقطة إنفاذ موحدة والموافقات والصلاحيات المحدودة. |
 | 8 | Runtime Isolation & Safety | `PLANNED` | Runtime Adapters قابلة للاستبدال مع العزل وSandbox وحدود الموارد والأسرار وKill Switch دون branching دائم داخل Manager. |
 | 9 | Durable Workflows | `PLANNED` | Durable Engine خلف عقد شجاع للاستئناف والتعافي وRetry وReplay وCompensation وJournal، مع خطة خروج من المزود. |
 | 10 | Observability | `PLANNED` | Adapters مستقلة لـMetrics وLogs وTraces والتنبيهات مع portability وprivacy والتكاليف. |

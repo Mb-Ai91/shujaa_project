@@ -4,20 +4,22 @@
 
 > **الوظيفة:** هذا القسم هو المالك البشري الوحيد لحالة المشروع الحالية ونقطة الاستئناف. Git/Codespace يملكان Runtime truth، وActive Roadmap تعكس الحالة المختصرة فقط، وADR تحفظ القرارات طويلة العمر.
 >
-> **آخر تحديث موثق:** 30 أغسطس 2026 بعد حفظ عقد Stage 7 Entry Gate وتصحيح State Drift في صف Stage 6؛ Stage 7 لم تبدأ.
+> **آخر تحديث موثق:** 30 أغسطس 2026 بعد اجتياز Stage 7 Entry Gate والدخول إلى DESIGN/RESEARCH؛ First Slice لم تُصمم ولم يبدأ RED أو Production.
 
 <!-- SHUJAA_CURRENT_STATE_BEGIN -->
 | الحقل | القيمة |
 |---|---|
-| CURRENT_STAGE | STAGE6_CLOSED |
-| CURRENT_SLICE | Slices 6.1–6.7 — COMPLETE؛ Slice 6.8 — DEFERRED NON-BLOCKING |
-| SLICE_STATUS | VERIFIED COMPLETE — LOCAL/IN-MEMORY CATALOG & EXPLICIT BINDING FOUNDATION |
+| CURRENT_STAGE | STAGE7_POLICY_AND_ACCESS_CONTROL |
+| CURRENT_SLICE | NOT_DESIGNED |
+| SLICE_STATUS | NOT_STARTED |
+| STAGE7_STATUS | IN_PROGRESS_DESIGN_RESEARCH |
+| STAGE7_ENTRY_GATE | GO |
+| FIRST_SLICE | NOT_DESIGNED |
+| RED_STARTED | NO |
+| PRODUCTION_STARTED | NO |
+| NEXT | STAGE7_BATCH_PLAN_DESIGN |
 | LAST_TRUSTED_CHECKPOINT | Stage 6 closed and verified at `734ae282678a40189ab4d4343436682a21233da2`؛ Slices 6.1–6.7 complete؛ targeted `21 passed`؛ full regression `592 passed` و`0 failed`؛ conformance review `PASS`؛ State Sync `1 passed`؛ `STAGE6_EXIT_GAP_AUDIT=PASS`؛ `STAGE6_EXIT_GATE=GO` |
-| STAGE7_ENTRY_GATE_CONTRACT | SAVED_PENDING_ENTRY_EXECUTION |
-| STAGE7_STARTED | NO |
-| OPEN_GATE | Stage 7 Entry Gate Execution — PENDING OWNER APPROVAL |
-| NEXT_ACTION | `NEXT=WAIT_FOR_OWNER_STAGE7_ENTRY_GATE_EXECUTION_APPROVAL` |
-| EVIDENCE_REFERENCES | Stage 6 Exit Gate contract بين markers `STAGE6_EXIT_GATE_CONTRACT_BEGIN/END`؛ Stage 7 Entry Gate contract بين markers `STAGE7_ENTRY_GATE_CONTRACT_BEGIN/END`؛ `BASE_HEAD=734ae282678a40189ab4d4343436682a21233da2`؛ targeted `21 passed`؛ full regression `592 passed` و`0 failed`؛ conformance review `PASS`؛ State Sync `1 passed`؛ `STAGE6_EXIT_GAP_AUDIT=PASS`؛ `STAGE6_EXIT_GATE=GO` |
+| EVIDENCE_REFERENCES | Stage 6 Exit Gate contract بين markers `STAGE6_EXIT_GATE_CONTRACT_BEGIN/END`؛ Stage 7 Entry Gate contract بين markers `STAGE7_ENTRY_GATE_CONTRACT_BEGIN/END`؛ Stage 7 Entry Gate نفذ قراءة فقط على `BASE_HEAD=34a0d7e4cc76518db040fbaf0796eecc219e9370` بنتيجة `GO` ودون اختبارات؛ Stage 6 baseline عند `734ae282678a40189ab4d4343436682a21233da2`؛ targeted `21 passed`؛ full regression `592 passed` و`0 failed`؛ conformance review `PASS`؛ State Sync `1 passed`؛ `STAGE6_EXIT_GAP_AUDIT=PASS`؛ `STAGE6_EXIT_GATE=GO` |
 <!-- SHUJAA_CURRENT_STATE_END -->
 
 ### Evidence summary
@@ -30,10 +32,13 @@
 - Full regression: `592 passed` و`0 failed`.
 - Conformance review: `PASS`.
 - State Sync: `1 passed`.
-- `STAGE7_ENTRY_GATE_CONTRACT=SAVED_PENDING_ENTRY_EXECUTION`.
-- `CURRENT_STAGE=STAGE6_CLOSED`.
-- `STAGE7_STARTED=NO`.
-- `NEXT=WAIT_FOR_OWNER_STAGE7_ENTRY_GATE_EXECUTION_APPROVAL`.
+- `CURRENT_STAGE=STAGE7_POLICY_AND_ACCESS_CONTROL`.
+- `STAGE7_STATUS=IN_PROGRESS_DESIGN_RESEARCH`.
+- `STAGE7_ENTRY_GATE=GO`.
+- `FIRST_SLICE=NOT_DESIGNED`.
+- `RED_STARTED=NO`.
+- `PRODUCTION_STARTED=NO`.
+- `NEXT=STAGE7_BATCH_PLAN_DESIGN`.
 
 ## OPEN ITEMS
 
