@@ -4,36 +4,44 @@
 
 > **الوظيفة:** هذا القسم هو المالك البشري الوحيد لحالة المشروع الحالية ونقطة الاستئناف. Git/Codespace يملكان Runtime truth، وActive Roadmap تعكس الحالة المختصرة فقط، وADR تحفظ القرارات طويلة العمر.
 >
-> **آخر تحديث موثق:** 31 أغسطس 2026 بعد تنفيذ Slice 7.2 والتحقق الموجّه منها وCommit/Push؛ Stage 7 ما زالت جارية وليست مكتملة.
+> **آخر تحديث موثق:** 31 أغسطس 2026 بعد اعتماد وحفظ عقد Slice 7.3 بانتظار RED؛ Stage 7 ما زالت جارية وليست مكتملة.
 
 <!-- SHUJAA_CURRENT_STATE_BEGIN -->
 | الحقل | القيمة |
 |---|---|
 | CURRENT_STAGE | STAGE7_POLICY_AND_ACCESS_CONTROL |
-| CURRENT_SLICE | Slice 7.2 — Single-Action Authorization Boundary for work.submit |
-| SLICE_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
+| CURRENT_SLICE | Slice 7.3 — Stage 8 Runtime-Control Authorization Prerequisite |
+| SLICE_STATUS | CONTRACT_SAVED_PENDING_RED |
 | SLICE7_1_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | SLICE7_2_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
+| SLICE7_3_STATUS | CONTRACT_SAVED_PENDING_RED |
 | STAGE7_STATUS | IN_PROGRESS_NOT_COMPLETE |
 | STAGE7_ENTRY_GATE | GO |
 | SLICE_7_1 | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | SLICE_7_2 | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
+| SLICE_7_3 | CONTRACT_SAVED_PENDING_RED |
 | FIRST_ACTION | TASK_CANCEL |
-| CURRENT_ACTION | WORK_SUBMIT |
-| RED_STARTED | YES |
-| GREEN_STARTED | YES |
+| CURRENT_ACTION | RUNTIME_CONTROL_AUTHORIZATION_PREREQUISITE |
+| RED_STARTED | NO_FOR_SLICE7_3 |
+| GREEN_STARTED | NO_FOR_SLICE7_3 |
 | PRODUCTION_STARTED | YES |
-| TARGETED_EVIDENCE | SLICE7_2_NEW=31_PASSED; AFFECTED=100_PASSED; EXECUTED=131_COLLECTED_131_PASSED |
-| FULL_REGRESSION | NOT_RUN_NO_TRIGGER |
+| TARGETED_EVIDENCE | SLICE7_3_CONTRACT_SAVED_PENDING_RED; SLICE7_2_NEW=31_PASSED; AFFECTED=100_PASSED |
+| FULL_REGRESSION | DEFERRED_TO_STAGE7_EXIT_GATE |
 | IMPLEMENTATION_CHECKPOINT | 3b5259a69fa23133e6886afcaa14cf748d998c94 |
 | OTHER_STAGE7_SLICES | PROPOSAL_ONLY |
-| NEXT | WAIT_FOR_OWNER_NEXT_STAGE7_NEED_REVIEW |
+| NEXT | COMMIT_PUSH_CONTRACT_THEN_RUN_SLICE7_3_RED |
 | LAST_TRUSTED_CHECKPOINT | Slice 7.2 implementation checkpoint عند `3b5259a69fa23133e6886afcaa14cf748d998c94`، committed وpushed إلى `origin/refactor/modular-architecture`؛ Stage 7 ما زالت غير مكتملة. |
-| EVIDENCE_REFERENCES | Slice 7.2 implementation checkpoint=`3b5259a69fa23133e6886afcaa14cf748d998c94`؛ العقد بين markers `STAGE7_SLICE7_2_CONTRACT_BEGIN/END`؛ RED SHA256=`b7f70cbce04cd713f94015d85a2598c68115e2d6d9b6f980253b2d1136906719`؛ ملف Slice 7.2=`31 passed`؛ affected verification=`100 passed`؛ إجمالي التنفيذ المتمايز=`131 collected / 131 passed / 0 failed / 0 errors`؛ `SUBMIT_OPERATION_ID_SOURCE=authorization_request.context.operation_id`؛ Full Regression=`NOT_RUN_NO_TRIGGER`. |
+| EVIDENCE_REFERENCES | عقد Slice 7.3 بين markers `STAGE7_SLICE7_3_CONTRACT_BEGIN/END`؛ contract base=`edb20d9ff5805c28b8b2e41c492ec7ba07d7ee63`؛ `RUNTIME_CONTROL_OPERATION_ID_SOURCE=authorization_request.context.operation_id`؛ Slice 7.2 implementation checkpoint=`3b5259a69fa23133e6886afcaa14cf748d998c94`؛ Full Regression مؤجلة إلى Stage 7 Exit Gate. |
 <!-- SHUJAA_CURRENT_STATE_END -->
 
 ### Evidence summary
 
+- Slice 7.3: `CONTRACT SAVED — PENDING RED`.
+- العقد المالك بين markers `STAGE7_SLICE7_3_CONTRACT_BEGIN/END` في Active Roadmap.
+- Stage 7.3 تقرر authorization فقط؛ Runtime support وidentity/ownership/lifecycle/races/timeout والتنفيذ تبقى Stage 8.
+- `execution.terminate` منفصلة عن `task.cancel`، ولا Runtime stub أو permit قابل للنقل في Production.
+- `RUNTIME_CONTROL_OPERATION_ID_SOURCE=authorization_request.context.operation_id`، و`APPENDED` فقط تنجح.
+- Full Regression مؤجلة إلى Stage 7 Exit Gate، وGREEN تحتاج موافقة مالك مستقلة.
 - Slice 7.2: `IMPLEMENTED AND TARGETED VERIFIED — COMMITTED AND SYNCED`.
 - implementation checkpoint: `3b5259a69fa23133e6886afcaa14cf748d998c94`.
 - العقد المالك بين markers `STAGE7_SLICE7_2_CONTRACT_BEGIN/END`.

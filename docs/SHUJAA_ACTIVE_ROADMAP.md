@@ -2,7 +2,7 @@
 
 > **الصفة:** خارطة التنفيذ الرسمية النشطة لمشروع شجاع
 > **الإصدار:** 1.3
-> **آخر تحديث موثق:** 31 أغسطس 2026 بعد اعتماد وحفظ عقد Slice 7.2 بانتظار RED؛ Stage 7 ما زالت جارية وليست مكتملة.
+> **آخر تحديث موثق:** 31 أغسطس 2026 بعد اعتماد وحفظ عقد Slice 7.3 بانتظار RED؛ Stage 7 ما زالت جارية وليست مكتملة.
 > **النطاق:** 19 مرحلة مترابطة بالاعتماديات، من Stage 0 إلى Stage 18
 
 ---
@@ -15,24 +15,26 @@
 | الحقل | القيمة |
 |---|---|
 | CURRENT_STAGE | STAGE7_POLICY_AND_ACCESS_CONTROL |
-| CURRENT_SLICE | Slice 7.2 — Single-Action Authorization Boundary for work.submit |
-| SLICE_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
+| CURRENT_SLICE | Slice 7.3 — Stage 8 Runtime-Control Authorization Prerequisite |
+| SLICE_STATUS | CONTRACT_SAVED_PENDING_RED |
 | SLICE7_1_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | SLICE7_2_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
+| SLICE7_3_STATUS | CONTRACT_SAVED_PENDING_RED |
 | STAGE7_STATUS | IN_PROGRESS_NOT_COMPLETE |
 | STAGE7_ENTRY_GATE | GO |
 | SLICE_7_1 | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | SLICE_7_2 | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
+| SLICE_7_3 | CONTRACT_SAVED_PENDING_RED |
 | FIRST_ACTION | TASK_CANCEL |
-| CURRENT_ACTION | WORK_SUBMIT |
-| RED_STARTED | YES |
-| GREEN_STARTED | YES |
+| CURRENT_ACTION | RUNTIME_CONTROL_AUTHORIZATION_PREREQUISITE |
+| RED_STARTED | NO_FOR_SLICE7_3 |
+| GREEN_STARTED | NO_FOR_SLICE7_3 |
 | PRODUCTION_STARTED | YES |
-| TARGETED_EVIDENCE | SLICE7_2_NEW=31_PASSED; AFFECTED=100_PASSED; EXECUTED=131_COLLECTED_131_PASSED |
-| FULL_REGRESSION | NOT_RUN_NO_TRIGGER |
+| TARGETED_EVIDENCE | SLICE7_3_CONTRACT_SAVED_PENDING_RED; SLICE7_2_NEW=31_PASSED; AFFECTED=100_PASSED |
+| FULL_REGRESSION | DEFERRED_TO_STAGE7_EXIT_GATE |
 | IMPLEMENTATION_CHECKPOINT | 3b5259a69fa23133e6886afcaa14cf748d998c94 |
 | OTHER_STAGE7_SLICES | PROPOSAL_ONLY |
-| NEXT | WAIT_FOR_OWNER_NEXT_STAGE7_NEED_REVIEW |
+| NEXT | COMMIT_PUSH_CONTRACT_THEN_RUN_SLICE7_3_RED |
 <!-- SHUJAA_CURRENT_STATE_MIRROR_END -->
 
 ---
@@ -111,7 +113,7 @@
 | 4 | Full Execution Lifecycle Control | `VERIFIED COMPLETE` | تحكم محلي/Mock في دورة التنفيذ وسباقات الحالات النهائية والإلغاء والمهلة وRetry الآمنة والتنظيف والملكية؛ Pause/Resume منقولة بالاعتماديات وفق ADR-023. |
 | 5 | Event Model + Audit Foundation | `VERIFIED COMPLETE — LOCAL/MOCK SCOPE` | Event/Audit منفصلان ومختبران مع Local stores خلف Protocols. |
 | 6 | Catalog Foundation | `VERIFIED COMPLETE — LOCAL/IN-MEMORY CATALOG & EXPLICIT BINDING FOUNDATION` | Capability Catalog بهوية وإصدار وDescriptor وLifecycle واعتماديات وصفية، وDependency Graph وimpact/candidate read models، وExplicit Binding validation/registry محلية؛ دون automatic selection أو Policy Enforcement أو Runtime integration. |
-| 7 | Policy & Access Control | `IN PROGRESS — DESIGN/RESEARCH — FIRST SLICE NOT STARTED` | Policy-as-Data وAccess Graph ونقطة إنفاذ موحدة والموافقات والصلاحيات المحدودة. |
+| 7 | Policy & Access Control | `IN PROGRESS — SLICES 7.1–7.2 VERIFIED; SLICE 7.3 CONTRACT SAVED PENDING RED` | إنفاذ authorization محلي لـ`task.cancel` و`work.submit` مغلق ومتحقق منه؛ عقد Runtime-Control Authorization prerequisite محفوظ، وStage 7 ما زالت غير مكتملة. |
 | 8 | Runtime Isolation & Safety | `PLANNED` | Runtime Adapters قابلة للاستبدال مع العزل وSandbox وحدود الموارد والأسرار وKill Switch دون branching دائم داخل Manager. |
 | 9 | Durable Workflows | `PLANNED` | Durable Engine خلف عقد شجاع للاستئناف والتعافي وRetry وReplay وCompensation وJournal، مع خطة خروج من المزود. |
 | 10 | Observability | `PLANNED` | Adapters مستقلة لـMetrics وLogs وTraces والتنبيهات مع portability وprivacy والتكاليف. |
@@ -1851,6 +1853,202 @@ RED/GREEN affected tests:
 - Stage 7 ما زالت `IN_PROGRESS_NOT_COMPLETE`، وبقية Slices تبقى `PROPOSAL_ONLY`.
 
 <!-- STAGE7_SLICE7_2_CONTRACT_END -->
+
+
+<!-- STAGE7_SLICE7_3_CONTRACT_BEGIN -->
+## Slice 7.3 — Stage 8 Runtime-Control Authorization Prerequisite
+
+**الحالة:** `CONTRACT SAVED — PENDING RED`
+
+### 1. الحاجة والسلطة المرحلية
+
+- هذه الشريحة تغلق prerequisite مثبتة لدخول Stage 8 وفق ADR-023: قرار authorization ثابت وقابل للاستهلاك لأوامر Runtime Control قبل إضافة تنفيذها الفعلي.
+- Stage 7.3 تقرر authorization فقط. لا تنفذ Runtime Control ولا تثبت دعم runtime أو lifecycle eligibility.
+- Stage 8 وحدها تملك التكامل الحقيقي مع Runtime Adapter وتنفيذ الفعل أو رفض runtime غير المدعومة افتراضيًا.
+- بقية Stage 7 Slices تبقى `PROPOSAL_ONLY`، وStage 7 تبقى `IN_PROGRESS_NOT_COMPLETE`.
+
+### 2. Authorization مقابل technical support
+
+- `ALLOW` لا يعني أن runtime تدعم pause أو resume أو terminate.
+- `ALLOW` لا يثبت lifecycle eligibility، ولا يغير Execution state، ولا ينفذ Runtime action.
+- Stage 8 وحدها تتحقق من capability support وruntime identity وownership وprocess identity وcurrent lifecycle state وtransition eligibility والسباقات وtimeout/budget semantics.
+- لا mutation أو signal أو process control أو Adapter invocation داخل Stage 7.3.
+
+### 3. الأفعال والمورد والربط
+
+الأفعال الثلاثة الدقيقة هي:
+
+- `execution.pause`.
+- `execution.resume`.
+- `execution.terminate`.
+
+المورد الإلزامي:
+
+- `resource_type=execution`.
+- `resource_id=execution_id`.
+
+يجب أن يرتبط كل طلب بدقة بالactor والفعل وExecution resource و`request_id` و`operation_id`، ويمنع cross-action وcross-execution وcross-operation reuse وأي اختلاف في action/resource/operation binding.
+
+### 4. Terminate مقابل cancel
+
+- `execution.terminate` Runtime Control action على Execution محددة، وليست مرادفًا لـ`task.cancel` ولا تعيد استخدام دلالاته تلقائيًا.
+- لا تغير Task lifecycle ولا تنفذ cleanup داخل Stage 7.
+- العلاقة والمصالحة بين `execution.terminate` و`task.cancel` تؤجل إلى عقد Stage 8.
+- authorization لـterminate لا تعني تنفيذ الإنهاء أو نجاحه.
+
+### 5. العقود والبوابة القابلة للاستهلاك
+
+تعاد العقود المملوكة لشجاع دون توسيع غير لازم:
+
+- `ActorRef`.
+- `ResourceRef`.
+- `AuthorizationContext`.
+- `AuthorizationRequest`.
+- `AuthorizationDecision`.
+- `AuthorizationEffect`.
+
+يضاف فقط نطاق Runtime Control الخاص:
+
+- `RuntimeControlAuthorizationEvaluatorProtocol`.
+- `SinglePrincipalRuntimeControlEvaluator`.
+- Authorization Gate مستقلة وقابلة للاستهلاك لاحقًا داخل Stage 8 command path.
+
+لا evaluator عام لكل أفعال النظام، ولا تعديل أو دمج لـ`CancelAuthorizationEvaluatorProtocol` أو`SubmitAuthorizationEvaluatorProtocol`. الأفعال الثلاثة عائلة Runtime Control المعتمدة في ADR-023، وليست Trigger لتعميم evaluator على النظام. أي تعميم مستقبلي يحتاج فعلًا ثالثًا ذا مستهلك Production وتكرارًا بنيويًا مثبتًا وDesign Gate مستقلة.
+
+### 6. استقلال Authorization Gate
+
+- لا Runtime stub أو fake Runtime Adapter أو fake runner في Production.
+- لا callback أو downstream executor أو Runtime Adapter dependency تحقن في البوابة.
+- لا تستدعي البوابة downstream أو Adapter أو Manager runtime method.
+- التكامل الحقيقي بين Authorization Gate وRuntime Adapter يبدأ في Stage 8 فقط.
+- يجوز test double داخل ملف RED فقط لتمثيل مستهلك Stage 8 المستقبلي؛ لا يصدر أو يستورد من Production ولا يصبح Runtime contract أو Adapter implementation.
+- يثبت test double أن الفشل لا يصل إلى downstream وأن النجاح يمكن ملاحظته ضمن السيناريو نفسه، دون ادعاء Runtime integration أو Stage 8 anti-bypass verification.
+
+### 7. لا transferable permit
+
+- لا capability token أو permit عام أو serializable أو transferable.
+- لا تقبل البوابة AuthorizationDecision أو Audit receipt سابقة بوصفها إذنًا للتنفيذ.
+- لا Registry لنتائج authorization بوصفها صلاحيات قابلة لإعادة الاستخدام.
+- كل Runtime Control operation تتطلب AuthorizationRequest وقرارًا وevidence جديدة مرتبطة بالطلب نفسه.
+- عقد Stage 8 اللاحق يستدعي البوابة داخل command path نفسها وقبل Adapter invocation.
+- نتيجة البوابة request-bound، ولا يعاد استخدامها لفعل أو Execution أو operation أخرى.
+
+### 8. Operation identity وEvidence
+
+`RUNTIME_CONTROL_OPERATION_ID_SOURCE=authorization_request.context.operation_id`
+
+- لا operation ID ثانية ولا parameter مستقل داخل Authorization Gate.
+- `APPENDED` وحدها تثبت نجاح pre-action authorization evidence لهذه المحاولة.
+- `IDEMPOTENT_REPLAY` أو `IDENTITY_CONFLICT` لا تمنح إذن تنفيذ جديدًا.
+- أي محاولة جديدة تتطلب operation ID وAuthorizationRequest وقرارًا وevidence جديدة.
+- لا automatic retry عند outcome ملتبسة؛ recovery وdurability مؤجلتان إلى Stage 9.
+
+### 9. Fail-closed وAudit semantics
+
+- missing evaluator أو evaluator exception أو malformed/unknown decision: `EVALUATOR_UNAVAILABLE`.
+- قرار `DENY` صحيح: `POLICY_DENIED`.
+- action/resource/operation binding غير صحيح: `AUTHORIZATION_REQUEST_INVALID`.
+- missing Audit store أو append exception أو malformed/non-success receipt: `AUDIT_UNAVAILABLE`.
+- كل حالات الفشل تمنع نجاح Authorization Gate، و`APPENDED` فقط تسمح بإرجاع نجاح authorization.
+- Audit تسجل الحد الأدنى: actor وaction وExecution resource و`request_id` و`operation_id` و`policy_version`.
+- ممنوع تسجيل API keys أو credentials أو command/payload خام أو runtime output أو raw exception message/args أو traceback أو `exc_info` أو secrets.
+
+### 10. REQUIRED_NOW
+
+- العقود الخاصة بـRuntime Control والـsingle-principal evaluator والبوابة المستقلة.
+- exact binding والفشل المغلق وpre-action Audit evidence.
+- operation identity أحادية المصدر ومنع replay/conflict كإذن جديد.
+- result request-bound بلا permit أو Registry.
+- RED موجهة تغطي العقود والفشل والEvidence والعزل والخصوصية وحدود المراحل وtest double الاختباري فقط.
+
+### 11. DEFERRED_WITH_TRIGGER
+
+- Runtime Adapter وpause/resume/terminate الفعلية وcapability negotiation وruntime/process identity والتحولات والسباقات والtimeout/budget: Stage 8.
+- العلاقة التنفيذية بين `execution.terminate` و`task.cancel`: عقد Stage 8.
+- durability وrecovery والنتائج الملتبسة: Stage 9.
+- API/UI: Stages 14–15.
+- Policy DSL/Engine وRBAC/ABAC/ReBAC وAccess Graph والموافقات وmulti-principal: عند مستهلك مثبت وبعد البوابة المناسبة.
+- retry authorization: عند Production consumer مثبت؛ يبقى مؤجلًا الآن.
+
+### 12. النطاق السلبي الإلزامي
+
+لا:
+
+- API أو UI.
+- Manager runtime methods.
+- Runtime Adapter أو Runtime stub في Production.
+- `os.kill` أو signals أو runner/process invocation.
+- lifecycle mutation أو capability negotiation أو paused-budget implementation.
+- Policy DSL/Engine أو RBAC/ABAC/ReBAC أو Access Graph أو approvals أو multi-principal model.
+- durability أو recovery.
+- تعديل Catalog أو Binding.
+- تغيير ADR-023 إلى `IMPLEMENTED` أو `VERIFIED`.
+- تعديل evaluator protocols الخاصة بـ7.1 و7.2.
+- Full Regression قبل Stage 7 Exit Gate.
+- بدء Stage 8.
+
+### 13. ملفات التنفيذ المتوقعة لاحقًا
+
+Production GREEN المستقبلية فقط:
+
+- `shujaa_crew/core/policy/contracts.py`.
+- `shujaa_crew/core/policy/evaluator.py`.
+- `shujaa_crew/core/policy/runtime_control.py` إذا فصلت البوابة.
+- `shujaa_crew/core/policy/__init__.py`.
+
+RED الحالية فقط:
+
+- `shujaa_crew/tests/test_stage7_runtime_control_authorization_prerequisite.py`.
+
+### 14. RED matrix
+
+- immutability وvalidation للحقول الفارغة والقيم غير المعروفة.
+- الأفعال والمورد والربط والـcanonical operation ID الدقيقة.
+- missing/exception/malformed evaluator وdecision وDENY.
+- invalid binding وmissing/exception/malformed/non-success Audit.
+- `APPENDED` فقط تنجح، وreplay/conflict لا يمنحان إذنًا جديدًا.
+- actor وpolicy version وrequest/operation linkage والخصوصية.
+- منع cross-action/execution/operation reuse وأي permit أو Registry أو automatic retry.
+- `ALLOW` لا يثبت runtime support أو lifecycle eligibility ولا يغير Execution state.
+- فصل terminate عن cancel، وعدم وجود Manager/API/lifecycle/runtime integration.
+- لا Runtime stub في Production ولا evaluator عام ولا تعديل لبروتوكولات 7.1 و7.2.
+- test double داخل ملف RED فقط؛ يمنع downstream عند الفشل ويلاحظ نجاح البوابة دون ادعاء Runtime integration.
+
+### 15. Targeted verification وFull Regression
+
+- أثناء Contract Save: State Sync، `git diff --check`، scope check وفرادة markers.
+- أثناء RED: ملف RED وحده، ويجب أن يجمع بلا syntax/import/environment errors غير مقصودة ويفشل بسبب غياب تنفيذ Slice 7.3 تحديدًا.
+- لا GREEN أو Production changes أو تعديل اختبارات قديمة أو توثيق أثناء RED.
+- Full Regression مؤجلة إلى Stage 7 Exit Gate النهائي.
+
+### 16. Research Gate
+
+`RESEARCH_GATE=NOT_TRIGGERED`
+
+لأن الشريحة action-specific وsingle-principal ومحلية وframework-neutral ولا تجمد Policy Language أو Security Model عامًا. تصبح Research Gate إلزامية قبل DSL/Framework/Engine أو RBAC/ABAC/ReBAC أو Access Graph عامة أو Security Model freeze.
+
+### 17. Rollback وCheckpoint
+
+- Contract base checkpoint هو `edb20d9ff5805c28b8b2e41c492ec7ba07d7ee63`.
+- Contract Commit/Push يسبقان RED، ويصبح Commit العقد المدفوع `RED_BASE_HEAD`.
+- RED لا تلتزم ولا تدفع، وGREEN تحتاج موافقة مالك مستقلة.
+- rollback يكون بـrevert محدد، لا reset أو clean أو checkout.
+
+### 18. Hard Stops
+
+- أي Production change أو Runtime stub أثناء RED.
+- أي downstream/Adapter/Manager runtime dependency داخل Authorization Gate.
+- default allow أو نجاح pre-action بغير `APPENDED`.
+- transferable/reusable permit أو Registry للصلاحيات.
+- مصدر operation ID ثانٍ أو cross-binding reuse.
+- ادعاء runtime support أو lifecycle eligibility أو تنفيذ/نجاح terminate من `ALLOW`.
+- خلط `execution.terminate` مع `task.cancel`.
+- secrets أو raw payload/error/traceback في Audit أو logs.
+- evaluator عام أو تعديل بروتوكولات 7.1 و7.2.
+- Stage 8/9 implementation أو Full Regression أو Green بلا موافقة مستقلة.
+- تغير HEAD أو Worktree أو scope غير متوقع.
+
+<!-- STAGE7_SLICE7_3_CONTRACT_END -->
 
 
 <!-- CONTRACT_ADVERSARIAL_REVIEW_GATE_BEGIN -->
