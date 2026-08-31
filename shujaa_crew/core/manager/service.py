@@ -19,6 +19,7 @@ from core.policy.contracts import (
     AuthorizationEffect,
     AuthorizationRequest,
     CancelAuthorizationEvaluatorProtocol,
+    SubmitAuthorizationEvaluatorProtocol,
 )
 from core.runtime.process_registry import ProcessRegistry
 from core.runtime.process_registry_contract import (
@@ -188,11 +189,30 @@ class AuditedDispatchRejectionError(ValueError):
         message: str,
         *,
         reason_code: str,
-        audit_append_receipt: AppendReceipt,
+        audit_append_receipt: AppendReceipt | None,
     ) -> None:
         super().__init__(message)
         self.reason_code = reason_code
         self.audit_append_receipt = audit_append_receipt
+
+
+class AuditedSubmitError(ValueError):
+    """Submit authorization rejection with isolated evidence."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        reason_code: str,
+        authorization_audit_append_receipt: (
+            AppendReceipt | None
+        ) = None,
+    ) -> None:
+        super().__init__(message)
+        self.reason_code = reason_code
+        self.authorization_audit_append_receipt = (
+            authorization_audit_append_receipt
+        )
 
 
 @dataclass(frozen=True)
@@ -239,6 +259,9 @@ class ShujaaManager:
         cancel_authorization_evaluator: (
             CancelAuthorizationEvaluatorProtocol | None
         ) = None,
+        submit_authorization_evaluator: (
+            SubmitAuthorizationEvaluatorProtocol | None
+        ) = None,
     ) -> None:
         self.crew_runner = crew_runner
         self.task_store = task_store or InMemoryTaskStore()
@@ -266,6 +289,9 @@ class ShujaaManager:
         self.agent_executor_registry = agent_executor_registry
         self.cancel_authorization_evaluator = (
             cancel_authorization_evaluator
+        )
+        self.submit_authorization_evaluator = (
+            submit_authorization_evaluator
         )
 
     _TERMINAL_EXECUTION_STATUSES = frozenset(
@@ -322,30 +348,30 @@ class ShujaaManager:
     def _append_submit_audit(
         self,
         *,
+        authorization_request: AuthorizationRequest,
+        authorization_decision: AuthorizationDecision,
         work_id: str,
         outcome: str,
         reason_code: str,
         event_id: str | None = None,
         error_code: str | None = None,
-        actor_type: str = "system",
-        actor_id: str = "shujaa_manager",
     ) -> AppendReceipt:
         audit = AuditRecord(
             audit_id=self._submit_audit_id(work_id),
             action="work.submit",
-            actor_type=actor_type,
-            actor_id=actor_id,
+            actor_type=authorization_request.actor.actor_type,
+            actor_id=authorization_request.actor.actor_id,
             resource_type="work",
             resource_id=work_id,
             outcome=outcome,
             reason_code=reason_code,
             operation_id=(
-                self._submit_audit_operation_id(
-                    work_id
-                )
+                authorization_request.context.operation_id
             ),
+            request_id=authorization_request.context.request_id,
             event_id=event_id,
             error_code=error_code,
+            policy_version=authorization_decision.policy_version,
         )
 
         return self.audit_store.append(audit)
@@ -363,6 +389,84 @@ class ShujaaManager:
         ).encode("utf-8")
         digest = sha256(material).hexdigest()
         return f"{prefix}{digest}"
+
+    @classmethod
+    def _submit_authorization_audit_id(
+        cls,
+        operation_id: str,
+    ) -> str:
+        return cls._operation_audit_id(
+            "audit-work-submit-authorization-",
+            operation_id,
+            operation_id,
+        )
+
+    def _append_submit_authorization_audit(
+        self,
+        *,
+        authorization_request: AuthorizationRequest,
+        authorization_decision: AuthorizationDecision,
+    ) -> AppendReceipt:
+        operation_id = (
+            authorization_request.context.operation_id
+        )
+        audit = AuditRecord(
+            audit_id=self._submit_authorization_audit_id(
+                operation_id
+            ),
+            action="authorization.work.submit",
+            actor_type=authorization_request.actor.actor_type,
+            actor_id=authorization_request.actor.actor_id,
+            resource_type=(
+                authorization_request.resource.resource_type
+            ),
+            resource_id=authorization_request.resource.resource_id,
+            outcome="allowed",
+            reason_code=authorization_decision.reason_code,
+            request_id=authorization_request.context.request_id,
+            operation_id=operation_id,
+            policy_version=authorization_decision.policy_version,
+        )
+        return self.audit_store.append_replay_stable(audit)
+
+    def _append_submit_outcome_audit_safely(
+        self,
+        *,
+        authorization_request: AuthorizationRequest,
+        authorization_decision: AuthorizationDecision,
+        work_id: str,
+        outcome: str,
+        reason_code: str,
+        event_id: str | None = None,
+        error_code: str | None = None,
+    ) -> AppendReceipt | None:
+        try:
+            return self._append_submit_audit(
+                authorization_request=authorization_request,
+                authorization_decision=authorization_decision,
+                work_id=work_id,
+                outcome=outcome,
+                reason_code=reason_code,
+                event_id=event_id,
+                error_code=error_code,
+            )
+        except Exception as error:
+            logger.warning(
+                "post_action_audit_failed",
+                extra={
+                    "diagnostic_code": "POST_ACTION_AUDIT_FAILED",
+                    "exception_type": type(error).__name__,
+                    "operation_id": (
+                        authorization_request.context.operation_id
+                    ),
+                    "request_id": (
+                        authorization_request.context.request_id
+                    ),
+                    "resource_type": "work",
+                    "resource_id": work_id,
+                },
+            )
+            return None
 
     @classmethod
     def _retry_audit_id(
@@ -1454,6 +1558,7 @@ class ShujaaManager:
         self,
         command: object,
         *,
+        authorization_request: AuthorizationRequest | None = None,
         requested_agent_id: str | None = None,
         required_capability: str | None = None,
         retry_safety: RetrySafety = RetrySafety.DENY,
@@ -1472,6 +1577,116 @@ class ShujaaManager:
         if not isinstance(retry_safety, RetrySafety):
             raise ValueError(
                 "Retry safety must be a RetrySafety value."
+            )
+
+        evaluator = self.submit_authorization_evaluator
+        if (
+            evaluator is None
+            or not isinstance(
+                authorization_request,
+                AuthorizationRequest,
+            )
+        ):
+            raise AuditedSubmitError(
+                "Submit authorization evaluator is unavailable.",
+                reason_code="EVALUATOR_UNAVAILABLE",
+            )
+
+        operation_id = (
+            authorization_request.context.operation_id
+        )
+        request_is_bound = (
+            authorization_request.action == "work.submit"
+            and (
+                authorization_request.resource.resource_type
+                == "work_submission"
+            )
+            and (
+                authorization_request.resource.resource_id
+                == operation_id
+            )
+        )
+        if not request_is_bound:
+            raise AuditedSubmitError(
+                "Submit authorization request is invalid.",
+                reason_code="AUTHORIZATION_REQUEST_INVALID",
+            )
+
+        try:
+            authorization_decision = evaluator.evaluate(
+                authorization_request
+            )
+        except Exception:
+            raise AuditedSubmitError(
+                "Submit authorization evaluator is unavailable.",
+                reason_code="EVALUATOR_UNAVAILABLE",
+            ) from None
+
+        if not isinstance(
+            authorization_decision,
+            AuthorizationDecision,
+        ):
+            raise AuditedSubmitError(
+                "Submit authorization decision is malformed.",
+                reason_code="EVALUATOR_UNAVAILABLE",
+            )
+
+        if authorization_decision.effect is AuthorizationEffect.DENY:
+            raise AuditedSubmitError(
+                "Submit request is denied by policy.",
+                reason_code="POLICY_DENIED",
+            )
+
+        if authorization_decision.effect is not AuthorizationEffect.ALLOW:
+            raise AuditedSubmitError(
+                "Submit authorization decision is malformed.",
+                reason_code="EVALUATOR_UNAVAILABLE",
+            )
+
+        try:
+            authorization_audit_append_receipt = (
+                self._append_submit_authorization_audit(
+                    authorization_request=authorization_request,
+                    authorization_decision=authorization_decision,
+                )
+            )
+        except Exception:
+            raise AuditedSubmitError(
+                "Submit authorization evidence is unavailable.",
+                reason_code="AUDIT_UNAVAILABLE",
+            ) from None
+
+        if not isinstance(
+            authorization_audit_append_receipt,
+            AppendReceipt,
+        ):
+            raise AuditedSubmitError(
+                "Submit authorization evidence is unavailable.",
+                reason_code="AUDIT_UNAVAILABLE",
+            )
+
+        if authorization_audit_append_receipt.result in {
+            AppendResult.IDEMPOTENT_REPLAY,
+            AppendResult.IDENTITY_CONFLICT,
+        }:
+            raise AuditedSubmitError(
+                "Submit operation has already been consumed.",
+                reason_code="SUBMIT_OPERATION_REUSED",
+                authorization_audit_append_receipt=(
+                    authorization_audit_append_receipt
+                ),
+            )
+
+        if (
+            authorization_audit_append_receipt.result
+            is not AppendResult.APPENDED
+        ):
+            raise AuditedSubmitError(
+                "Submit authorization evidence is unavailable.",
+                reason_code="AUDIT_UNAVAILABLE",
+                authorization_audit_append_receipt=(
+                    authorization_audit_append_receipt
+                ),
             )
 
         work_id = new_work_id()
@@ -1497,7 +1712,9 @@ class ShujaaManager:
             )
         except ValueError as error:
             audit_append_receipt = (
-                self._append_submit_audit(
+                self._append_submit_outcome_audit_safely(
+                    authorization_request=authorization_request,
+                    authorization_decision=authorization_decision,
                     work_id=work_id,
                     outcome="rejected",
                     reason_code="dispatch_rejected",
@@ -1580,7 +1797,9 @@ class ShujaaManager:
         )
 
         audit_append_receipt = (
-            self._append_submit_audit(
+            self._append_submit_outcome_audit_safely(
+                authorization_request=authorization_request,
+                authorization_decision=authorization_decision,
                 work_id=work_id,
                 outcome="accepted",
                 reason_code="dispatch_accepted",
@@ -1602,6 +1821,9 @@ class ShujaaManager:
             ),
             "audit_append_receipt": (
                 audit_append_receipt
+            ),
+            "authorization_audit_append_receipt": (
+                authorization_audit_append_receipt
             ),
             "process_id": task.process_id if task else None,
             "message": "Shujaa accepted the task.",

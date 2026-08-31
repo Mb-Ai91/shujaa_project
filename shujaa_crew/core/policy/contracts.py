@@ -125,3 +125,11 @@ class CancelAuthorizationEvaluatorProtocol(Protocol):
         request: AuthorizationRequest,
     ) -> AuthorizationDecision:
         ...
+
+
+class SubmitAuthorizationEvaluatorProtocol(Protocol):
+    def evaluate(
+        self,
+        request: AuthorizationRequest,
+    ) -> AuthorizationDecision:
+        ...

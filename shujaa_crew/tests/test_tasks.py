@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from uuid import uuid4
+
 import pytest
 
 from core.manager.service import ShujaaManager
@@ -9,7 +11,10 @@ from core.policy.contracts import (
     AuthorizationRequest,
     ResourceRef,
 )
-from core.policy.evaluator import SinglePrincipalCancelEvaluator
+from core.policy.evaluator import (
+    SinglePrincipalCancelEvaluator,
+    SinglePrincipalSubmitEvaluator,
+)
 from core.work.models import ExecutionStatus
 
 
@@ -30,6 +35,32 @@ _CANCEL_ACTOR = ActorRef(
     actor_type="service",
     actor_id="test-tasks-local-api",
 )
+
+
+def _authorized_submit(manager, command, **kwargs):
+    operation_id = f"op-test-tasks-submit-{uuid4()}"
+    manager.submit_authorization_evaluator = (
+        SinglePrincipalSubmitEvaluator(
+            principal=_CANCEL_ACTOR,
+            policy_version="test-tasks-submit-v1",
+        )
+    )
+    return manager.submit(
+        command,
+        authorization_request=AuthorizationRequest(
+            actor=_CANCEL_ACTOR,
+            action="work.submit",
+            resource=ResourceRef(
+                resource_type="work_submission",
+                resource_id=operation_id,
+            ),
+            context=AuthorizationContext(
+                request_id=f"request-{operation_id}",
+                operation_id=operation_id,
+            ),
+        ),
+        **kwargs,
+    )
 
 
 def _authorized_cancel(
@@ -67,7 +98,7 @@ def _authorized_cancel(
 def test_manager_creates_trackable_task():
     manager = ShujaaManager(crew_runner=FakeRunner())
 
-    result = manager.submit("test task")
+    result = _authorized_submit(manager, "test task")
     task = manager.get_task(result["task_id"])
 
     assert result["status"] == "accepted"
@@ -100,7 +131,7 @@ def test_manager_reports_llm_quota_exhausted(tmp_path):
 
     manager = ShujaaManager(crew_runner=FakeRunner())
 
-    result = manager.submit("test task")
+    result = _authorized_submit(manager, "test task")
 
     import time
     time.sleep(0.1)
@@ -139,7 +170,7 @@ def test_manager_reports_meaningful_general_error(tmp_path):
 
     manager = ShujaaManager(crew_runner=FakeRunner())
 
-    result = manager.submit("test task")
+    result = _authorized_submit(manager, "test task")
 
     import time
     time.sleep(0.1)
@@ -166,7 +197,7 @@ def test_manager_cancels_running_task():
 
     manager = ShujaaManager(crew_runner=FakeRunner())
 
-    result = manager.submit("test task")
+    result = _authorized_submit(manager, "test task")
     task_id = result["task_id"]
 
     task = manager.get_task(task_id)
@@ -210,7 +241,7 @@ def test_cancelled_task_is_not_overwritten_after_process_exit():
 
     manager = ShujaaManager(crew_runner=FakeRunner())
 
-    result = manager.submit("test cancellation race")
+    result = _authorized_submit(manager, "test cancellation race")
     task_id = result["task_id"]
 
     cancelled = _authorized_cancel(
@@ -310,7 +341,7 @@ def test_manager_stores_completed_runner_result():
 
     manager = ShujaaManager(crew_runner=ResultRunner())
 
-    submitted = manager.submit("test result")
+    submitted = _authorized_submit(manager, "test result")
     task_id = submitted["task_id"]
 
     deadline = time.monotonic() + 1.0
@@ -332,7 +363,7 @@ def test_manager_stores_completed_runner_result():
 def test_manager_creates_work_before_task():
     manager = ShujaaManager(crew_runner=FakeRunner())
 
-    result = manager.submit("test task")
+    result = _authorized_submit(manager, "test task")
 
     work_id = result["work_id"]
     task = manager.get_task(result["task_id"])
@@ -350,7 +381,7 @@ def test_manager_creates_work_before_task():
 def test_manager_creates_execution_before_runner():
     manager = ShujaaManager(crew_runner=FakeRunner())
 
-    result = manager.submit("test task")
+    result = _authorized_submit(manager, "test task")
 
     execution_id = result["execution_id"]
     execution = manager.execution_registry.get(execution_id)
@@ -383,7 +414,7 @@ def test_manager_routes_execution_through_dispatcher():
         execution_dispatcher=dispatcher,
     )
 
-    result = manager.submit("test task")
+    result = _authorized_submit(manager, "test task")
 
     assert dispatcher.request is not None
     assert dispatcher.request.work_id == result["work_id"]
@@ -403,7 +434,7 @@ def test_manager_marks_execution_completed():
 
     manager = ShujaaManager(crew_runner=FakeRunner())
 
-    result = manager.submit("test task")
+    result = _authorized_submit(manager, "test task")
 
     deadline = time.monotonic() + 1.0
     execution = None
@@ -443,7 +474,7 @@ def test_manager_marks_execution_failed():
 
     manager = ShujaaManager(crew_runner=FailedRunner())
 
-    result = manager.submit("test failure")
+    result = _authorized_submit(manager, "test failure")
 
     deadline = time.monotonic() + 1.0
     execution = None
@@ -484,7 +515,7 @@ def test_manager_marks_execution_cancelled():
 
     manager = ShujaaManager(crew_runner=SlowRunner())
 
-    result = manager.submit("cancel execution")
+    result = _authorized_submit(manager, "cancel execution")
     task_id = result["task_id"]
     execution_id = result["execution_id"]
 
@@ -540,7 +571,7 @@ def test_manager_marks_execution_timed_out(monkeypatch):
         lambda process, process_group_id: None,
     )
 
-    result = manager.submit("timeout execution")
+    result = _authorized_submit(manager, "timeout execution")
 
     deadline = time.monotonic() + 1.0
     execution = None
@@ -584,7 +615,8 @@ def test_manager_passes_requested_agent_to_dispatcher():
         execution_dispatcher=dispatcher,
     )
 
-    result = manager.submit(
+    result = _authorized_submit(
+        manager,
         "test task",
         requested_agent_id="research-agent",
     )
@@ -661,7 +693,8 @@ def test_manager_executes_agent_without_using_runner():
         agent_executor_registry=executor_registry,
     )
 
-    result = manager.submit(
+    result = _authorized_submit(
+        manager,
         "research this",
         requested_agent_id="research-agent",
     )
@@ -713,7 +746,8 @@ def test_manager_passes_required_capability_to_dispatcher():
         execution_dispatcher=dispatcher,
     )
 
-    manager.submit(
+    _authorized_submit(
+        manager,
         "research this",
         required_capability="research",
     )
@@ -761,7 +795,8 @@ def test_manager_executes_agent_by_required_capability():
         agent_executor_registry=executor_registry,
     )
 
-    submitted = manager.submit(
+    submitted = _authorized_submit(
+        manager,
         "analyze this",
         required_capability="analysis",
     )
@@ -807,7 +842,8 @@ def test_manager_rejects_agent_without_executor():
         ValueError,
         match="No executor registered for capability: test",
     ):
-        manager.submit(
+        _authorized_submit(
+            manager,
             "test task",
             required_capability="test",
         )

@@ -1,9 +1,18 @@
 from __future__ import annotations
 
+from uuid import uuid4
+
 import pytest
 
 import core.manager.service as manager_service
 from core.manager.service import ShujaaManager
+from core.policy.contracts import (
+    ActorRef,
+    AuthorizationContext,
+    AuthorizationRequest,
+    ResourceRef,
+)
+from core.policy.evaluator import SinglePrincipalSubmitEvaluator
 from core.tasks.store import TaskRecord
 from core.work.dispatcher import DispatchDecision
 from core.work.event_store import (
@@ -16,6 +25,38 @@ from core.work.models import (
     ExecutionStatus,
     RetrySafety,
 )
+
+
+_SUBMIT_ACTOR = ActorRef(
+    actor_type="service",
+    actor_id="test-dispatch-handoff-submit",
+)
+
+
+def _authorized_submit(manager, command, **kwargs):
+    operation_id = f"op-test-dispatch-handoff-{uuid4()}"
+    manager.submit_authorization_evaluator = (
+        SinglePrincipalSubmitEvaluator(
+            principal=_SUBMIT_ACTOR,
+            policy_version="test-dispatch-handoff-submit-v1",
+        )
+    )
+    return manager.submit(
+        command,
+        authorization_request=AuthorizationRequest(
+            actor=_SUBMIT_ACTOR,
+            action="work.submit",
+            resource=ResourceRef(
+                resource_type="work_submission",
+                resource_id=operation_id,
+            ),
+            context=AuthorizationContext(
+                request_id=f"request-{operation_id}",
+                operation_id=operation_id,
+            ),
+        ),
+        **kwargs,
+    )
 
 
 class UnusedRunner:
@@ -130,7 +171,8 @@ def test_submit_emits_safe_canonical_dispatch_event(
         event_store=store,
     )
 
-    result = manager.submit(
+    result = _authorized_submit(
+        manager,
         "top secret command",
         requested_agent_id="requested-agent",
         required_capability="capability.logical",
@@ -199,7 +241,7 @@ def test_dispatch_event_is_appended_after_thread_handoff(
         event_store=OrderedStore(),
     )
 
-    manager.submit("ordered handoff")
+    _authorized_submit(manager, "ordered handoff")
 
     assert order == [
         "thread_start",
@@ -216,7 +258,10 @@ def test_event_write_failure_is_structured_and_handoff_continues(
         event_store=FailingEventStore(),
     )
 
-    result = manager.submit("handoff despite event failure")
+    result = _authorized_submit(
+        manager,
+        "handoff despite event failure",
+    )
     receipt = result["event_append_receipt"]
 
     assert receipt.result == AppendResult.WRITE_FAILED
@@ -311,6 +356,6 @@ def test_dispatch_rejection_emits_no_handoff_event():
         ValueError,
         match="route rejected",
     ):
-        manager.submit("rejected handoff")
+        _authorized_submit(manager, "rejected handoff")
 
     assert store.list() == ()

@@ -1,11 +1,51 @@
 from __future__ import annotations
 
 import os
+from uuid import uuid4
 
 import pytest
 
 from apps.api.app import app
 from core.manager.service import ShujaaManager
+from core.policy.contracts import (
+    ActorRef,
+    AuthorizationContext,
+    AuthorizationRequest,
+    ResourceRef,
+)
+from core.policy.evaluator import SinglePrincipalSubmitEvaluator
+
+
+_SUBMIT_ACTOR = ActorRef(
+    actor_type="service",
+    actor_id="test-api-submit",
+)
+
+
+def _authorized_submit(manager, command, **kwargs):
+    operation_id = f"op-test-api-submit-{uuid4()}"
+    manager.submit_authorization_evaluator = (
+        SinglePrincipalSubmitEvaluator(
+            principal=_SUBMIT_ACTOR,
+            policy_version="test-api-submit-v1",
+        )
+    )
+    return manager.submit(
+        command,
+        authorization_request=AuthorizationRequest(
+            actor=_SUBMIT_ACTOR,
+            action="work.submit",
+            resource=ResourceRef(
+                resource_type="work_submission",
+                resource_id=operation_id,
+            ),
+            context=AuthorizationContext(
+                request_id=f"request-{operation_id}",
+                operation_id=operation_id,
+            ),
+        ),
+        **kwargs,
+    )
 
 
 @pytest.fixture
@@ -73,7 +113,7 @@ def test_manager_accepts_valid_command():
             return FakeProcess()
 
     manager = ShujaaManager(crew_runner=FakeRunner())
-    result = manager.submit(" test task ")
+    result = _authorized_submit(manager, " test task ")
 
     assert result["status"] == "accepted"
     assert result["process_id"] == 12345

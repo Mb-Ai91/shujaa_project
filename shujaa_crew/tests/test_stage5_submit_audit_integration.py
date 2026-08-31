@@ -3,11 +3,19 @@ from __future__ import annotations
 import inspect
 import json
 from hashlib import sha256
+from uuid import uuid4
 
 import pytest
 
 import core.manager.service as manager_service
 from core.manager.service import ShujaaManager
+from core.policy.contracts import (
+    ActorRef,
+    AuthorizationContext,
+    AuthorizationRequest,
+    ResourceRef,
+)
+from core.policy.evaluator import SinglePrincipalSubmitEvaluator
 from core.work.dispatcher import DispatchDecision
 from core.work.event_store import (
     AppendReceipt,
@@ -15,6 +23,39 @@ from core.work.event_store import (
     InMemoryEventStore,
 )
 from core.work.events import AppendResult, AuditRecord, WorkEvent
+
+
+_SUBMIT_ACTOR = ActorRef(
+    actor_type="service",
+    actor_id="test-submit-audit",
+)
+_SUBMIT_POLICY_VERSION = "test-submit-audit-v1"
+
+
+def _authorized_submit(manager, command, **kwargs):
+    operation_id = f"op-test-submit-audit-{uuid4()}"
+    manager.submit_authorization_evaluator = (
+        SinglePrincipalSubmitEvaluator(
+            principal=_SUBMIT_ACTOR,
+            policy_version=_SUBMIT_POLICY_VERSION,
+        )
+    )
+    return manager.submit(
+        command,
+        authorization_request=AuthorizationRequest(
+            actor=_SUBMIT_ACTOR,
+            action="work.submit",
+            resource=ResourceRef(
+                resource_type="work_submission",
+                resource_id=operation_id,
+            ),
+            context=AuthorizationContext(
+                request_id=f"request-{operation_id}",
+                operation_id=operation_id,
+            ),
+        ),
+        **kwargs,
+    )
 
 
 class UnusedRunner:
@@ -61,6 +102,12 @@ class FailingAuditStore:
             result=AppendResult.WRITE_FAILED,
             record_id=record.audit_id,
             error_code="injected_audit_write_failure",
+        )
+
+    def append_replay_stable(self, record):
+        return AppendReceipt(
+            result=AppendResult.APPENDED,
+            record_id=record.audit_id,
         )
 
     def get(self, record_id):
@@ -146,7 +193,10 @@ def test_accepted_submit_emits_minimal_system_audit_record():
         event_store=event_store,
     )
 
-    result = manager.submit("sensitive submit command")
+    result = _authorized_submit(
+        manager,
+        "sensitive submit command",
+    )
 
     receipt = result["audit_append_receipt"]
     work_id = result["work_id"]
@@ -157,16 +207,21 @@ def test_accepted_submit_emits_minimal_system_audit_record():
 
     audit = _audit(audit_store, expected_id)
     assert audit.action == "work.submit"
-    assert audit.actor_type == "system"
-    assert audit.actor_id == "shujaa_manager"
+    authorization_audit = _audit(
+        audit_store,
+        result["authorization_audit_append_receipt"].record_id,
+    )
+    assert audit.actor_type == _SUBMIT_ACTOR.actor_type
+    assert audit.actor_id == _SUBMIT_ACTOR.actor_id
     assert audit.resource_type == "work"
     assert audit.resource_id == work_id
     assert audit.outcome == "accepted"
     assert audit.reason_code == "dispatch_accepted"
-    assert audit.operation_id == f"{work_id}:submit"
+    assert audit.operation_id == authorization_audit.operation_id
+    assert audit.request_id == authorization_audit.request_id
     assert audit.event_id == result["event_append_receipt"].record_id
     assert audit.error_code is None
-    assert audit.policy_version is None
+    assert audit.policy_version == _SUBMIT_POLICY_VERSION
     assert audit.approval_id is None
     assert "sensitive submit command" not in repr(audit)
 
@@ -179,7 +234,10 @@ def test_submit_separates_event_and_audit_receipts_and_stores():
         event_store=event_store,
     )
 
-    result = manager.submit("separate receipt command")
+    result = _authorized_submit(
+        manager,
+        "separate receipt command",
+    )
 
     event_receipt = result["event_append_receipt"]
     audit_receipt = result["audit_append_receipt"]
@@ -187,7 +245,7 @@ def test_submit_separates_event_and_audit_receipts_and_stores():
     assert event_receipt is not audit_receipt
     assert event_receipt.record_id != audit_receipt.record_id
     assert len(event_store.list()) == 1
-    assert len(audit_store.list()) == 1
+    assert len(audit_store.list()) == 2
     assert isinstance(event_store.list()[0].record, WorkEvent)
     assert isinstance(audit_store.list()[0].record, AuditRecord)
 
@@ -203,7 +261,10 @@ def test_dispatch_rejection_emits_audit_without_partial_state():
     )
 
     with pytest.raises(ValueError) as caught:
-        manager.submit("sensitive rejected command")
+        _authorized_submit(
+            manager,
+            "sensitive rejected command",
+        )
 
     error = caught.value
     assert type(error).__name__ == "AuditedDispatchRejectionError"
@@ -245,7 +306,7 @@ def test_dispatch_rejection_preserves_value_error_compatibility():
         ValueError,
         match="sensitive route rejection detail",
     ) as caught:
-        manager.submit("rejected command")
+        _authorized_submit(manager, "rejected command")
 
     assert caught.value.audit_append_receipt is not None
     assert caught.value.reason_code == "dispatch_rejected"
@@ -261,7 +322,10 @@ def test_audit_write_failure_does_not_change_accepted_submit():
         dispatcher=dispatcher,
     )
 
-    result = manager.submit("accepted despite audit failure")
+    result = _authorized_submit(
+        manager,
+        "accepted despite audit failure",
+    )
 
     assert result["status"] == "accepted"
     assert result["event_append_receipt"].result == (
@@ -290,7 +354,10 @@ def test_audit_write_failure_does_not_replace_dispatch_rejection():
         ValueError,
         match="sensitive route rejection detail",
     ) as caught:
-        manager.submit("rejected despite audit failure")
+        _authorized_submit(
+            manager,
+            "rejected despite audit failure",
+        )
 
     error = caught.value
     assert type(error).__name__ == "AuditedDispatchRejectionError"
@@ -307,12 +374,12 @@ def test_independent_same_command_submits_create_distinct_audits():
     audit_store = InMemoryAuditStore()
     manager = _manager(audit_store=audit_store)
 
-    first = manager.submit("same command")
-    second = manager.submit("same command")
+    first = _authorized_submit(manager, "same command")
+    second = _authorized_submit(manager, "same command")
 
     assert first["work_id"] != second["work_id"]
     assert first["audit_append_receipt"].record_id != (
         second["audit_append_receipt"].record_id
     )
-    assert len(audit_store.list()) == 2
+    assert len(audit_store.list()) == 4
     assert CapturingThread.starts == 2

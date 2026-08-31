@@ -16,23 +16,23 @@
 |---|---|
 | CURRENT_STAGE | STAGE7_POLICY_AND_ACCESS_CONTROL |
 | CURRENT_SLICE | Slice 7.2 — Single-Action Authorization Boundary for work.submit |
-| SLICE_STATUS | CONTRACT_SAVED_PENDING_RED |
+| SLICE_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_PENDING_COMMIT_PUSH |
 | SLICE7_1_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
-| SLICE7_2_STATUS | CONTRACT_SAVED_PENDING_RED |
+| SLICE7_2_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_PENDING_COMMIT_PUSH |
 | STAGE7_STATUS | IN_PROGRESS_NOT_COMPLETE |
 | STAGE7_ENTRY_GATE | GO |
 | SLICE_7_1 | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
-| SLICE_7_2 | CONTRACT_SAVED_PENDING_RED |
+| SLICE_7_2 | IMPLEMENTED_AND_TARGETED_VERIFIED_PENDING_COMMIT_PUSH |
 | FIRST_ACTION | TASK_CANCEL |
 | CURRENT_ACTION | WORK_SUBMIT |
-| RED_STARTED | NO |
-| GREEN_STARTED | NO |
-| PRODUCTION_STARTED | NO |
-| TARGETED_EVIDENCE | OWNER_APPROVED_SLICE7_2_CONTRACT; RED_NOT_STARTED |
+| RED_STARTED | YES |
+| GREEN_STARTED | YES |
+| PRODUCTION_STARTED | YES |
+| TARGETED_EVIDENCE | SLICE7_2_NEW=31_PASSED; AFFECTED=100_PASSED; EXECUTED=131_COLLECTED_131_PASSED |
 | FULL_REGRESSION | NOT_RUN_NO_TRIGGER |
-| IMPLEMENTATION_CHECKPOINT | 15b6887792b5c8c05ab08de8aa4631f6a1b67ae2 |
+| IMPLEMENTATION_CHECKPOINT | PENDING_COMMIT_PUSH |
 | OTHER_STAGE7_SLICES | PROPOSAL_ONLY |
-| NEXT | RUN_AUTHORIZED_SLICE7_2_RED_AFTER_CONTRACT_COMMIT_PUSH |
+| NEXT | COMMIT_AND_PUSH_SLICE7_2_IMPLEMENTATION |
 <!-- SHUJAA_CURRENT_STATE_MIRROR_END -->
 
 ---
@@ -1646,7 +1646,7 @@ Matrix الاختبارات المقترحة، دون إنشاء الاختبا�
 <!-- STAGE7_SLICE7_2_CONTRACT_BEGIN -->
 ## Slice 7.2 — Single-Action Authorization Boundary for work.submit
 
-**الحالة:** `SAVED — PENDING RED`
+**الحالة:** `IMPLEMENTED AND TARGETED VERIFIED — PENDING COMMIT/PUSH`
 
 ### 1. الحاجة والمستهلك
 
@@ -1836,6 +1836,18 @@ RED/GREEN affected tests:
 - تعميم evaluator قبل Trigger الفعل الثالث وDesign Gate.
 - دخول Stage 8 أو 9 أو framework/security-model freeze.
 - تغير HEAD أو Worktree أو توسع ملفات غير متوقع.
+
+### 17. Implementation and targeted verification closure
+
+- `SLICE7_2_STATUS=IMPLEMENTED_AND_TARGETED_VERIFIED_PENDING_COMMIT_PUSH`.
+- ملف Stage 7.2 الجديد: `31 passed`.
+- التحقق المتأثر المباشر: `100 passed`.
+- التنفيذان متمايزان في هذه الحزمة: `131 collected / 131 passed / 0 failed / 0 errors`.
+- Full Regression لم تُشغّل لأن `FULL_REGRESSION_TRIGGER=NO`.
+- المصدر الوحيد لهوية العملية هو `authorization_request.context.operation_id`، وتُستهلك الهوية عند `APPENDED` قبل dispatch.
+- `IDEMPOTENT_REPLAY` و`IDENTITY_CONFLICT` ينتجان `SUBMIT_OPERATION_REUSED` وHTTP `409` بلا Submission أخرى.
+- لا automatic retry عند outcome ملتبسة، لا بالهوية نفسها ولا بهوية جديدة يولدها النظام.
+- Stage 7 ما زالت `IN_PROGRESS_NOT_COMPLETE`، وبقية Slices تبقى `PROPOSAL_ONLY`.
 
 <!-- STAGE7_SLICE7_2_CONTRACT_END -->
 

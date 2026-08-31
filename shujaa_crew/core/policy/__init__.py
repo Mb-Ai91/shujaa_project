@@ -6,8 +6,12 @@ from core.policy.contracts import (
     AuthorizationRequest,
     CancelAuthorizationEvaluatorProtocol,
     ResourceRef,
+    SubmitAuthorizationEvaluatorProtocol,
 )
-from core.policy.evaluator import SinglePrincipalCancelEvaluator
+from core.policy.evaluator import (
+    SinglePrincipalCancelEvaluator,
+    SinglePrincipalSubmitEvaluator,
+)
 
 
 __all__ = (
@@ -19,4 +23,6 @@ __all__ = (
     "CancelAuthorizationEvaluatorProtocol",
     "ResourceRef",
     "SinglePrincipalCancelEvaluator",
+    "SinglePrincipalSubmitEvaluator",
+    "SubmitAuthorizationEvaluatorProtocol",
 )

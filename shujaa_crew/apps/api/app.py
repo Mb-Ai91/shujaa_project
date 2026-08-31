@@ -22,7 +22,10 @@ from core.policy.contracts import (
     AuthorizationRequest,
     ResourceRef,
 )
-from core.policy.evaluator import SinglePrincipalCancelEvaluator
+from core.policy.evaluator import (
+    SinglePrincipalCancelEvaluator,
+    SinglePrincipalSubmitEvaluator,
+)
 from core.tasks.store import InMemoryTaskStore
 
 
@@ -70,6 +73,10 @@ cancel_authorization_evaluator = SinglePrincipalCancelEvaluator(
     principal=API_SERVICE_ACTOR,
     policy_version="stage7.1-local-api-v1",
 )
+submit_authorization_evaluator = SinglePrincipalSubmitEvaluator(
+    principal=API_SERVICE_ACTOR,
+    policy_version="stage7.2-local-api-v1",
+)
 
 for agent in agent_registry.list():
     agent_executor_registry.register(
@@ -85,7 +92,41 @@ manager = ShujaaManager(
     cancel_authorization_evaluator=(
         cancel_authorization_evaluator
     ),
+    submit_authorization_evaluator=(
+        submit_authorization_evaluator
+    ),
 )
+
+
+_SUBMIT_ERROR_STATUS = {
+    "AUTHORIZATION_REQUEST_INVALID": 400,
+    "POLICY_DENIED": 403,
+    "SUBMIT_OPERATION_REUSED": 409,
+    "EVALUATOR_UNAVAILABLE": 503,
+    "AUDIT_UNAVAILABLE": 503,
+}
+
+
+def _new_submit_authorization_request() -> AuthorizationRequest:
+    operation_id = f"op-submit-request-{uuid4()}"
+    return AuthorizationRequest(
+        actor=API_SERVICE_ACTOR,
+        action="work.submit",
+        resource=ResourceRef(
+            resource_type="work_submission",
+            resource_id=operation_id,
+        ),
+        context=AuthorizationContext(
+            request_id=f"request-submit-{uuid4()}",
+            operation_id=operation_id,
+        ),
+    )
+
+
+def _submit_error_status(error: ValueError) -> int | None:
+    return _SUBMIT_ERROR_STATUS.get(
+        getattr(error, "reason_code", None)
+    )
 
 
 def is_authorized() -> bool:
@@ -125,12 +166,18 @@ def execute_agent(agent_id: str):
     try:
         submitted = manager.submit(
             task,
+            authorization_request=(
+                _new_submit_authorization_request()
+            ),
             requested_agent_id=agent_id,
         )
     except ValueError as error:
         message = str(error)
 
-        if message.startswith("Agent not found:"):
+        mapped_status = _submit_error_status(error)
+        if mapped_status is not None:
+            status_code = mapped_status
+        elif message.startswith("Agent not found:"):
             status_code = 404
         else:
             status_code = 400
@@ -231,13 +278,20 @@ def handle_task():
         }), 400
 
     try:
-        return jsonify(manager.submit(data.get("command"))), 202
+        return jsonify(
+            manager.submit(
+                data.get("command"),
+                authorization_request=(
+                    _new_submit_authorization_request()
+                ),
+            )
+        ), 202
 
     except ValueError as error:
         return jsonify({
             "status": "error",
             "message": str(error),
-        }), 400
+        }), _submit_error_status(error) or 400
 
     except RuntimeError as error:
         return jsonify({

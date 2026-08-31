@@ -1,6 +1,14 @@
 import pytest
+from uuid import uuid4
 
 from core.manager.service import ShujaaManager
+from core.policy.contracts import (
+    ActorRef,
+    AuthorizationContext,
+    AuthorizationRequest,
+    ResourceRef,
+)
+from core.policy.evaluator import SinglePrincipalSubmitEvaluator
 from core.work.execution_registry import (
     InMemoryExecutionRegistry,
 )
@@ -9,6 +17,38 @@ from core.work.models import (
     ExecutionStatus,
     RetrySafety,
 )
+
+
+_SUBMIT_ACTOR = ActorRef(
+    actor_type="service",
+    actor_id="test-retry-admission-submit",
+)
+
+
+def _authorized_submit(manager, command, **kwargs):
+    operation_id = f"op-test-retry-submit-{uuid4()}"
+    manager.submit_authorization_evaluator = (
+        SinglePrincipalSubmitEvaluator(
+            principal=_SUBMIT_ACTOR,
+            policy_version="test-retry-admission-submit-v1",
+        )
+    )
+    return manager.submit(
+        command,
+        authorization_request=AuthorizationRequest(
+            actor=_SUBMIT_ACTOR,
+            action="work.submit",
+            resource=ResourceRef(
+                resource_type="work_submission",
+                resource_id=operation_id,
+            ),
+            context=AuthorizationContext(
+                request_id=f"request-{operation_id}",
+                operation_id=operation_id,
+            ),
+        ),
+        **kwargs,
+    )
 
 
 def test_initial_execution_is_retry_denied_with_root_lineage():
@@ -51,7 +91,8 @@ def test_submit_preserves_retry_safety_and_original_routing():
         execution_dispatcher=RecordingDispatcher(),
     )
 
-    submitted = manager.submit(
+    submitted = _authorized_submit(
+        manager,
         "retryable task",
         requested_agent_id="agent-original",
         required_capability="analysis",
@@ -312,7 +353,8 @@ def test_submit_rejects_untyped_retry_safety_before_dispatch():
         ValueError,
         match="Retry safety must be a RetrySafety value",
     ):
-        manager.submit(
+        _authorized_submit(
+            manager,
             "invalid retry declaration",
             retry_safety="declared_safe",
         )
