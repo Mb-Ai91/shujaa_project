@@ -4,20 +4,20 @@
 
 > **الوظيفة:** هذا القسم هو المالك البشري الوحيد لحالة المشروع الحالية ونقطة الاستئناف. Git/Codespace يملكان Runtime truth، وActive Roadmap تعكس الحالة المختصرة فقط، وADR تحفظ القرارات طويلة العمر.
 >
-> **آخر تحديث موثق:** 31 أغسطس 2026 بعد تنفيذ Slice 7.2 والتحقق الموجّه منها؛ التنفيذ بانتظار Commit/Push وStage 7 ما زالت جارية وليست مكتملة.
+> **آخر تحديث موثق:** 31 أغسطس 2026 بعد تنفيذ Slice 7.2 والتحقق الموجّه منها وCommit/Push؛ Stage 7 ما زالت جارية وليست مكتملة.
 
 <!-- SHUJAA_CURRENT_STATE_BEGIN -->
 | الحقل | القيمة |
 |---|---|
 | CURRENT_STAGE | STAGE7_POLICY_AND_ACCESS_CONTROL |
 | CURRENT_SLICE | Slice 7.2 — Single-Action Authorization Boundary for work.submit |
-| SLICE_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_PENDING_COMMIT_PUSH |
+| SLICE_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | SLICE7_1_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
-| SLICE7_2_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_PENDING_COMMIT_PUSH |
+| SLICE7_2_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | STAGE7_STATUS | IN_PROGRESS_NOT_COMPLETE |
 | STAGE7_ENTRY_GATE | GO |
 | SLICE_7_1 | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
-| SLICE_7_2 | IMPLEMENTED_AND_TARGETED_VERIFIED_PENDING_COMMIT_PUSH |
+| SLICE_7_2 | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | FIRST_ACTION | TASK_CANCEL |
 | CURRENT_ACTION | WORK_SUBMIT |
 | RED_STARTED | YES |
@@ -25,16 +25,17 @@
 | PRODUCTION_STARTED | YES |
 | TARGETED_EVIDENCE | SLICE7_2_NEW=31_PASSED; AFFECTED=100_PASSED; EXECUTED=131_COLLECTED_131_PASSED |
 | FULL_REGRESSION | NOT_RUN_NO_TRIGGER |
-| IMPLEMENTATION_CHECKPOINT | PENDING_COMMIT_PUSH |
+| IMPLEMENTATION_CHECKPOINT | 3b5259a69fa23133e6886afcaa14cf748d998c94 |
 | OTHER_STAGE7_SLICES | PROPOSAL_ONLY |
-| NEXT | COMMIT_AND_PUSH_SLICE7_2_IMPLEMENTATION |
-| LAST_TRUSTED_CHECKPOINT | Slice 7.2 contract checkpoint عند `15564868e456573bd64777939f2aab59209b9a96`؛ GREEN والتحقق الموجه مثبتان في Worktree وبانتظار Commit/Push؛ Stage 7 ما زالت غير مكتملة. |
-| EVIDENCE_REFERENCES | Slice 7.2 contract بين markers `STAGE7_SLICE7_2_CONTRACT_BEGIN/END`؛ RED SHA256=`b7f70cbce04cd713f94015d85a2598c68115e2d6d9b6f980253b2d1136906719`؛ ملف Slice 7.2=`31 passed`؛ affected verification=`100 passed`؛ إجمالي التنفيذ المتمايز=`131 collected / 131 passed / 0 failed / 0 errors`؛ `SUBMIT_OPERATION_ID_SOURCE=authorization_request.context.operation_id`؛ Full Regression=`NOT_RUN_NO_TRIGGER`. |
+| NEXT | WAIT_FOR_OWNER_NEXT_STAGE7_NEED_REVIEW |
+| LAST_TRUSTED_CHECKPOINT | Slice 7.2 implementation checkpoint عند `3b5259a69fa23133e6886afcaa14cf748d998c94`، committed وpushed إلى `origin/refactor/modular-architecture`؛ Stage 7 ما زالت غير مكتملة. |
+| EVIDENCE_REFERENCES | Slice 7.2 implementation checkpoint=`3b5259a69fa23133e6886afcaa14cf748d998c94`؛ العقد بين markers `STAGE7_SLICE7_2_CONTRACT_BEGIN/END`؛ RED SHA256=`b7f70cbce04cd713f94015d85a2598c68115e2d6d9b6f980253b2d1136906719`؛ ملف Slice 7.2=`31 passed`؛ affected verification=`100 passed`؛ إجمالي التنفيذ المتمايز=`131 collected / 131 passed / 0 failed / 0 errors`؛ `SUBMIT_OPERATION_ID_SOURCE=authorization_request.context.operation_id`؛ Full Regression=`NOT_RUN_NO_TRIGGER`. |
 <!-- SHUJAA_CURRENT_STATE_END -->
 
 ### Evidence summary
 
-- Slice 7.2: `IMPLEMENTED AND TARGETED VERIFIED — PENDING COMMIT/PUSH`.
+- Slice 7.2: `IMPLEMENTED AND TARGETED VERIFIED — COMMITTED AND SYNCED`.
+- implementation checkpoint: `3b5259a69fa23133e6886afcaa14cf748d998c94`.
 - العقد المالك بين markers `STAGE7_SLICE7_2_CONTRACT_BEGIN/END`.
 - `SUBMIT_OPERATION_ID_SOURCE=authorization_request.context.operation_id`.
 - `SubmitAuthorizationEvaluatorProtocol` و`CancelAuthorizationEvaluatorProtocol` يبقيان منفصلين.
@@ -67,13 +68,13 @@
 - `STAGE7_STATUS=IN_PROGRESS_NOT_COMPLETE`.
 - `STAGE7_ENTRY_GATE=GO`.
 - `SLICE_7_1=IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED`.
-- `SLICE_7_2=IMPLEMENTED_AND_TARGETED_VERIFIED_PENDING_COMMIT_PUSH`.
+- `SLICE_7_2=IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED`.
 - `FIRST_ACTION=TASK_CANCEL`.
 - `CURRENT_ACTION=WORK_SUBMIT`.
 - `RED_STARTED=YES`.
 - `GREEN_STARTED=YES`.
 - `PRODUCTION_STARTED=YES`.
-- `NEXT=COMMIT_AND_PUSH_SLICE7_2_IMPLEMENTATION`.
+- `NEXT=WAIT_FOR_OWNER_NEXT_STAGE7_NEED_REVIEW`.
 
 ## OPEN ITEMS
 
