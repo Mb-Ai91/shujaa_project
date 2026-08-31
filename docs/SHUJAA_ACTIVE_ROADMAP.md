@@ -2,7 +2,7 @@
 
 > **الصفة:** خارطة التنفيذ الرسمية النشطة لمشروع شجاع
 > **الإصدار:** 1.3
-> **آخر تحديث موثق:** 31 أغسطس 2026 بعد دفع implementation checkpoint لـSlice 7.1 ومزامنة حالة الإغلاق؛ Stage 7 ما زالت جارية وليست مكتملة.
+> **آخر تحديث موثق:** 31 أغسطس 2026 بعد اعتماد وحفظ عقد Slice 7.2 بانتظار RED؛ Stage 7 ما زالت جارية وليست مكتملة.
 > **النطاق:** 19 مرحلة مترابطة بالاعتماديات، من Stage 0 إلى Stage 18
 
 ---
@@ -15,22 +15,24 @@
 | الحقل | القيمة |
 |---|---|
 | CURRENT_STAGE | STAGE7_POLICY_AND_ACCESS_CONTROL |
-| CURRENT_SLICE | Slice 7.1 — Single-Action Authorization Boundary for cancel_task |
-| SLICE_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
+| CURRENT_SLICE | Slice 7.2 — Single-Action Authorization Boundary for work.submit |
+| SLICE_STATUS | CONTRACT_SAVED_PENDING_RED |
 | SLICE7_1_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
+| SLICE7_2_STATUS | CONTRACT_SAVED_PENDING_RED |
 | STAGE7_STATUS | IN_PROGRESS_NOT_COMPLETE |
 | STAGE7_ENTRY_GATE | GO |
 | SLICE_7_1 | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
+| SLICE_7_2 | CONTRACT_SAVED_PENDING_RED |
 | FIRST_ACTION | TASK_CANCEL |
-| RED_STARTED | YES |
-| GREEN_STARTED | YES |
-| PRODUCTION_STARTED | YES |
-| LAST_BLOCKER | SANITIZED_POST_ACTION_DIAGNOSTIC_CLOSED |
-| TARGETED_EVIDENCE | STAGE7_1_30_PASSED; AFFECTED_VERIFICATION_99_PASSED; POST_REPAIR_DIRECTLY_AFFECTED_28_PASSED; OVERLAP_NOT_DEDUPLICATED |
+| CURRENT_ACTION | WORK_SUBMIT |
+| RED_STARTED | NO |
+| GREEN_STARTED | NO |
+| PRODUCTION_STARTED | NO |
+| TARGETED_EVIDENCE | OWNER_APPROVED_SLICE7_2_CONTRACT; RED_NOT_STARTED |
 | FULL_REGRESSION | NOT_RUN_NO_TRIGGER |
 | IMPLEMENTATION_CHECKPOINT | 15b6887792b5c8c05ab08de8aa4631f6a1b67ae2 |
 | OTHER_STAGE7_SLICES | PROPOSAL_ONLY |
-| NEXT | WAIT_FOR_OWNER_NEXT_STAGE7_NEED_REVIEW |
+| NEXT | RUN_AUTHORIZED_SLICE7_2_RED_AFTER_CONTRACT_COMMIT_PUSH |
 <!-- SHUJAA_CURRENT_STATE_MIRROR_END -->
 
 ---
@@ -1639,6 +1641,203 @@ Matrix الاختبارات المقترحة، دون إنشاء الاختبا�
 - لا يتضمن الإغلاق ADR جديدًا؛ الإصلاح داخل عقد Slice 7.1 المحفوظ.
 
 <!-- STAGE7_SLICE7_1_CONTRACT_END -->
+
+
+<!-- STAGE7_SLICE7_2_CONTRACT_BEGIN -->
+## Slice 7.2 — Single-Action Authorization Boundary for work.submit
+
+**الحالة:** `SAVED — PENDING RED`
+
+### 1. الحاجة والمستهلك
+
+- `ShujaaManager.submit` ينشئ Work وTask وExecution ويبدأ dispatch/runtime handoff، لكنه لا يملك بعد authorization boundary داخل Manager command entry.
+- المستهلكان الوظيفيان المباشران هما `POST /shujaa-task` و`POST /agents/<agent_id>/execute`.
+- API authentication وحدها لا تمنع direct in-process bypass لمسار Manager.
+- Submit Audit الحالية لا تربط الفعل بالـauthenticated service actor أو policy version.
+
+### 2. الفعل والفاعل والطلب
+
+- الفعل الوحيد لهذه الشريحة هو `work.submit`.
+- يعاد استخدام `API_SERVICE_ACTOR` بوصفه principal خدميًا محليًا stable وopaque وغير سري.
+- API key تبقى credential للتحقق فقط؛ لا تصبح actor identity ولا تدخل Policy أو Audit.
+- كلا مساري API يمران عبر `ShujaaManager.submit` ولا يملكان enforcement بديلة.
+
+### 3. العقود المعاد استخدامها والعقد الجديد
+
+تعاد دون توسيع الحقول:
+
+- `ActorRef`.
+- `ResourceRef`.
+- `AuthorizationContext`.
+- `AuthorizationRequest`.
+- `AuthorizationDecision`.
+- `AuthorizationEffect`.
+
+يضاف فقط:
+
+- `SubmitAuthorizationEvaluatorProtocol`.
+- `SinglePrincipalSubmitEvaluator` محلي خاص بالفعل.
+
+يبقى `CancelAuthorizationEvaluatorProtocol` و`SubmitAuthorizationEvaluatorProtocol` عقدين منفصلين خاصين بالفعلين. لا ينشأ abstraction عام تلقائيًا؛ يعاد بحثه فقط عند ظهور فعل ثالث بمستهلك وظيفي حقيقي وتكرار بنيوي مثبت وعبر Design Gate مستقلة.
+
+### 4. Canonical submit operation identity
+
+`SUBMIT_OPERATION_ID_SOURCE=authorization_request.context.operation_id`
+
+- لا يوجد `submit_operation_id` مستقل في توقيع Manager أو مصدر هوية ثانٍ.
+- `submit_operation_id` هو هوية محاولة Submit منطقية واحدة، وليس Retry key ولا مفتاحًا لاستعادة نتيجة سابقة.
+- request binding الإلزامية: `action=work.submit` و`resource_type=work_submission` و`resource_id=context.operation_id`.
+- بمجرد نجاح pre-action authorization evidence بنتيجة `APPENDED` يصبح operation ID مستهلكًا، قبل dispatch وأي side effect.
+- إعادة استخدام الهوية المستهلكة تنتج دائمًا `SUBMIT_OPERATION_REUSED` وHTTP `409` ولا تنشئ Work أو Task أو Execution أخرى، حتى إذا انتهت المحاولة السابقة بفشل dispatch.
+- `IDEMPOTENT_REPLAY` و`IDENTITY_CONFLICT` لا يسمحان بالتنفيذ ويعاملان كإعادة استخدام.
+- أي محاولة جديدة تستخدم operation ID جديدًا وتُعامل كعملية جديدة بالكامل.
+- استخدام ID جديد ليس recovery آمنًا إذا كانت نتيجة المحاولة السابقة مجهولة؛ يمنع automatic retry في الحالة الملتبسة بسبب خطر duplicate submission.
+- استعادة النتيجة الأصلية أو retry بنفس ID أو تسوية outcome المجهولة مؤجلة إلى عقد idempotent/durable مستقل ضمن المرحلة المناسبة.
+- الاختلاف عن cancel مقصود: cancel يسمح بـ`IDEMPOTENT_REPLAY` لطبيعته idempotent، بينما submit يقبل `APPENDED` فقط.
+
+### 5. Security semantics وfail-closed behavior
+
+1. يسمح input validation البنيوي قبل authorization ما دام بلا side effects.
+2. Missing evaluator/request أو evaluator exception أو malformed/unknown decision ينتج `EVALUATOR_UNAVAILABLE`، دون dispatch أو mutation أو thread.
+3. malformed أو unbound AuthorizationRequest ينتج `AUTHORIZATION_REQUEST_INVALID`، وهو منفصل عن قرار Policy.
+4. `DENY` الصريح ينتج `POLICY_DENIED`.
+5. عند `ALLOW` تسجل authorization evidence إلزامية قبل dispatch.
+6. `APPENDED` وحدها تسمح بمتابعة Submit.
+7. Audit exception أو malformed receipt أو write failure قبل الفعل ينتج `AUDIT_UNAVAILABLE` ولا side effects.
+8. لا automatic retry لمحاولة ذات outcome ملتبسة، لا بالهوية نفسها ولا بهوية جديدة يولدها النظام.
+9. لا permissive/default allow ولا API-only enforcement.
+
+### 6. Evidence وOutcome Audit
+
+- authorization evidence لها identity منفصلة deterministic مشتقة من canonical operation ID.
+- outcome audit تبقى منفصلة وترتبط بالactor وrequest ID وoperation ID وpolicy version وWork الناتجة.
+- لا command أو payload أو API key أو headers أو raw error داخل AuthorizationRequest أو Audit.
+- فشل post-action outcome Audit لا يعكس accepted result ولا يكرر dispatch.
+- عند exception بعد حدوث الفعل يسجل diagnostic داخلي برسالة ثابتة وحقول custom محصورة في: `diagnostic_code` و`exception_type` و`operation_id` و`request_id` و`resource_type` و`resource_id`.
+- لا `str(exc)` أو `repr(exc)` أو `exc.args` أو traceback أو `exc_info` أو `logger.exception`.
+
+### 7. API mapping
+
+- `AUTHORIZATION_REQUEST_INVALID` → HTTP `400`.
+- `POLICY_DENIED` → HTTP `403`.
+- `SUBMIT_OPERATION_REUSED` → HTTP `409`.
+- `EVALUATOR_UNAVAILABLE` أو `AUDIT_UNAVAILABLE` → HTTP `503`.
+- validation الحالية تبقى `400`، وagent-not-found تبقى `404`.
+- لا generic `500` يوحي بفشل الفعل بعد حدوثه بسبب post-action Audit فقط.
+
+### 8. النطاق الإيجابي
+
+- evaluator محقون خاص بـSubmit.
+- enforcement داخل `ShujaaManager.submit`.
+- request/operation identity يولدها API داخل AuthorizationRequest.
+- pre-action evidence قبل dispatcher/registries/thread/events.
+- outcome Audit مرتبطة بقرار authorization.
+- حماية كلا مساري API وdirect Manager command entry.
+- الحفاظ على dispatch rejection وStage 5 Event/Audit semantics الحالية.
+
+### 9. النطاق السلبي
+
+لا:
+
+- تغيير cancel أو retry أو read endpoints.
+- evaluator عام لكل الأفعال.
+- RBAC أو ABAC أو ReBAC أو Access Graph عام.
+- Policy DSL أو Framework أو Engine.
+- approval workflow.
+- agent-level أو capability-level permission model.
+- idempotent submit recovery أو durable operation-result store أو outbox.
+- Runtime isolation أو secrets management أو Kill Switch.
+- API جديدة أو dependency خارجية.
+- Full Regression دون trigger.
+
+### 10. قرارات مؤجلة مع Trigger
+
+- agent/capability-specific authorization: عند principal أو permission consumer مثبت.
+- multi-principal/federation: عند قناة هوية ثانية فعلية.
+- abstraction مشترك للـevaluators: عند فعل ثالث فعلي وتكرار بنيوي مثبت وDesign Gate مستقلة.
+- retry/recovery/result lookup للـSubmit: عند عقد durable/idempotent مستقل في المرحلة المناسبة.
+- Access Graph وPolicy-as-Data العامان: عند مستهلك وعلاقات وصول مثبتة وبعد Research Gate عند التجميد.
+- approvals: عند فعل يحتاج موافقة بشرية فعلية.
+
+### 11. الملفات المتوقعة
+
+Production:
+
+- `shujaa_crew/core/policy/contracts.py`.
+- `shujaa_crew/core/policy/evaluator.py`.
+- `shujaa_crew/core/manager/service.py`.
+- `shujaa_crew/apps/api/app.py`.
+
+RED/GREEN affected tests:
+
+- `shujaa_crew/tests/test_stage7_submit_authorization_enforcement.py`.
+- `shujaa_crew/tests/test_api.py`.
+- `shujaa_crew/tests/test_dispatch_failure_atomicity.py`.
+- `shujaa_crew/tests/test_retry_admission_contract.py`.
+- `shujaa_crew/tests/test_stage5_dispatch_handoff_events.py`.
+- `shujaa_crew/tests/test_stage5_submit_audit_integration.py`.
+- `shujaa_crew/tests/test_tasks.py`.
+
+### 12. RED test matrix
+
+- canonical operation ID له مصدر واحد، ولا parameter مستقل في Manager.
+- `APPENDED` يستهلك الهوية قبل dispatch.
+- `IDEMPOTENT_REPLAY` وidentity conflict ينتجان `409` بلا Submission ثانية.
+- dispatch rejection لا يسمح بإعادة استخدام الهوية.
+- محاولة جديدة تحتاج ID جديدًا وتُعامل كعملية جديدة.
+- outcome الملتبسة تمنع automatic retry بالهوية نفسها أو الجديدة.
+- لا recovery أو استعادة نتيجة سابقة في هذه الشريحة.
+- missing/exception/malformed evaluator يفشل مغلقًا.
+- `DENY` منفصل عن `AUTHORIZATION_REQUEST_INVALID`.
+- pre-action evidence تسبق dispatcher وregistries وthread وEvent.
+- فشل pre-action Audit يمنع التنفيذ.
+- post-action Audit failure يحفظ النتيجة ويسجل diagnostic sanitized فقط.
+- كلا مساري API يمران عبر Manager enforcement.
+- API key لا تصبح actor ولا تدخل Audit.
+- request لا تعبر action/resource/operation أخرى.
+- direct Manager call بلا authorization يفشل مغلقًا.
+- dispatch rejection وEvent/Audit semantics الحالية محفوظة.
+- Slice 7.1 لا تتراجع، ولا evaluator abstraction عام.
+
+### 13. Targeted verification
+
+- ملف Stage 7.2 الجديد كاملًا.
+- Stage 7.1 suite بسبب مشاركة policy contracts.
+- اختبارات Submit/API/dispatch/audit المتأثرة مباشرة فقط.
+- anti-bypass وprivacy/static scope checks و`git diff --check`.
+- State Sync بعد إغلاق التحقق فقط.
+- لا Full Regression إلا عند ظهور trigger واسع غير قابل للحصر.
+
+### 14. Rollback وCheckpoint
+
+- Contract base checkpoint هو `d408bef21869e8895ce63d814387443f342343ee`.
+- لا dependency أو migration أو durable schema في العقد.
+- RED وGREEN وVERIFY مراحل منفصلة بعد Contract Commit/Push.
+- إذا فشلت GREEN يبقى RED والدليل، ولا يبدأ proposal آخر.
+- rollback بعد implementation commit يكون بـrevert محدد، لا reset أو clean.
+
+### 15. Research Gate
+
+`RESEARCH_GATE=NOT_TRIGGERED`
+
+لأن العقد single-principal وsingle-action ومحلي وframework-neutral ويعيد استخدام 7.1. يصبح `REQUIRED_BEFORE_FREEZE` قبل Access Graph عام أو RBAC/ABAC/ReBAC أو Policy DSL/Framework/Engine أو Security Model عام.
+
+### 16. Hard Stops
+
+- مصدر operation ID ثانٍ أو parameter مستقل في Manager.
+- dispatch بعد أي نتيجة pre-action غير `APPENDED`.
+- replay/conflict ينشئ Work أو Task أو Execution أخرى.
+- automatic retry عند outcome مجهولة بالهوية نفسها أو الجديدة.
+- ادعاء recovery أو استعادة نتيجة بلا عقد durable مستقل.
+- خلط `AUTHORIZATION_REQUEST_INVALID` مع `POLICY_DENIED`.
+- default allow أو API-only enforcement.
+- تسجيل command/payload/API key/headers/raw exception/traceback.
+- تغيير accepted result أو تكرار dispatch بسبب post-action Audit failure.
+- تعميم evaluator قبل Trigger الفعل الثالث وDesign Gate.
+- دخول Stage 8 أو 9 أو framework/security-model freeze.
+- تغير HEAD أو Worktree أو توسع ملفات غير متوقع.
+
+<!-- STAGE7_SLICE7_2_CONTRACT_END -->
 
 
 <!-- CONTRACT_ADVERSARIAL_REVIEW_GATE_BEGIN -->
