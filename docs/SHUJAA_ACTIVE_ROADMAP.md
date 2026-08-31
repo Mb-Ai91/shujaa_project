@@ -2,7 +2,7 @@
 
 > **الصفة:** خارطة التنفيذ الرسمية النشطة لمشروع شجاع
 > **الإصدار:** 1.3
-> **آخر تحديث موثق:** 31 أغسطس 2026 بعد إغلاق مراجعة إصلاح Slice 7.1 والتحقق الموجّه؛ بانتظار موافقة Commit/Push، وStage 7 ما زالت جارية.
+> **آخر تحديث موثق:** 31 أغسطس 2026 بعد دفع implementation checkpoint لـSlice 7.1 ومزامنة حالة الإغلاق؛ Stage 7 ما زالت جارية وليست مكتملة.
 > **النطاق:** 19 مرحلة مترابطة بالاعتماديات، من Stage 0 إلى Stage 18
 
 ---
@@ -16,10 +16,11 @@
 |---|---|
 | CURRENT_STAGE | STAGE7_POLICY_AND_ACCESS_CONTROL |
 | CURRENT_SLICE | Slice 7.1 — Single-Action Authorization Boundary for cancel_task |
-| SLICE_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_PENDING_COMMIT_PUSH |
-| STAGE7_STATUS | IN_PROGRESS |
+| SLICE_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
+| SLICE7_1_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
+| STAGE7_STATUS | IN_PROGRESS_NOT_COMPLETE |
 | STAGE7_ENTRY_GATE | GO |
-| SLICE_7_1 | IMPLEMENTED_AND_TARGETED_VERIFIED_PENDING_COMMIT_PUSH |
+| SLICE_7_1 | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | FIRST_ACTION | TASK_CANCEL |
 | RED_STARTED | YES |
 | GREEN_STARTED | YES |
@@ -27,8 +28,9 @@
 | LAST_BLOCKER | SANITIZED_POST_ACTION_DIAGNOSTIC_CLOSED |
 | TARGETED_EVIDENCE | STAGE7_1_30_PASSED; AFFECTED_VERIFICATION_99_PASSED; POST_REPAIR_DIRECTLY_AFFECTED_28_PASSED; OVERLAP_NOT_DEDUPLICATED |
 | FULL_REGRESSION | NOT_RUN_NO_TRIGGER |
-| OTHER_STAGE7_SLICES | PROPOSAL_ONLY_NEED_EVIDENCE_AND_INDEPENDENT_APPROVAL |
-| NEXT | WAIT_FOR_OWNER_SLICE7_1_COMMIT_APPROVAL |
+| IMPLEMENTATION_CHECKPOINT | 15b6887792b5c8c05ab08de8aa4631f6a1b67ae2 |
+| OTHER_STAGE7_SLICES | PROPOSAL_ONLY |
+| NEXT | WAIT_FOR_OWNER_NEXT_STAGE7_NEED_REVIEW |
 <!-- SHUJAA_CURRENT_STATE_MIRROR_END -->
 
 ---
@@ -1465,7 +1467,7 @@ Slice 6.6 مغلقة ومتحققة ضمن Local/In-Memory scope. Evidence ال�
 <!-- STAGE7_SLICE7_1_CONTRACT_BEGIN -->
 ## Slice 7.1 — Single-Action Authorization Boundary for cancel_task
 
-**الحالة:** `IMPLEMENTED AND TARGETED VERIFIED — PENDING COMMIT/PUSH`
+**الحالة:** `IMPLEMENTED AND TARGETED VERIFIED — COMMITTED AND SYNCED`
 
 ### 1. الحاجة والمستهلك
 
@@ -1630,8 +1632,10 @@ Matrix الاختبارات المقترحة، دون إنشاء الاختبا�
 - post-repair directly affected: `28 passed`.
 - مجموعات الأدلة الثلاث متداخلة، ولا تُجمع كعدد اختبارات فريد.
 - لم يُشغّل Full Regression لعدم وجود trigger ضمن هذه الحزمة.
-- Stage 7 ما زالت `IN_PROGRESS` وليست مكتملة.
+- implementation checkpoint هو `15b6887792b5c8c05ab08de8aa4631f6a1b67ae2`.
+- Stage 7 ما زالت `IN_PROGRESS_NOT_COMPLETE`.
 - بقية Slices في Stage 7 تبقى `PROPOSAL_ONLY`، وتحتاج إثبات حاجة وموافقة مستقلة.
+- لم تبدأ Slice 7.2 أو أي First Slice أخرى.
 - لا يتضمن الإغلاق ADR جديدًا؛ الإصلاح داخل عقد Slice 7.1 المحفوظ.
 
 <!-- STAGE7_SLICE7_1_CONTRACT_END -->
