@@ -5,6 +5,13 @@ from concurrent.futures import ThreadPoolExecutor
 import pytest
 
 from core.manager.service import ShujaaManager
+from core.policy.contracts import (
+    ActorRef,
+    AuthorizationContext,
+    AuthorizationRequest,
+    ResourceRef,
+)
+from core.policy.evaluator import SinglePrincipalCancelEvaluator
 from core.runtime.process_registry import ProcessRegistry
 from core.runtime.process_registry_contract import (
     CleanupDisposition,
@@ -20,6 +27,44 @@ from core.work.models import Execution, ExecutionStatus
 class UnusedRunner:
     def start(self, command):
         raise AssertionError("Runner must not be called.")
+
+
+_CANCEL_ACTOR = ActorRef(
+    actor_type="service",
+    actor_id="test-cleanup-lifecycle-local-api",
+)
+
+
+def _authorized_cancel(
+    manager,
+    task_id,
+    *,
+    cancel_operation_id,
+    cleanup_operation_id,
+):
+    manager.cancel_authorization_evaluator = (
+        SinglePrincipalCancelEvaluator(
+            principal=_CANCEL_ACTOR,
+            policy_version="test-cleanup-lifecycle-v1",
+        )
+    )
+    return manager.cancel_task(
+        task_id,
+        authorization_request=AuthorizationRequest(
+            actor=_CANCEL_ACTOR,
+            action="task.cancel",
+            resource=ResourceRef(
+                resource_type="task",
+                resource_id=task_id,
+            ),
+            context=AuthorizationContext(
+                request_id=f"request-{cancel_operation_id}",
+                operation_id=cancel_operation_id,
+            ),
+        ),
+        cancel_operation_id=cancel_operation_id,
+        cleanup_operation_id=cleanup_operation_id,
+    )
 
 
 def _seed_running_task_with_owner(
@@ -98,7 +143,8 @@ def test_cancel_task_emits_cleanup_event_after_cleanup(tmp_path):
         execution_id=execution_id,
     )
 
-    manager.cancel_task(
+    _authorized_cancel(
+        manager,
         task_id,
         cancel_operation_id="op-test-cancel-request-test_stage5_cleanup_lifecycle_events-1",
         cleanup_operation_id=cleanup_op_id,
@@ -428,7 +474,8 @@ def test_cleanup_event_write_failure_does_not_rewrite_cleanup_outcome(tmp_path, 
         execution_id=execution_id,
     )
 
-    response = manager.cancel_task(
+    response = _authorized_cancel(
+        manager,
         task_id,
         cancel_operation_id="op-test-cancel-request-test_stage5_cleanup_lifecycle_events-2",
         cleanup_operation_id="op-cleanup-write-failure-1",

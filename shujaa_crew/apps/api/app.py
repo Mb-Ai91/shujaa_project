@@ -16,6 +16,13 @@ from adapters.storage.sqlite_task_store import SQLiteTaskStore
 from core.agents.bootstrap import build_agent_registry
 from core.agents.executor_registry import AgentExecutorRegistry
 from core.manager.service import ShujaaManager
+from core.policy.contracts import (
+    ActorRef,
+    AuthorizationContext,
+    AuthorizationRequest,
+    ResourceRef,
+)
+from core.policy.evaluator import SinglePrincipalCancelEvaluator
 from core.tasks.store import InMemoryTaskStore
 
 
@@ -55,6 +62,15 @@ agent_registry = build_agent_registry(
 
 agent_executor_registry = AgentExecutorRegistry()
 
+API_SERVICE_ACTOR = ActorRef(
+    actor_type="service",
+    actor_id="shujaa-local-api-service",
+)
+cancel_authorization_evaluator = SinglePrincipalCancelEvaluator(
+    principal=API_SERVICE_ACTOR,
+    policy_version="stage7.1-local-api-v1",
+)
+
 for agent in agent_registry.list():
     agent_executor_registry.register(
         agent.agent_id,
@@ -66,6 +82,9 @@ manager = ShujaaManager(
     task_store=task_store,
     agent_registry=agent_registry,
     agent_executor_registry=agent_executor_registry,
+    cancel_authorization_evaluator=(
+        cancel_authorization_evaluator
+    ),
 )
 
 
@@ -242,9 +261,22 @@ def cancel_task(task_id: str):
         cleanup_operation_id = (
             f"op-cancel-cleanup-{uuid4()}"
         )
+        authorization_request = AuthorizationRequest(
+            actor=API_SERVICE_ACTOR,
+            action="task.cancel",
+            resource=ResourceRef(
+                resource_type="task",
+                resource_id=task_id,
+            ),
+            context=AuthorizationContext(
+                request_id=f"request-cancel-{uuid4()}",
+                operation_id=cancel_operation_id,
+            ),
+        )
         return jsonify(
             manager.cancel_task(
                 task_id,
+                authorization_request=authorization_request,
                 cancel_operation_id=(
                     cancel_operation_id
                 ),
@@ -255,11 +287,23 @@ def cancel_task(task_id: str):
         ), 200
     except ValueError as error:
         message = str(error)
-        status_code = 404 if message == "Task not found." else 409
+        reason_code = getattr(error, "reason_code", None)
+        if message == "Task not found.":
+            status_code = 404
+        elif reason_code == "POLICY_DENIED":
+            status_code = 403
+        elif reason_code in {
+            "EVALUATOR_UNAVAILABLE",
+            "AUDIT_UNAVAILABLE",
+        }:
+            status_code = 503
+        else:
+            status_code = 409
 
         return jsonify({
             "status": "error",
             "message": message,
+            "error_code": reason_code,
         }), status_code
 
 

@@ -4,6 +4,13 @@ import pytest
 
 import core.manager.service as service_module
 from core.manager.service import ShujaaManager
+from core.policy.contracts import (
+    ActorRef,
+    AuthorizationContext,
+    AuthorizationRequest,
+    ResourceRef,
+)
+from core.policy.evaluator import SinglePrincipalCancelEvaluator
 from core.runtime.process_registry import ProcessRegistry
 from core.runtime.process_registry_contract import (
     ProcessOwnership,
@@ -15,6 +22,44 @@ from core.work.models import Execution, ExecutionStatus
 class UnusedRunner:
     def start(self, topic):
         raise AssertionError("Runner must not start.")
+
+
+_CANCEL_ACTOR = ActorRef(
+    actor_type="service",
+    actor_id="test-process-cleanup-local-api",
+)
+
+
+def _authorized_cancel(
+    manager,
+    task_id,
+    *,
+    cancel_operation_id,
+    cleanup_operation_id,
+):
+    manager.cancel_authorization_evaluator = (
+        SinglePrincipalCancelEvaluator(
+            principal=_CANCEL_ACTOR,
+            policy_version="test-process-cleanup-v1",
+        )
+    )
+    return manager.cancel_task(
+        task_id,
+        authorization_request=AuthorizationRequest(
+            actor=_CANCEL_ACTOR,
+            action="task.cancel",
+            resource=ResourceRef(
+                resource_type="task",
+                resource_id=task_id,
+            ),
+            context=AuthorizationContext(
+                request_id=f"request-{cancel_operation_id}",
+                operation_id=cancel_operation_id,
+            ),
+        ),
+        cancel_operation_id=cancel_operation_id,
+        cleanup_operation_id=cleanup_operation_id,
+    )
 
 
 @pytest.fixture(autouse=True)
@@ -112,7 +157,8 @@ def test_winning_cancel_terminates_and_releases_owner(
         lambda pgid: signals.append(pgid)
     )
 
-    response = manager.cancel_task(
+    response = _authorized_cancel(
+        manager,
         task_id,
         cancel_operation_id="op-test-cancel-request-test_process_cleanup_manager-1",
         cleanup_operation_id="op-test-cancel-winning",
@@ -151,7 +197,8 @@ def test_idempotent_cancel_retries_pending_cleanup(
         lambda pgid: signals.append(pgid)
     )
 
-    response = manager.cancel_task(
+    response = _authorized_cancel(
+        manager,
         task_id,
         cancel_operation_id="op-test-cancel-request-test_process_cleanup_manager-2",
         cleanup_operation_id="op-test-cancel-replay",
@@ -188,7 +235,8 @@ def test_already_exited_process_releases_without_signal(
         lambda pgid: signals.append(pgid)
     )
 
-    response = manager.cancel_task(
+    response = _authorized_cancel(
+        manager,
         task_id,
         cancel_operation_id="op-test-cancel-request-test_process_cleanup_manager-3",
         cleanup_operation_id="op-test-cancel-already-exited",
@@ -225,7 +273,8 @@ def test_process_identity_mismatch_retains_owner(
         lambda pgid: signals.append(pgid)
     )
 
-    response = manager.cancel_task(
+    response = _authorized_cancel(
+        manager,
         task_id,
         cancel_operation_id="op-test-cancel-request-test_process_cleanup_manager-4",
         cleanup_operation_id="op-test-cancel-identity-mismatch",
@@ -263,7 +312,8 @@ def test_termination_failure_retains_owner_and_winner(
 
     manager._terminate_process_group_by_id = fail_termination
 
-    response = manager.cancel_task(
+    response = _authorized_cancel(
+        manager,
         task_id,
         cancel_operation_id="op-test-cancel-request-test_process_cleanup_manager-5",
         cleanup_operation_id="op-test-cancel-termination-failure",
@@ -307,7 +357,8 @@ def test_stale_execution_cannot_cleanup_newer_owner(
         lambda pgid: signals.append(pgid)
     )
 
-    response = manager.cancel_task(
+    response = _authorized_cancel(
+        manager,
         task_id,
         cancel_operation_id="op-test-cancel-request-test_process_cleanup_manager-6",
         cleanup_operation_id="op-test-cancel-stale-owner",
@@ -407,7 +458,8 @@ def test_identity_read_failure_retains_owner_and_winner(
         lambda pgid: signals.append(pgid)
     )
 
-    response = manager.cancel_task(
+    response = _authorized_cancel(
+        manager,
         task_id,
         cancel_operation_id="op-test-cancel-request-test_process_cleanup_manager-7",
         cleanup_operation_id="op-test-cancel-identity-read-failure",
@@ -462,7 +514,8 @@ def test_cleanup_refuses_process_group_mismatch(
         lambda pgid: signals.append(pgid)
     )
 
-    response = manager.cancel_task(
+    response = _authorized_cancel(
+        manager,
         task_id,
         cancel_operation_id="op-test-cancel-request-test_process_cleanup_manager-8",
         cleanup_operation_id="op-test-cancel-group-mismatch",

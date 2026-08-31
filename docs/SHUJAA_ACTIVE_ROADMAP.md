@@ -2,7 +2,7 @@
 
 > **الصفة:** خارطة التنفيذ الرسمية النشطة لمشروع شجاع
 > **الإصدار:** 1.3
-> **آخر تحديث موثق:** 30 أغسطس 2026 بعد حفظ عقد Slice 7.1 بانتظار موافقة RED؛ لم يبدأ RED أو GREEN أو Production.
+> **آخر تحديث موثق:** 31 أغسطس 2026 بعد إغلاق مراجعة إصلاح Slice 7.1 والتحقق الموجّه؛ بانتظار موافقة Commit/Push، وStage 7 ما زالت جارية.
 > **النطاق:** 19 مرحلة مترابطة بالاعتماديات، من Stage 0 إلى Stage 18
 
 ---
@@ -16,15 +16,19 @@
 |---|---|
 | CURRENT_STAGE | STAGE7_POLICY_AND_ACCESS_CONTROL |
 | CURRENT_SLICE | Slice 7.1 — Single-Action Authorization Boundary for cancel_task |
-| SLICE_STATUS | CONTRACT_SAVED_PENDING_RED_APPROVAL |
-| STAGE7_STATUS | IN_PROGRESS_DESIGN_RESEARCH |
+| SLICE_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_PENDING_COMMIT_PUSH |
+| STAGE7_STATUS | IN_PROGRESS |
 | STAGE7_ENTRY_GATE | GO |
-| SLICE_7_1 | CONTRACT_SAVED_PENDING_RED_APPROVAL |
+| SLICE_7_1 | IMPLEMENTED_AND_TARGETED_VERIFIED_PENDING_COMMIT_PUSH |
 | FIRST_ACTION | TASK_CANCEL |
-| RED_STARTED | NO |
-| GREEN_STARTED | NO |
-| PRODUCTION_STARTED | NO |
-| NEXT | WAIT_FOR_OWNER_SLICE7_1_CONTRACT_COMMIT_APPROVAL |
+| RED_STARTED | YES |
+| GREEN_STARTED | YES |
+| PRODUCTION_STARTED | YES |
+| LAST_BLOCKER | SANITIZED_POST_ACTION_DIAGNOSTIC_CLOSED |
+| TARGETED_EVIDENCE | STAGE7_1_30_PASSED; AFFECTED_VERIFICATION_99_PASSED; POST_REPAIR_DIRECTLY_AFFECTED_28_PASSED; OVERLAP_NOT_DEDUPLICATED |
+| FULL_REGRESSION | NOT_RUN_NO_TRIGGER |
+| OTHER_STAGE7_SLICES | PROPOSAL_ONLY_NEED_EVIDENCE_AND_INDEPENDENT_APPROVAL |
+| NEXT | WAIT_FOR_OWNER_SLICE7_1_COMMIT_APPROVAL |
 <!-- SHUJAA_CURRENT_STATE_MIRROR_END -->
 
 ---
@@ -1461,7 +1465,7 @@ Slice 6.6 مغلقة ومتحققة ضمن Local/In-Memory scope. Evidence ال�
 <!-- STAGE7_SLICE7_1_CONTRACT_BEGIN -->
 ## Slice 7.1 — Single-Action Authorization Boundary for cancel_task
 
-**الحالة:** `SAVED — PENDING RED APPROVAL`
+**الحالة:** `IMPLEMENTED AND TARGETED VERIFIED — PENDING COMMIT/PUSH`
 
 ### 1. الحاجة والمستهلك
 
@@ -1617,6 +1621,18 @@ Matrix الاختبارات المقترحة، دون إنشاء الاختبا�
 - Framework/Security Model trigger.
 - Stage 6/8/9 scope.
 - تغير HEAD أو Worktree غير متوقعة.
+
+### 15. Implementation and targeted verification closure
+
+- أُغلق المانع الأخير الخاص بـsanitized post-action diagnostic بمراجعة conformance ناجحة.
+- Stage 7.1: `30 passed`.
+- affected verification السابقة: `99 passed`.
+- post-repair directly affected: `28 passed`.
+- مجموعات الأدلة الثلاث متداخلة، ولا تُجمع كعدد اختبارات فريد.
+- لم يُشغّل Full Regression لعدم وجود trigger ضمن هذه الحزمة.
+- Stage 7 ما زالت `IN_PROGRESS` وليست مكتملة.
+- بقية Slices في Stage 7 تبقى `PROPOSAL_ONLY`، وتحتاج إثبات حاجة وموافقة مستقلة.
+- لا يتضمن الإغلاق ADR جديدًا؛ الإصلاح داخل عقد Slice 7.1 المحفوظ.
 
 <!-- STAGE7_SLICE7_1_CONTRACT_END -->
 

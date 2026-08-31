@@ -4,28 +4,42 @@
 
 > **الوظيفة:** هذا القسم هو المالك البشري الوحيد لحالة المشروع الحالية ونقطة الاستئناف. Git/Codespace يملكان Runtime truth، وActive Roadmap تعكس الحالة المختصرة فقط، وADR تحفظ القرارات طويلة العمر.
 >
-> **آخر تحديث موثق:** 30 أغسطس 2026 بعد حفظ عقد Slice 7.1 بانتظار موافقة RED؛ لم يبدأ RED أو GREEN أو Production.
+> **آخر تحديث موثق:** 31 أغسطس 2026 بعد إغلاق مراجعة إصلاح Slice 7.1 والتحقق الموجّه؛ بانتظار موافقة Commit/Push، وStage 7 ما زالت جارية.
 
 <!-- SHUJAA_CURRENT_STATE_BEGIN -->
 | الحقل | القيمة |
 |---|---|
 | CURRENT_STAGE | STAGE7_POLICY_AND_ACCESS_CONTROL |
 | CURRENT_SLICE | Slice 7.1 — Single-Action Authorization Boundary for cancel_task |
-| SLICE_STATUS | CONTRACT_SAVED_PENDING_RED_APPROVAL |
-| STAGE7_STATUS | IN_PROGRESS_DESIGN_RESEARCH |
+| SLICE_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_PENDING_COMMIT_PUSH |
+| STAGE7_STATUS | IN_PROGRESS |
 | STAGE7_ENTRY_GATE | GO |
-| SLICE_7_1 | CONTRACT_SAVED_PENDING_RED_APPROVAL |
+| SLICE_7_1 | IMPLEMENTED_AND_TARGETED_VERIFIED_PENDING_COMMIT_PUSH |
 | FIRST_ACTION | TASK_CANCEL |
-| RED_STARTED | NO |
-| GREEN_STARTED | NO |
-| PRODUCTION_STARTED | NO |
-| NEXT | WAIT_FOR_OWNER_SLICE7_1_CONTRACT_COMMIT_APPROVAL |
-| LAST_TRUSTED_CHECKPOINT | Stage 6 closed and verified at `734ae282678a40189ab4d4343436682a21233da2`؛ Slices 6.1–6.7 complete؛ targeted `21 passed`؛ full regression `592 passed` و`0 failed`؛ conformance review `PASS`؛ State Sync `1 passed`؛ `STAGE6_EXIT_GAP_AUDIT=PASS`؛ `STAGE6_EXIT_GATE=GO` |
-| EVIDENCE_REFERENCES | Slice 7.1 contract بين markers `STAGE7_SLICE7_1_CONTRACT_BEGIN/END` على `BASE_HEAD=6cb5633bd25d0b0d4215a5748f410994b19c6dcc`؛ Stage 7 Entry Gate contract بين markers `STAGE7_ENTRY_GATE_CONTRACT_BEGIN/END`؛ Stage 7 Entry Gate نفذ قراءة فقط على `BASE_HEAD=34a0d7e4cc76518db040fbaf0796eecc219e9370` بنتيجة `GO` ودون اختبارات؛ Stage 6 Exit Gate contract بين markers `STAGE6_EXIT_GATE_CONTRACT_BEGIN/END`؛ Stage 6 baseline عند `734ae282678a40189ab4d4343436682a21233da2`؛ targeted `21 passed`؛ full regression `592 passed` و`0 failed`؛ conformance review `PASS`؛ State Sync `1 passed`؛ `STAGE6_EXIT_GAP_AUDIT=PASS`؛ `STAGE6_EXIT_GATE=GO` |
+| RED_STARTED | YES |
+| GREEN_STARTED | YES |
+| PRODUCTION_STARTED | YES |
+| LAST_BLOCKER | SANITIZED_POST_ACTION_DIAGNOSTIC_CLOSED |
+| TARGETED_EVIDENCE | STAGE7_1_30_PASSED; AFFECTED_VERIFICATION_99_PASSED; POST_REPAIR_DIRECTLY_AFFECTED_28_PASSED; OVERLAP_NOT_DEDUPLICATED |
+| FULL_REGRESSION | NOT_RUN_NO_TRIGGER |
+| OTHER_STAGE7_SLICES | PROPOSAL_ONLY_NEED_EVIDENCE_AND_INDEPENDENT_APPROVAL |
+| NEXT | WAIT_FOR_OWNER_SLICE7_1_COMMIT_APPROVAL |
+| LAST_TRUSTED_CHECKPOINT | آخر checkpoint ملتزم يبقى Stage 6 عند `734ae282678a40189ab4d4343436682a21233da2`؛ Delta Slice 7.1 الحالية على `BASE_HEAD=ede69f7a01a653e5330652eb465f0a34ad17ee63` منفذة ومتحقق منها موجهًا، لكنها غير committed وغير pushed. |
+| EVIDENCE_REFERENCES | Slice 7.1 contract بين markers `STAGE7_SLICE7_1_CONTRACT_BEGIN/END`؛ post-repair conformance closure=`PASS`؛ Stage 7.1=`30 passed`؛ affected verification السابقة=`99 passed`؛ post-repair directly affected=`28 passed`؛ المجموعات متداخلة ولم تُجمع كعدد فريد؛ RED SHA256=`a346e0f7f782f369ab8db27e0a51c16b4d0767aabcb57744f05b2174892e116a`؛ Full Regression=`NOT_RUN_NO_TRIGGER`؛ Stage 7 Entry Gate contract بين markers `STAGE7_ENTRY_GATE_CONTRACT_BEGIN/END`؛ Stage 6 Exit Gate contract بين markers `STAGE6_EXIT_GATE_CONTRACT_BEGIN/END`؛ Stage 6 baseline عند `734ae282678a40189ab4d4343436682a21233da2`. |
 <!-- SHUJAA_CURRENT_STATE_END -->
 
 ### Evidence summary
 
+- Slice 7.1: `IMPLEMENTED AND TARGETED VERIFIED — PENDING COMMIT/PUSH`.
+- المانع الأخير الخاص بـsanitized post-action diagnostic مغلق.
+- Stage 7.1: `30 passed`.
+- affected verification السابقة: `99 passed`.
+- post-repair directly affected: `28 passed`.
+- مجموعات الأدلة الثلاث متداخلة، ولا تُجمع كعدد اختبارات فريد.
+- لم يُشغّل Full Regression؛ `FULL_REGRESSION=NOT_RUN_NO_TRIGGER`.
+- Stage 7 ما زالت `IN_PROGRESS` وليست مكتملة.
+- بقية Slices في Stage 7 تبقى `PROPOSAL_ONLY` وتحتاج إثبات حاجة وموافقة مستقلة.
+- لم يُنشأ ADR جديد؛ الإصلاح داخل عقد Slice 7.1 المحفوظ.
 - Stage 6 مغلقة ومتحقق منها ضمن `LOCAL/IN-MEMORY CATALOG & EXPLICIT BINDING FOUNDATION`.
 - Slices 6.1–6.7 مكتملة.
 - Slice 6.8 مؤجلة لعدم وجود مستهلك وظيفي مباشر، وليست فجوة خروج.
@@ -35,14 +49,14 @@
 - Conformance review: `PASS`.
 - State Sync: `1 passed`.
 - `CURRENT_STAGE=STAGE7_POLICY_AND_ACCESS_CONTROL`.
-- `STAGE7_STATUS=IN_PROGRESS_DESIGN_RESEARCH`.
+- `STAGE7_STATUS=IN_PROGRESS`.
 - `STAGE7_ENTRY_GATE=GO`.
-- `SLICE_7_1=CONTRACT_SAVED_PENDING_RED_APPROVAL`.
+- `SLICE_7_1=IMPLEMENTED_AND_TARGETED_VERIFIED_PENDING_COMMIT_PUSH`.
 - `FIRST_ACTION=TASK_CANCEL`.
-- `RED_STARTED=NO`.
-- `GREEN_STARTED=NO`.
-- `PRODUCTION_STARTED=NO`.
-- `NEXT=WAIT_FOR_OWNER_SLICE7_1_CONTRACT_COMMIT_APPROVAL`.
+- `RED_STARTED=YES`.
+- `GREEN_STARTED=YES`.
+- `PRODUCTION_STARTED=YES`.
+- `NEXT=WAIT_FOR_OWNER_SLICE7_1_COMMIT_APPROVAL`.
 
 ## OPEN ITEMS
 

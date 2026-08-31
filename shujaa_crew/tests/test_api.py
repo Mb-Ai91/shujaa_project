@@ -85,10 +85,13 @@ def test_cancel_task_endpoint(monkeypatch):
             self,
             task_id: str,
             *,
+            authorization_request,
             cancel_operation_id: str,
             cleanup_operation_id: str,
         ):
             assert task_id == "task-123"
+            assert authorization_request.action == "task.cancel"
+            assert authorization_request.resource.resource_id == task_id
             assert isinstance(cancel_operation_id, str)
             assert isinstance(cleanup_operation_id, str)
             assert cancel_operation_id != (

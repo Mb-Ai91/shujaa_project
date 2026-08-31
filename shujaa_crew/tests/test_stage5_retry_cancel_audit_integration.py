@@ -7,6 +7,13 @@ from hashlib import sha256
 import pytest
 
 from core.manager.service import ShujaaManager
+from core.policy.contracts import (
+    ActorRef,
+    AuthorizationContext,
+    AuthorizationRequest,
+    ResourceRef,
+)
+from core.policy.evaluator import SinglePrincipalCancelEvaluator
 from core.tasks.store import TaskRecord
 from core.work.event_store import (
     AppendReceipt,
@@ -44,11 +51,71 @@ class FailingAuditStore:
         return ()
 
 
+class CancelOutcomeFailingAuditStore:
+    def __init__(self):
+        self._delegate = InMemoryAuditStore()
+
+    def append(self, record):
+        return self.append_replay_stable(record)
+
+    def append_replay_stable(self, record):
+        if record.action == "task.cancel" and record.event_id is not None:
+            return AppendReceipt(
+                result=AppendResult.WRITE_FAILED,
+                record_id=record.audit_id,
+                error_code="injected_audit_write_failure",
+            )
+        return self._delegate.append_replay_stable(record)
+
+    def get(self, record_id):
+        return self._delegate.get(record_id)
+
+    def list(self, after_sequence=0, limit=None):
+        return self._delegate.list(after_sequence, limit)
+
+
+_CANCEL_ACTOR = ActorRef(
+    actor_type="service",
+    actor_id="test-retry-cancel-audit-local-api",
+)
+_CANCEL_EVALUATOR = SinglePrincipalCancelEvaluator(
+    principal=_CANCEL_ACTOR,
+    policy_version="test-retry-cancel-audit-v1",
+)
+
+
+def _authorized_cancel(
+    manager,
+    task_id,
+    *,
+    cancel_operation_id,
+    cleanup_operation_id,
+):
+    return manager.cancel_task(
+        task_id,
+        authorization_request=AuthorizationRequest(
+            actor=_CANCEL_ACTOR,
+            action="task.cancel",
+            resource=ResourceRef(
+                resource_type="task",
+                resource_id=task_id,
+            ),
+            context=AuthorizationContext(
+                request_id=f"request-{cancel_operation_id}",
+                operation_id=cancel_operation_id,
+            ),
+        ),
+        cancel_operation_id=cancel_operation_id,
+        cleanup_operation_id=cleanup_operation_id,
+    )
+
+
 def _manager(*, audit_store=None, event_store=None):
     return ShujaaManager(
         crew_runner=UnusedRunner(),
         audit_store=(audit_store or InMemoryAuditStore()),
         event_store=(event_store or InMemoryEventStore()),
+        cancel_authorization_evaluator=_CANCEL_EVALUATOR,
     )
 
 
@@ -237,7 +304,8 @@ def test_cancel_acceptance_emits_minimal_linked_audit():
     )
     cancel_operation_id = "op-cancel-request-accepted"
 
-    response = manager.cancel_task(
+    response = _authorized_cancel(
+        manager,
         task.task_id,
         cancel_operation_id=cancel_operation_id,
         cleanup_operation_id="op-cancel-cleanup-accepted",
@@ -255,8 +323,8 @@ def test_cancel_acceptance_emits_minimal_linked_audit():
 
     audit = _audit(audit_store, expected_id)
     assert audit.action == "task.cancel"
-    assert audit.actor_type == "system"
-    assert audit.actor_id == "shujaa_manager"
+    assert audit.actor_type == _CANCEL_ACTOR.actor_type
+    assert audit.actor_id == _CANCEL_ACTOR.actor_id
     assert audit.resource_type == "task"
     assert audit.resource_id == task.task_id
     assert audit.operation_id == cancel_operation_id
@@ -280,7 +348,8 @@ def test_late_cancel_audits_preserved_terminal_winner():
         status=ExecutionStatus.COMPLETED,
     )
 
-    response = manager.cancel_task(
+    response = _authorized_cancel(
+        manager,
         task.task_id,
         cancel_operation_id="op-cancel-request-late",
         cleanup_operation_id="op-cancel-cleanup-late",
@@ -324,7 +393,8 @@ def test_cancel_pretransition_rejection_is_structured(
         )
 
     with pytest.raises(ValueError) as caught:
-        manager.cancel_task(
+        _authorized_cancel(
+            manager,
             task_id,
             cancel_operation_id=f"op-cancel-{case}",
             cleanup_operation_id=f"op-cleanup-{case}",
@@ -347,14 +417,15 @@ def test_cancel_pretransition_rejection_is_structured(
 
 
 def test_cancel_audit_write_failure_preserves_cancel_and_cleanup():
-    manager = _manager(audit_store=FailingAuditStore())
+    manager = _manager(audit_store=CancelOutcomeFailingAuditStore())
     task, execution = _seed_source(
         manager,
         "cancel-audit-failure",
         status=ExecutionStatus.QUEUED,
     )
 
-    response = manager.cancel_task(
+    response = _authorized_cancel(
+        manager,
         task.task_id,
         cancel_operation_id="op-cancel-request-failure",
         cleanup_operation_id="op-cancel-cleanup-failure",
@@ -380,10 +451,12 @@ def test_cancel_api_passes_separate_request_and_cleanup_ids(
             self,
             task_id,
             *,
+            authorization_request,
             cancel_operation_id,
             cleanup_operation_id,
         ):
             captured["task_id"] = task_id
+            captured["authorization_request"] = authorization_request
             captured["cancel_operation_id"] = cancel_operation_id
             captured["cleanup_operation_id"] = cleanup_operation_id
             return {
@@ -404,6 +477,7 @@ def test_cancel_api_passes_separate_request_and_cleanup_ids(
 
     assert response.status_code == 200
     assert captured["task_id"] == "task-audit-cancel-api"
+    assert captured["authorization_request"].action == "task.cancel"
     assert captured["cancel_operation_id"].startswith(
         "op-cancel-request-"
     )

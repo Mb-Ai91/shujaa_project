@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from hashlib import sha256
 import json
+import logging
 import os
 import signal
 import subprocess
@@ -12,6 +13,12 @@ from uuid import uuid4
 from core.agents.contracts import AgentRegistryProtocol
 from core.agents.executor_registry_contract import (
     AgentExecutorRegistryProtocol,
+)
+from core.policy.contracts import (
+    AuthorizationDecision,
+    AuthorizationEffect,
+    AuthorizationRequest,
+    CancelAuthorizationEvaluatorProtocol,
 )
 from core.runtime.process_registry import ProcessRegistry
 from core.runtime.process_registry_contract import (
@@ -32,7 +39,7 @@ from core.work.event_store import (
     InMemoryAuditStore,
     InMemoryEventStore,
 )
-from core.work.events import AuditRecord, WorkEvent
+from core.work.events import AppendResult, AuditRecord, WorkEvent
 from core.work.models import (
     Execution,
     ExecutionStatus,
@@ -55,6 +62,9 @@ from core.work.dispatcher import (
     DispatchRequest,
     ExecutionDispatcherProtocol,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 
@@ -226,6 +236,9 @@ class ShujaaManager:
         execution_dispatcher: ExecutionDispatcherProtocol | None = None,
         agent_registry: AgentRegistryProtocol | None = None,
         agent_executor_registry: AgentExecutorRegistryProtocol | None = None,
+        cancel_authorization_evaluator: (
+            CancelAuthorizationEvaluatorProtocol | None
+        ) = None,
     ) -> None:
         self.crew_runner = crew_runner
         self.task_store = task_store or InMemoryTaskStore()
@@ -251,6 +264,9 @@ class ShujaaManager:
         )
         self.agent_registry = agent_registry
         self.agent_executor_registry = agent_executor_registry
+        self.cancel_authorization_evaluator = (
+            cancel_authorization_evaluator
+        )
 
     _TERMINAL_EXECUTION_STATUSES = frozenset(
         {
@@ -373,6 +389,18 @@ class ShujaaManager:
         )
 
     @classmethod
+    def _cancel_authorization_audit_id(
+        cls,
+        cancel_operation_id: str,
+        task_id: str,
+    ) -> str:
+        return cls._operation_audit_id(
+            "audit-task-cancel-authorization-",
+            cancel_operation_id,
+            task_id,
+        )
+
+    @classmethod
     def _terminal_audit_id(
         cls,
         operation_id: str,
@@ -454,6 +482,8 @@ class ShujaaManager:
     def _append_cancel_audit(
         self,
         *,
+        authorization_request: AuthorizationRequest,
+        authorization_decision: AuthorizationDecision,
         task_id: str,
         cancel_operation_id: str,
         outcome: str,
@@ -465,19 +495,51 @@ class ShujaaManager:
                 cancel_operation_id,
                 task_id,
             ),
-            action="task.cancel",
-            actor_type="system",
-            actor_id="shujaa_manager",
+            action=authorization_request.action,
+            actor_type=authorization_request.actor.actor_type,
+            actor_id=authorization_request.actor.actor_id,
             resource_type="task",
             resource_id=task_id,
             outcome=outcome,
             reason_code=reason_code,
             operation_id=cancel_operation_id,
             event_id=event_id,
+            request_id=(
+                authorization_request.context.request_id
+            ),
+            policy_version=(
+                authorization_decision.policy_version
+            ),
         )
         return self.audit_store.append_replay_stable(
             audit
         )
+
+    def _append_cancel_authorization_audit(
+        self,
+        *,
+        authorization_request: AuthorizationRequest,
+        authorization_decision: AuthorizationDecision,
+        task_id: str,
+        cancel_operation_id: str,
+    ) -> AppendReceipt:
+        audit = AuditRecord(
+            audit_id=self._cancel_authorization_audit_id(
+                cancel_operation_id,
+                task_id,
+            ),
+            action="authorization.task.cancel",
+            actor_type=authorization_request.actor.actor_type,
+            actor_id=authorization_request.actor.actor_id,
+            resource_type="task",
+            resource_id=task_id,
+            outcome="allowed",
+            reason_code=authorization_decision.reason_code,
+            request_id=authorization_request.context.request_id,
+            operation_id=cancel_operation_id,
+            policy_version=authorization_decision.policy_version,
+        )
+        return self.audit_store.append_replay_stable(audit)
 
     def _append_terminal_audit(
         self,
@@ -587,11 +649,15 @@ class ShujaaManager:
         self,
         message: str,
         *,
+        authorization_request: AuthorizationRequest,
+        authorization_decision: AuthorizationDecision,
         task_id: str,
         cancel_operation_id: str,
         reason_code: str,
     ) -> AuditedCancelError:
         receipt = self._append_cancel_audit(
+            authorization_request=authorization_request,
+            authorization_decision=authorization_decision,
             task_id=task_id,
             cancel_operation_id=cancel_operation_id,
             outcome="rejected",
@@ -2016,6 +2082,7 @@ class ShujaaManager:
         self,
         task_id: str,
         *,
+        authorization_request: AuthorizationRequest | None = None,
         cancel_operation_id: str,
         cleanup_operation_id: str,
     ) -> dict[str, object]:
@@ -2029,11 +2096,123 @@ class ShujaaManager:
                 audit_append_receipt=None,
             )
 
+        evaluator = self.cancel_authorization_evaluator
+        if evaluator is None:
+            raise AuditedCancelError(
+                "Cancel authorization evaluator is unavailable.",
+                reason_code="EVALUATOR_UNAVAILABLE",
+                audit_append_receipt=None,
+            )
+
+        if not isinstance(
+            authorization_request,
+            AuthorizationRequest,
+        ):
+            raise AuditedCancelError(
+                "Cancel authorization request is malformed.",
+                reason_code="EVALUATOR_UNAVAILABLE",
+                audit_append_receipt=None,
+            )
+
+        request_is_bound = (
+            authorization_request.action == "task.cancel"
+            and (
+                authorization_request.resource.resource_type
+                == "task"
+            )
+            and authorization_request.resource.resource_id == task_id
+            and (
+                authorization_request.context.operation_id
+                == cancel_operation_id
+            )
+        )
+        if not request_is_bound:
+            raise AuditedCancelError(
+                "Cancel authorization request is out of scope.",
+                reason_code="POLICY_DENIED",
+                audit_append_receipt=None,
+            )
+
+        try:
+            authorization_decision = evaluator.evaluate(
+                authorization_request
+            )
+        except Exception as error:
+            raise AuditedCancelError(
+                "Cancel authorization evaluator is unavailable.",
+                reason_code="EVALUATOR_UNAVAILABLE",
+                audit_append_receipt=None,
+            ) from error
+
+        if not isinstance(
+            authorization_decision,
+            AuthorizationDecision,
+        ):
+            raise AuditedCancelError(
+                "Cancel authorization decision is malformed.",
+                reason_code="EVALUATOR_UNAVAILABLE",
+                audit_append_receipt=None,
+            )
+
+        if authorization_decision.effect is AuthorizationEffect.DENY:
+            raise AuditedCancelError(
+                "Cancel request is denied by policy.",
+                reason_code="POLICY_DENIED",
+                audit_append_receipt=None,
+            )
+
+        if authorization_decision.effect is not AuthorizationEffect.ALLOW:
+            raise AuditedCancelError(
+                "Cancel authorization decision is unknown.",
+                reason_code="EVALUATOR_UNAVAILABLE",
+                audit_append_receipt=None,
+            )
+
+        try:
+            authorization_audit_receipt = (
+                self._append_cancel_authorization_audit(
+                    authorization_request=authorization_request,
+                    authorization_decision=authorization_decision,
+                    task_id=task_id,
+                    cancel_operation_id=cancel_operation_id,
+                )
+            )
+        except Exception as error:
+            raise AuditedCancelError(
+                "Cancel authorization evidence is unavailable.",
+                reason_code="AUDIT_UNAVAILABLE",
+                audit_append_receipt=None,
+            ) from error
+        if (
+            not isinstance(
+                authorization_audit_receipt,
+                AppendReceipt,
+            )
+            or authorization_audit_receipt.result not in {
+                AppendResult.APPENDED,
+                AppendResult.IDEMPOTENT_REPLAY,
+            }
+        ):
+            raise AuditedCancelError(
+                "Cancel authorization evidence is unavailable.",
+                reason_code="AUDIT_UNAVAILABLE",
+                audit_append_receipt=(
+                    authorization_audit_receipt
+                    if isinstance(
+                        authorization_audit_receipt,
+                        AppendReceipt,
+                    )
+                    else None
+                ),
+            )
+
         task = self.task_store.get(task_id)
 
         if task is None:
             raise self._cancel_rejection_error(
                 "Task not found.",
+                authorization_request=authorization_request,
+                authorization_decision=authorization_decision,
                 task_id=task_id,
                 cancel_operation_id=(
                     cancel_operation_id
@@ -2048,6 +2227,8 @@ class ShujaaManager:
         if not executions:
             raise self._cancel_rejection_error(
                 "Execution not found.",
+                authorization_request=authorization_request,
+                authorization_decision=authorization_decision,
                 task_id=task_id,
                 cancel_operation_id=(
                     cancel_operation_id
@@ -2142,32 +2323,68 @@ class ShujaaManager:
         response["cleanup_audit_append_receipt"] = (
             cleanup_audit_append_receipt
         )
+        response["authorization_audit_append_receipt"] = (
+            authorization_audit_receipt
+        )
 
         transition_receipt = (
             transition.event_append_receipt
         )
-        audit_receipt = self._append_cancel_audit(
-            task_id=task_id,
-            cancel_operation_id=cancel_operation_id,
-            outcome=(
-                "accepted"
-                if cancel_applied
-                else "rejected"
-            ),
-            reason_code=(
-                "cancel_applied"
-                if cancel_applied
-                else "terminal_winner_preserved"
-            ),
-            event_id=(
-                transition_receipt.record_id
-                if transition_receipt
-                else None
-            ),
-        )
+        try:
+            audit_receipt = self._append_cancel_audit(
+                authorization_request=authorization_request,
+                authorization_decision=authorization_decision,
+                task_id=task_id,
+                cancel_operation_id=cancel_operation_id,
+                outcome=(
+                    "accepted"
+                    if cancel_applied
+                    else "rejected"
+                ),
+                reason_code=(
+                    "cancel_applied"
+                    if cancel_applied
+                    else "terminal_winner_preserved"
+                ),
+                event_id=(
+                    transition_receipt.record_id
+                    if transition_receipt
+                    else None
+                ),
+            )
+        except Exception as error:
+            logger.warning(
+                "post_action_audit_failed",
+                extra={
+                    "diagnostic_code": "POST_ACTION_AUDIT_FAILED",
+                    "exception_type": type(error).__name__,
+                    "operation_id": cancel_operation_id,
+                    "request_id": (
+                        authorization_request.context.request_id
+                    ),
+                    "resource_type": "task",
+                    "resource_id": task_id,
+                },
+            )
+            audit_receipt = None
         response["audit_append_receipt"] = (
             audit_receipt
         )
+        response["action_occurred"] = cancel_applied
+        if (
+            isinstance(audit_receipt, AppendReceipt)
+            and audit_receipt.result in {
+                AppendResult.APPENDED,
+                AppendResult.IDEMPOTENT_REPLAY,
+            }
+        ):
+            response["audit_status"] = "RECORDED"
+            response["warning_code"] = None
+        else:
+            response["audit_status"] = "FAILED"
+            response["warning_code"] = (
+                "POST_ACTION_AUDIT_FAILED"
+            )
 
         return response
 

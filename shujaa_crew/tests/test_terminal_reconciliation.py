@@ -2,6 +2,13 @@ import subprocess
 from threading import Event
 
 from core.manager.service import ShujaaManager
+from core.policy.contracts import (
+    ActorRef,
+    AuthorizationContext,
+    AuthorizationRequest,
+    ResourceRef,
+)
+from core.policy.evaluator import SinglePrincipalCancelEvaluator
 from core.tasks.store import TaskRecord, TaskStore
 from core.work.execution_registry import InMemoryExecutionRegistry
 from core.work.execution_registry_contract import (
@@ -55,6 +62,44 @@ class _CallbackProcess:
             )
 
         return self.return_code
+
+
+_CANCEL_ACTOR = ActorRef(
+    actor_type="service",
+    actor_id="test-terminal-reconciliation-local-api",
+)
+
+
+def _authorized_cancel(
+    manager,
+    task_id,
+    *,
+    cancel_operation_id,
+    cleanup_operation_id,
+):
+    manager.cancel_authorization_evaluator = (
+        SinglePrincipalCancelEvaluator(
+            principal=_CANCEL_ACTOR,
+            policy_version="test-terminal-reconciliation-v1",
+        )
+    )
+    return manager.cancel_task(
+        task_id,
+        authorization_request=AuthorizationRequest(
+            actor=_CANCEL_ACTOR,
+            action="task.cancel",
+            resource=ResourceRef(
+                resource_type="task",
+                resource_id=task_id,
+            ),
+            context=AuthorizationContext(
+                request_id=f"request-{cancel_operation_id}",
+                operation_id=cancel_operation_id,
+            ),
+        ),
+        cancel_operation_id=cancel_operation_id,
+        cleanup_operation_id=cleanup_operation_id,
+    )
 
 
 def _seed_task_and_execution(
@@ -114,7 +159,8 @@ def test_late_cancel_preserves_completed_execution_winner():
         execution_status=ExecutionStatus.COMPLETED,
     )
 
-    response = manager.cancel_task(
+    response = _authorized_cancel(
+        manager,
         task_id,
         cancel_operation_id="op-test-cancel-request-test_terminal_reconciliation-1",
         cleanup_operation_id="op-test-cancel-late",
@@ -140,7 +186,8 @@ def test_queued_cancel_transitions_execution_directly():
         execution_status=ExecutionStatus.QUEUED,
     )
 
-    response = manager.cancel_task(
+    response = _authorized_cancel(
+        manager,
         task_id,
         cancel_operation_id="op-test-cancel-request-test_terminal_reconciliation-2",
         cleanup_operation_id="op-test-cancel-queued",
@@ -347,7 +394,8 @@ def test_cancel_retries_after_stale_nonterminal_version():
         execution_status=ExecutionStatus.QUEUED,
     )
 
-    response = manager.cancel_task(
+    response = _authorized_cancel(
+        manager,
         task_id,
         cancel_operation_id="op-test-cancel-request-test_terminal_reconciliation-3",
         cleanup_operation_id="op-test-cancel-stale",
@@ -393,7 +441,8 @@ def test_idempotent_cancel_replay_is_consumed_explicitly():
     )
     registry.cancel_attempts = 0
 
-    response = manager.cancel_task(
+    response = _authorized_cancel(
+        manager,
         task_id,
         cancel_operation_id="op-test-cancel-request-test_terminal_reconciliation-4",
         cleanup_operation_id="op-test-cancel-replay",

@@ -8,6 +8,13 @@ import pytest
 
 import core.manager.service as service_module
 from core.manager.service import CleanupEventOutcome, ShujaaManager
+from core.policy.contracts import (
+    ActorRef,
+    AuthorizationContext,
+    AuthorizationRequest,
+    ResourceRef,
+)
+from core.policy.evaluator import SinglePrincipalCancelEvaluator
 from core.runtime.process_registry import ProcessRegistry
 from core.runtime.process_registry_contract import (
     CleanupDisposition,
@@ -30,21 +37,64 @@ class UnusedRunner:
 
 
 class FailingAuditStore:
+    def __init__(self):
+        self._delegate = InMemoryAuditStore()
+
     def append(self, record):
-        return AppendReceipt(
-            result=AppendResult.WRITE_FAILED,
-            record_id=record.audit_id,
-            error_code="injected_cleanup_audit_write_failure",
-        )
+        if record.action == "process_ownership.cleanup":
+            return AppendReceipt(
+                result=AppendResult.WRITE_FAILED,
+                record_id=record.audit_id,
+                error_code="injected_cleanup_audit_write_failure",
+            )
+        return self._delegate.append(record)
 
     def append_replay_stable(self, record):
-        return self.append(record)
+        if record.action == "process_ownership.cleanup":
+            return self.append(record)
+        return self._delegate.append_replay_stable(record)
 
     def get(self, record_id):
-        return None
+        return self._delegate.get(record_id)
 
     def list(self, after_sequence=0, limit=None):
-        return ()
+        return self._delegate.list(after_sequence, limit)
+
+
+_CANCEL_ACTOR = ActorRef(
+    actor_type="service",
+    actor_id="test-cleanup-audit-local-api",
+)
+_CANCEL_EVALUATOR = SinglePrincipalCancelEvaluator(
+    principal=_CANCEL_ACTOR,
+    policy_version="test-cleanup-audit-v1",
+)
+
+
+def _authorized_cancel(
+    manager,
+    task_id,
+    *,
+    cancel_operation_id,
+    cleanup_operation_id,
+):
+    return manager.cancel_task(
+        task_id,
+        authorization_request=AuthorizationRequest(
+            actor=_CANCEL_ACTOR,
+            action="task.cancel",
+            resource=ResourceRef(
+                resource_type="task",
+                resource_id=task_id,
+            ),
+            context=AuthorizationContext(
+                request_id=f"request-{cancel_operation_id}",
+                operation_id=cancel_operation_id,
+            ),
+        ),
+        cancel_operation_id=cancel_operation_id,
+        cleanup_operation_id=cleanup_operation_id,
+    )
 
 
 def _ownership(
@@ -111,6 +161,7 @@ def _manager(
         process_registry=process_registry,
         event_store=(event_store or InMemoryEventStore()),
         audit_store=(audit_store or InMemoryAuditStore()),
+        cancel_authorization_evaluator=_CANCEL_EVALUATOR,
     )
 
 
@@ -288,7 +339,8 @@ def test_cancel_exposes_separate_cleanup_audit_receipt(
     )
     manager._terminate_process_group_by_id = lambda pgid: None
 
-    response = manager.cancel_task(
+    response = _authorized_cancel(
+        manager,
         task_id,
         cancel_operation_id="op-cancel-request-cleanup-audit",
         cleanup_operation_id=operation_id,
@@ -303,7 +355,7 @@ def test_cancel_exposes_separate_cleanup_audit_receipt(
         response["cleanup_event_append_receipt"].record_id
     )
     assert audit.reason_code == "terminated_and_released"
-    assert len(audit_store.list()) == 2
+    assert len(audit_store.list()) == 3
 
 
 def test_registered_cleanup_exposes_audited_outcome(
@@ -382,7 +434,8 @@ def test_cleanup_audit_write_failure_does_not_change_cancel(
     )
     manager._terminate_process_group_by_id = lambda pgid: None
 
-    response = manager.cancel_task(
+    response = _authorized_cancel(
+        manager,
         task_id,
         cancel_operation_id="op-cancel-request-audit-failure",
         cleanup_operation_id="op-cancel-cleanup-audit-failure",

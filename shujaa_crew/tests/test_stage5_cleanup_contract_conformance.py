@@ -6,6 +6,13 @@ import pytest
 
 import core.manager.service as service_module
 from core.manager.service import ShujaaManager
+from core.policy.contracts import (
+    ActorRef,
+    AuthorizationContext,
+    AuthorizationRequest,
+    ResourceRef,
+)
+from core.policy.evaluator import SinglePrincipalCancelEvaluator
 from core.runtime.process_registry import ProcessRegistry
 from core.runtime.process_registry_contract import (
     CleanupDisposition,
@@ -21,6 +28,44 @@ from core.work.models import Execution, ExecutionStatus
 class UnusedRunner:
     def start(self, command):
         raise AssertionError("Runner must not be called.")
+
+
+_CANCEL_ACTOR = ActorRef(
+    actor_type="service",
+    actor_id="test-cleanup-contract-local-api",
+)
+
+
+def _authorized_cancel(
+    manager,
+    task_id,
+    *,
+    cancel_operation_id,
+    cleanup_operation_id,
+):
+    manager.cancel_authorization_evaluator = (
+        SinglePrincipalCancelEvaluator(
+            principal=_CANCEL_ACTOR,
+            policy_version="test-cleanup-contract-v1",
+        )
+    )
+    return manager.cancel_task(
+        task_id,
+        authorization_request=AuthorizationRequest(
+            actor=_CANCEL_ACTOR,
+            action="task.cancel",
+            resource=ResourceRef(
+                resource_type="task",
+                resource_id=task_id,
+            ),
+            context=AuthorizationContext(
+                request_id=f"request-{cancel_operation_id}",
+                operation_id=cancel_operation_id,
+            ),
+        ),
+        cancel_operation_id=cancel_operation_id,
+        cleanup_operation_id=cleanup_operation_id,
+    )
 
 
 def _ownership(
@@ -201,7 +246,8 @@ def test_cancel_exposes_cleanup_event_receipt_and_cancel_trigger(
     )
     manager._terminate_process_group_by_id = lambda pgid: None
 
-    response = manager.cancel_task(
+    response = _authorized_cancel(
+        manager,
         task_id,
         cancel_operation_id="op-cancel-request-contract",
         cleanup_operation_id=cleanup_operation_id,

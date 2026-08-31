@@ -3,6 +3,13 @@ from __future__ import annotations
 import pytest
 
 from core.manager.service import ShujaaManager
+from core.policy.contracts import (
+    ActorRef,
+    AuthorizationContext,
+    AuthorizationRequest,
+    ResourceRef,
+)
+from core.policy.evaluator import SinglePrincipalCancelEvaluator
 from core.work.models import ExecutionStatus
 
 
@@ -17,6 +24,44 @@ class FakeRunner:
     def start(self, topic: str) -> FakeProcess:
         assert topic == "test task"
         return FakeProcess()
+
+
+_CANCEL_ACTOR = ActorRef(
+    actor_type="service",
+    actor_id="test-tasks-local-api",
+)
+
+
+def _authorized_cancel(
+    manager,
+    task_id,
+    *,
+    cancel_operation_id,
+    cleanup_operation_id,
+):
+    manager.cancel_authorization_evaluator = (
+        SinglePrincipalCancelEvaluator(
+            principal=_CANCEL_ACTOR,
+            policy_version="test-tasks-cancel-v1",
+        )
+    )
+    return manager.cancel_task(
+        task_id,
+        authorization_request=AuthorizationRequest(
+            actor=_CANCEL_ACTOR,
+            action="task.cancel",
+            resource=ResourceRef(
+                resource_type="task",
+                resource_id=task_id,
+            ),
+            context=AuthorizationContext(
+                request_id=f"request-{cancel_operation_id}",
+                operation_id=cancel_operation_id,
+            ),
+        ),
+        cancel_operation_id=cancel_operation_id,
+        cleanup_operation_id=cleanup_operation_id,
+    )
 
 
 def test_manager_creates_trackable_task():
@@ -135,7 +180,8 @@ def test_manager_cancels_running_task():
         process_group_id=None,
     )
 
-    cancelled = manager.cancel_task(
+    cancelled = _authorized_cancel(
+        manager,
         task_id,
         cancel_operation_id="op-test-cancel-request-test_tasks-1",
         cleanup_operation_id="op-test-cancel-running",
@@ -167,7 +213,8 @@ def test_cancelled_task_is_not_overwritten_after_process_exit():
     result = manager.submit("test cancellation race")
     task_id = result["task_id"]
 
-    cancelled = manager.cancel_task(
+    cancelled = _authorized_cancel(
+        manager,
         task_id,
         cancel_operation_id="op-test-cancel-request-test_tasks-2",
         cleanup_operation_id="op-test-cancel-race",
@@ -441,7 +488,8 @@ def test_manager_marks_execution_cancelled():
     task_id = result["task_id"]
     execution_id = result["execution_id"]
 
-    manager.cancel_task(
+    _authorized_cancel(
+        manager,
         task_id,
         cancel_operation_id="op-test-cancel-request-test_tasks-3",
         cleanup_operation_id="op-test-cancel-execution",
