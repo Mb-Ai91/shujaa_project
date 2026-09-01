@@ -2,7 +2,7 @@
 
 > **الصفة:** خارطة التنفيذ الرسمية النشطة لمشروع شجاع
 > **الإصدار:** 1.3
-> **آخر تحديث موثق:** 1 سبتمبر 2026 بعد نجاح Stage 7 Exit Gate وإغلاق Stage 7 وثائقيًا ضمن foundation محلية action-specific؛ Stage 8 لم تبدأ.
+> **آخر تحديث موثق:** 1 سبتمبر 2026 بعد حفظ عقد Stage 8 Entry Gate المنقح ومزامنة الحالة؛ Stage 7 مغلقة ومتحققة ومحفوظة ومزامنة، وStage 8 لم تبدأ.
 > **النطاق:** 19 مرحلة مترابطة بالاعتماديات، من Stage 0 إلى Stage 18
 
 ---
@@ -14,30 +14,33 @@
 <!-- SHUJAA_CURRENT_STATE_MIRROR_BEGIN -->
 | الحقل | القيمة |
 |---|---|
-| CURRENT_STAGE | STAGE7_POLICY_AND_ACCESS_CONTROL |
-| CURRENT_SLICE | Stage 7 — Documentation Closure |
-| SLICE_STATUS | DOCUMENTATION_CLOSURE_VERIFIED_PENDING_COMMIT |
+| CURRENT_STAGE | STAGE8_RUNTIME_ISOLATION_AND_SAFETY_ENTRY_GATE |
+| CURRENT_SLICE | Stage 8 — Entry Gate Contract |
+| SLICE_STATUS | SAVED_PENDING_ENTRY_EXECUTION |
 | SLICE7_1_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | SLICE7_2_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | SLICE7_3_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
-| STAGE7_STATUS | VERIFIED_COMPLETE_LOCAL_ACTION_SPECIFIC_AUTHORIZATION_FOUNDATION_AND_CURRENT_COMMAND_ENFORCEMENT |
+| STAGE7_STATUS | CLOSED_VERIFIED_COMMITTED_AND_SYNCED |
 | STAGE7_ENTRY_GATE | GO |
 | STAGE7_EXIT_GATE | GO |
 | SLICE_7_1 | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | SLICE_7_2 | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | SLICE_7_3 | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | FIRST_ACTION | TASK_CANCEL |
-| CURRENT_ACTION | STAGE7_DOCUMENTATION_CLOSURE |
-| RED_STARTED | YES_FOR_SLICE7_3 |
-| GREEN_STARTED | YES_FOR_SLICE7_3 |
-| PRODUCTION_STARTED | YES |
+| CURRENT_ACTION | STAGE8_ENTRY_GATE_CONTRACT_SAVE |
+| RED_STARTED | NO_FOR_STAGE8 |
+| GREEN_STARTED | NO_FOR_STAGE8 |
+| PRODUCTION_STARTED | NO_FOR_STAGE8 |
 | TARGETED_EVIDENCE | SLICE7_3_NEW=30_PASSED; SHARED_STAGE7_1_7_2=61_PASSED; DEPENDENCY=136_PASSED; EXPLICITLY_DISJOINT_TOTAL=227_PASSED_0_FAILED_0_ERRORS; RED_UNCHANGED_SHA256=1913c4ef87640d4626095bd40ec9f3f7dab7c10f73cded8102fbcd9d424ad9a0; CONTRACT_CONFORMANCE=PASS; SCOPE_DIFF=PASS |
 | FULL_REGRESSION | 683_PASSED_0_FAILED_0_ERRORS |
 | IMPLEMENTATION_CHECKPOINT | 6609a9899c1ebcc7573c33b30fee64c8fb4fe159 |
 | STAGE7_EXIT_GATE_CHECKPOINT | af94f932ae1eef9f0376f14001abe880ecbe633c |
 | OTHER_STAGE7_SLICES | DEFERRED_NON_BLOCKING_NO_PRODUCTION_CONSUMER |
+| STAGE8_ENTRY_GATE_CONTRACT | SAVED_PENDING_ENTRY_EXECUTION |
+| STAGE8_STATUS | NOT_STARTED_ENTRY_CONTRACT_SAVED |
 | STAGE8_STARTED | NO |
-| NEXT | WAIT_FOR_OWNER_STAGE7_CLOSURE_COMMIT_APPROVAL |
+| FIRST_SLICE_STARTED | NO |
+| NEXT | WAIT_FOR_OWNER_STAGE8_ENTRY_GATE_CONTRACT_COMMIT_APPROVAL |
 <!-- SHUJAA_CURRENT_STATE_MIRROR_END -->
 
 ---
@@ -2120,9 +2123,142 @@ RED الحالية فقط:
 - Runtime Adapter وsandbox وresource isolation والتكامل والتنفيذ الحقيقي لأفعال pause/resume/terminate تبقى ضمن Stage 8، ولا يعد غيابها نقصًا في Stage 7.
 - لا تدعي Stage 7 دعم runtime أو تنفيذ pause/resume/terminate أو lifecycle mutation.
 - durability وrecovery تبقيان ضمن Stage 9.
-- الخطوة التالية ليست بدء Stage 8؛ بل انتظار موافقة المالك على Commit إغلاق Stage 7 الوثائقي.
+- أُغلق Commit توثيق Stage 7 ومُزامنته عند `de201dece6bfeddf9a82e22884f491e854d7ff6f`؛ الانتقال الحالي هو عقد Stage 8 Entry Gate المحفوظ أدناه، دون بدء Stage 8.
 
 <!-- STAGE7_EXIT_GATE_CLOSURE_END -->
+
+
+<!-- STAGE8_ENTRY_GATE_CONTRACT_BEGIN -->
+## Stage 8 Entry Gate Contract — Runtime Isolation & Safety
+
+**الحالة:** `SAVED — PENDING ENTRY EXECUTION`
+
+`STAGE8_ENTRY_GATE_CONTRACT=SAVED_PENDING_ENTRY_EXECUTION`
+
+### 1. الهدف والسلطة
+
+- يضبط هذا العقد دخول Stage 8 إلى `DESIGN/RESEARCH` فقط لبناء حدود Runtime Isolation & Safety دون نقل ملكية العقود السابقة أو ادعاء قدرة Runtime غير منفذة.
+- حفظ العقد أو Commit/Push لاحق له لا يبدأ Stage 8، ولا يختار First Slice، ولا يمنح RED/GREEN أو تعديل Production/Tests.
+- تنفيذ Entry Gate يحتاج موافقة مالك مستقلة على baseline نظيف ومحفوظ ومزامن، ثم حكم نهائي وفق الأولوية: `FAIL > HOLD > GO`.
+- `FAIL`: مانع مثبت أو خرق شرط دخول/أمن/نطاق. `HOLD`: Evidence ناقصة أو متعارضة أو قرار Hard Stop غير محسوم. `GO`: جميع الشروط منطبقة، ويسمح بـ`DESIGN/RESEARCH` فقط.
+- لا `CONDITIONAL GO`.
+
+### 2. شروط الدخول والسلطات المستهلكة
+
+- Project Truth Gate تثبت الفرع وHEAD/upstream/remote وahead/behind وWorktree والكاتب الوحيد عند نقطة التنفيذ.
+- Stage 7 prerequisite هي `CLOSED_VERIFIED_COMMITTED_AND_SYNCED`، وStage 8 وFirst Slice لم تبدآ.
+- تستهلك Stage 8 دون نقل ملكية: عقود lifecycle/ownership/identity/race/timeout من Stage 4؛ Event/Audit من Stage 5؛ Catalog/Descriptor/Capability/Explicit Binding من Stage 6؛ وقرارات authorization المنطبقة من Stage 7.
+- أي فجوة أو تعارض في سلطة مستهلكة ينتج `HOLD — VERIFY FIRST`؛ لا يعاد تعريف العقد السابق ضمن Stage 8 بلا بوابة مستقلة.
+
+### 3. النطاق الإيجابي والسلبي
+
+النطاق المرجعي لـStage 8:
+
+- Runtime Adapters قابلة للاستبدال.
+- Isolation وSandbox.
+- Resource limits.
+- Secrets safety.
+- Runtime-level Kill Switch primitives.
+- safe runtime-specific pause/resume وفق العقود المعتمدة.
+
+خارج التنفيذ التلقائي لهذا العقد:
+
+- durability/recovery/journal/outbox في Stage 9.
+- Kill Switch hierarchy وControl Plane/UI integration التي يمكن استكمالها في Stages 14–15.
+- distributed isolation وproduction hardening التي يمكن امتدادها إلى Stages 16–17 بقرار مالك موثق.
+- اختيار تقنية أو مزود أو dependency، أو public API جديدة، أو public `execution.terminate` command.
+- Production fake أو Runtime stub، وإعادة تصميم launch/dispatch أو جميع Runtime paths لمجرد التناظر.
+
+لا نقل إضافي للنطاق دون موافقة مالك صريحة وتحديث الخارطة والحالة السلطوية.
+
+### 4. Authority provenance
+
+`No runtime side effect may occur without explicit authority provenance.`
+
+- الأفعال الخارجية أو المحفزة من المستخدم تتطلب قرار Stage 7 authorization المنطبق، و`task.cancel` يحتفظ بعقد Authorization الخاص به.
+- cleanup الداخلي الناتج عن timeout/error/startup/shutdown يحتاج deterministic system-authority trigger مربوطًا بـtask وexecution وoperation وملكية process متحقق منها.
+- لا يمنح cleanup الداخلي actor خارجيًا أو policy decision مصطنعة.
+- Runtime Adapter تنفذ أمرًا محدودًا صادرًا من سلطة معلومة؛ لا تقرر policy أو lifecycle.
+- authority provenance ليست transferable permit ولا يعاد استخدامها لفعل أو مورد أو عملية أخرى.
+
+### 5. Audit boundary
+
+`SAFETY_CLEANUP_AUDIT_DECISION=REQUIRES_FIRST_SLICE_SCOPING`
+
+- Audit failure في safety/containment cleanup لا يرث تلقائيًا `AUDIT_UNAVAILABLE/no-side-effect` الخاصة بالأمر الخارجي.
+- يجب أن يوازن القرار بين auditability وخطر ترك process مملوكة تعمل، ويحفظ lifecycle truth، ويظهر structured sanitized diagnostic، ويمنع silent failure.
+- لا تعتمد الدلالة النهائية هنا؛ حسمها `HARD STOP` قبل RED لأول Slice تستهلك safety cleanup.
+
+### 6. First Slice scoping
+
+`FIRST_SLICE_RECOMMENDATION=LOCAL_PROCESS_CLEANUP_TERMINATION_ADAPTER_BOUNDARY_TYPE_ONLY`
+
+`FIRST_SLICE_EXACT_CONSUMER=NOT_SELECTED`
+
+- يفحص First Slice Design هل cancel/timeout/error/startup/shutdown/owner-conflict تمر عبر seam واحدة وبسلطات ونتائج ودلالات race متطابقة.
+- إذا تطابقت ونُقلت دون تغيير semantics جاز معاملتها كعائلة مستهلك واحدة؛ وإذا اختلفت يبدأ Slice بمسار واحد فقط وتؤجل البقية لعقود مستقلة عند الحاجة.
+- `task.cancel` مرشح أولي قوي لوجود المستهلك وعقد Stage 7، لكنه غير معتمد.
+- لا API جديدة، ولا public `execution.terminate`، ولا Production fake أو Runtime stub، ولا إعادة تصميم launch/dispatch لمجرد التناظر.
+
+### 7. Bypass boundary
+
+`No direct runtime bypass is permitted for side effects explicitly migrated into or claimed by the approved Stage 8 scope.`
+
+- المسارات غير المرحلة تبقى inventoried وexplicitly deferred، ولا تعامل كقدرات Stage 8 مكتملة.
+- هذه القاعدة لا تدعي أن جميع Runtime paths رُحّلت، ولا تجبر ترحيل مسارات خارج Slice المعتمدة.
+
+### 8. Hard Stops وCheckpoint/Rollback
+
+- `HARD STOP` عند فشل Project Truth، أو غياب authority provenance، أو التباس ownership/process identity، أو race/timeout semantics غير محسومة، أو bypass داخل النطاق المدعى، أو Scope Drift.
+- حسم Audit-failure semantics شرط قبل RED لأول Slice تستخدم safety cleanup.
+- كل انتقال `DESIGN/RESEARCH → RED → GREEN → VERIFY → COMMIT → PUSH` يحتاج عقده وموافقته المستقلة عند الصلة.
+- تبدأ كل Slice من checkpoint نظيفة ومحفوظة ومزامنة، ويوقف العمل عند Writer conflict أو Worktree غير متوقعة لفحصها دون reset/clean/checkout تلقائي.
+- rollback يكون إلى checkpoint معروفة ومتحققة وبقرار صريح، مع حفظ lifecycle truth وauthority provenance؛ لا blind retry ولا side effect عكسية غير مخولة.
+
+### 9. Research Gate
+
+`RESEARCH_GATE_REQUIRED=CONDITIONAL`
+
+- لا يلزم بحث خارجي لحفظ Entry Gate أو لأول boundary محلية framework-neutral.
+- يصبح البحث إلزاميًا قبل تجميد أو اعتماد: sandbox/container/process-isolation technology؛ resource-control/cgroup mechanism؛ secrets manager/injection mechanism؛ Kill Switch implementation technology؛ Runtime Framework أو external engine؛ OS-specific mechanism كعقد عام؛ dependency أو مزود أمني خارجي؛ أو public isolation contract يصعب تغييره.
+- Research requirement لا تمنح Network أو Data Egress permission؛ يلزم تفويض مستقل.
+
+### 10. Stage 8 Exit Accountability
+
+`STAGE8_EXIT_ACCOUNTABILITY=MANDATORY`
+
+`NO_SILENT_DEFERRAL`
+
+`NO_IMPLICIT_ROADMAP_SCOPE_REDUCTION`
+
+`ROADMAP_SCOPE_REDUCTION=FORBIDDEN_WITHOUT_EXPLICIT_OWNER_DECISION_AND_STATE_UPDATE`
+
+`SANDBOX_EXIT_DISPOSITION=REQUIRES_STAGE8_EXIT_GAP_REVIEW`
+
+`RESOURCE_LIMITS_EXIT_DISPOSITION=REQUIRES_STAGE8_EXIT_GAP_REVIEW`
+
+`SECRETS_EXIT_DISPOSITION=REQUIRES_STAGE8_EXIT_GAP_REVIEW`
+
+`KILL_SWITCH_PRIMITIVE_EXIT_DISPOSITION=REQUIRES_STAGE8_EXIT_GAP_REVIEW`
+
+`PAUSE_RESUME_EXIT_DISPOSITION=REQUIRES_STAGE8_EXIT_GAP_REVIEW`
+
+| الالتزام | Exit disposition الحالية |
+|---|---|
+| Sandbox / Isolation | `REQUIRES_STAGE8_EXIT_GAP_REVIEW` |
+| Resource limits | `REQUIRES_STAGE8_EXIT_GAP_REVIEW` |
+| Secrets safety | `REQUIRES_STAGE8_EXIT_GAP_REVIEW` |
+| Runtime-level Kill Switch primitive | `REQUIRES_STAGE8_EXIT_GAP_REVIEW` |
+| safe runtime-specific pause/resume | `REQUIRES_STAGE8_EXIT_GAP_REVIEW` |
+
+- قبل Stage 8 Exit يخضع كل بند مرجعي لـExit Gap Review مستقل ويحصل على حكم واحد فقط: `IMPLEMENTED_AND_VERIFIED`، أو `NOT_REQUIRED_IN_CURRENT_SCOPE_WITH_EVIDENCE`، أو `DEFERRED_OR_REALLOCATED_BY_EXPLICIT_OWNER_DECISION`.
+- أي تأجيل أو نقل يسجل السبب والدليل والمخاطر المتبقية والمرحلة/البوابة المستهدفة وtrigger إعادة الفتح وأثره في ادعاءات الأمان وتحديث الخارطة والحالة السلطوية.
+- غياب الحاجة في First Slice يؤجل التنفيذ المبكر فقط، ولا يلغي التزام الخارطة عند Exit.
+- Runtime enforcement primitive اللازمة لـKill Switch ضمن مساءلة Stage 8؛ والحد المحلي المطلوب من Sandbox/isolation/resources/secrets يخضع لـStage 8 Exit Gap Review.
+- لا Exit مع Capability غير منفذة أو غير مختبرة مدعاة، أو bypass ضمن النطاق المعتمد، أو paths غير مرحلة غير مسجلة، أو بنود منسية/مؤجلة بصمت.
+- يلزم إثبات fail-closed أو containment-preserving behavior بحسب السلطة والمسار، واختبار ownership/identity/race/timeout/capability behavior، وتوثيق قرارات التنفيذ/التأجيل، ثم Full Regression وExit Gate وState Sync.
+
+<!-- STAGE8_ENTRY_GATE_CONTRACT_END -->
 
 
 <!-- CONTRACT_ADVERSARIAL_REVIEW_GATE_BEGIN -->

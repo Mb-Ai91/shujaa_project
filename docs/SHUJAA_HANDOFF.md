@@ -4,42 +4,45 @@
 
 > **الوظيفة:** هذا القسم هو المالك البشري الوحيد لحالة المشروع الحالية ونقطة الاستئناف. Git/Codespace يملكان Runtime truth، وActive Roadmap تعكس الحالة المختصرة فقط، وADR تحفظ القرارات طويلة العمر.
 >
-> **آخر تحديث موثق:** 1 سبتمبر 2026 بعد نجاح Stage 7 Exit Gate وإغلاق Stage 7 وثائقيًا ضمن foundation محلية action-specific؛ Stage 8 لم تبدأ.
+> **آخر تحديث موثق:** 1 سبتمبر 2026 بعد حفظ عقد Stage 8 Entry Gate المنقح ومزامنة الحالة؛ Stage 7 مغلقة ومتحققة ومحفوظة ومزامنة، وStage 8 لم تبدأ.
 
 <!-- SHUJAA_CURRENT_STATE_BEGIN -->
 | الحقل | القيمة |
 |---|---|
-| CURRENT_STAGE | STAGE7_POLICY_AND_ACCESS_CONTROL |
-| CURRENT_SLICE | Stage 7 — Documentation Closure |
-| SLICE_STATUS | DOCUMENTATION_CLOSURE_VERIFIED_PENDING_COMMIT |
+| CURRENT_STAGE | STAGE8_RUNTIME_ISOLATION_AND_SAFETY_ENTRY_GATE |
+| CURRENT_SLICE | Stage 8 — Entry Gate Contract |
+| SLICE_STATUS | SAVED_PENDING_ENTRY_EXECUTION |
 | SLICE7_1_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | SLICE7_2_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | SLICE7_3_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
-| STAGE7_STATUS | VERIFIED_COMPLETE_LOCAL_ACTION_SPECIFIC_AUTHORIZATION_FOUNDATION_AND_CURRENT_COMMAND_ENFORCEMENT |
+| STAGE7_STATUS | CLOSED_VERIFIED_COMMITTED_AND_SYNCED |
 | STAGE7_ENTRY_GATE | GO |
 | STAGE7_EXIT_GATE | GO |
 | SLICE_7_1 | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | SLICE_7_2 | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | SLICE_7_3 | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | FIRST_ACTION | TASK_CANCEL |
-| CURRENT_ACTION | STAGE7_DOCUMENTATION_CLOSURE |
-| RED_STARTED | YES_FOR_SLICE7_3 |
-| GREEN_STARTED | YES_FOR_SLICE7_3 |
-| PRODUCTION_STARTED | YES |
+| CURRENT_ACTION | STAGE8_ENTRY_GATE_CONTRACT_SAVE |
+| RED_STARTED | NO_FOR_STAGE8 |
+| GREEN_STARTED | NO_FOR_STAGE8 |
+| PRODUCTION_STARTED | NO_FOR_STAGE8 |
 | TARGETED_EVIDENCE | SLICE7_3_NEW=30_PASSED; SHARED_STAGE7_1_7_2=61_PASSED; DEPENDENCY=136_PASSED; EXPLICITLY_DISJOINT_TOTAL=227_PASSED_0_FAILED_0_ERRORS; RED_UNCHANGED_SHA256=1913c4ef87640d4626095bd40ec9f3f7dab7c10f73cded8102fbcd9d424ad9a0; CONTRACT_CONFORMANCE=PASS; SCOPE_DIFF=PASS |
 | FULL_REGRESSION | 683_PASSED_0_FAILED_0_ERRORS |
 | IMPLEMENTATION_CHECKPOINT | 6609a9899c1ebcc7573c33b30fee64c8fb4fe159 |
 | STAGE7_EXIT_GATE_CHECKPOINT | af94f932ae1eef9f0376f14001abe880ecbe633c |
 | OTHER_STAGE7_SLICES | DEFERRED_NON_BLOCKING_NO_PRODUCTION_CONSUMER |
+| STAGE8_ENTRY_GATE_CONTRACT | SAVED_PENDING_ENTRY_EXECUTION |
+| STAGE8_STATUS | NOT_STARTED_ENTRY_CONTRACT_SAVED |
 | STAGE8_STARTED | NO |
-| NEXT | WAIT_FOR_OWNER_STAGE7_CLOSURE_COMMIT_APPROVAL |
-| LAST_TRUSTED_CHECKPOINT | Stage 7 Exit Gate عند `af94f932ae1eef9f0376f14001abe880ecbe633c`: `GO`؛ Full Regression=`683 passed / 0 failed / 0 errors`؛ لا Production delta بعد البوابة، وStage 8 لم تبدأ. |
-| EVIDENCE_REFERENCES | Stage 7 Exit Gate=`GO` عند `af94f932ae1eef9f0376f14001abe880ecbe633c`؛ Full Regression=`collected 683 / passed 683 / failed 0 / errors 0`؛ Slices 7.1/7.2/7.3=`IMPLEMENTED + TARGETED_VERIFIED + COMMITTED + SYNCED`؛ عقودها داخل Active Roadmap؛ لا Production delta بعد Exit Gate؛ Stage 8 لم تبدأ. |
+| FIRST_SLICE_STARTED | NO |
+| NEXT | WAIT_FOR_OWNER_STAGE8_ENTRY_GATE_CONTRACT_COMMIT_APPROVAL |
+| LAST_TRUSTED_CHECKPOINT | Stage 7 closure commit عند `de201dece6bfeddf9a82e22884f491e854d7ff6f` محفوظ ومزامن؛ Stage 8 Entry Gate Contract محفوظ في Worktree كتغيير توثيقي pending commit، وStage 8 لم تبدأ. |
+| EVIDENCE_REFERENCES | Stage 7 Exit Gate=`GO` عند `af94f932ae1eef9f0376f14001abe880ecbe633c`؛ closure commit=`de201dece6bfeddf9a82e22884f491e854d7ff6f`؛ Full Regression=`683 passed / 0 failed / 0 errors`؛ عقد Stage 8 بين `STAGE8_ENTRY_GATE_CONTRACT_BEGIN/END` في Active Roadmap؛ لا Production أو Tests delta؛ Stage 8 وFirst Slice لم تبدآ. |
 <!-- SHUJAA_CURRENT_STATE_END -->
 
 ### Evidence summary
 
-- `STAGE7_STATUS=VERIFIED_COMPLETE_LOCAL_ACTION_SPECIFIC_AUTHORIZATION_FOUNDATION_AND_CURRENT_COMMAND_ENFORCEMENT`.
+- `STAGE7_STATUS=CLOSED_VERIFIED_COMMITTED_AND_SYNCED` عند closure commit `de201dece6bfeddf9a82e22884f491e854d7ff6f` المتطابق محليًا وبعيدًا قبل هذه الكتابة التوثيقية.
 - Stage 7 Exit Gate: `GO` على checkpoint `af94f932ae1eef9f0376f14001abe880ecbe633c`.
 - Full Regression: `collected=683`، `passed=683`، `failed=0`، `errors=0`؛ لم تُعد في مهمة الإغلاق الوثائقي.
 - Slice 7.1 وSlice 7.2 وSlice 7.3 جميعها: `IMPLEMENTED` و`TARGETED_VERIFIED` و`COMMITTED` و`SYNCED`.
@@ -50,8 +53,10 @@
 - Submit تمنع replay/conflict والـautomatic retry عند outcome ملتبسة، و`execution.terminate` مستقلة عن `task.cancel`.
 - لا يدعي الإغلاق Access Graph أو RBAC/ABAC/ReBAC أو Policy DSL/Framework/Engine أو approvals أو retry authorization أو Runtime integration أو lifecycle mutation أو durability/recovery.
 - Runtime Adapter وsandbox وresource isolation والتنفيذ الحقيقي لـpause/resume/terminate تبقى Stage 8؛ غيابها ليس نقصًا في إغلاق Stage 7.
-- لا Production delta بعد Exit Gate؛ التغيير الحالي وثائقي في ملفي الحالة فقط.
-- Stage 8 لم تبدأ؛ `NEXT=WAIT_FOR_OWNER_STAGE7_CLOSURE_COMMIT_APPROVAL`.
+- عقد Stage 8 Entry Gate محفوظ بين markers الفريدة في Active Roadmap بالحالة `SAVED_PENDING_ENTRY_EXECUTION`؛ حفظه لا يمنح Entry execution أو First Slice Design أو RED/GREEN.
+- `SAFETY_CLEANUP_AUDIT_DECISION=REQUIRES_FIRST_SLICE_SCOPING`، و`FIRST_SLICE_EXACT_CONSUMER=NOT_SELECTED`، و`STAGE8_EXIT_ACCOUNTABILITY=MANDATORY`.
+- لا Production أو Tests delta؛ Stage 8 وFirst Slice لم تبدآ.
+- `NEXT=WAIT_FOR_OWNER_STAGE8_ENTRY_GATE_CONTRACT_COMMIT_APPROVAL`.
 
 #### أدلة Slices المرحلية — سجل تاريخي داخل Stage 7
 
