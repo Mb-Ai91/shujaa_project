@@ -4,14 +4,14 @@
 
 > **الوظيفة:** هذا القسم هو المالك البشري الوحيد لحالة المشروع الحالية ونقطة الاستئناف. Git/Codespace يملكان Runtime truth، وActive Roadmap تعكس الحالة المختصرة فقط، وADR تحفظ القرارات طويلة العمر.
 >
-> **آخر تحديث موثق:** 1 سبتمبر 2026 بعد حفظ عقد Stage 8 Entry Gate المنقح ومزامنة الحالة؛ Stage 7 مغلقة ومتحققة ومحفوظة ومزامنة، وStage 8 لم تبدأ.
+> **آخر تحديث موثق:** 1 سبتمبر 2026 بعد تنفيذ Stage 8 Entry Gate بحكم `GO_TO_DESIGN_RESEARCH_ONLY` وتسجيل بدء Stage 8 إداريًا في نطاق Design/Research فقط؛ لا Implementation أو First Slice أو بحث خارجي بدأ.
 
 <!-- SHUJAA_CURRENT_STATE_BEGIN -->
 | الحقل | القيمة |
 |---|---|
-| CURRENT_STAGE | STAGE8_RUNTIME_ISOLATION_AND_SAFETY_ENTRY_GATE |
-| CURRENT_SLICE | Stage 8 — Entry Gate Contract |
-| SLICE_STATUS | SAVED_PENDING_ENTRY_EXECUTION |
+| CURRENT_STAGE | Stage 8 — Runtime Isolation & Safety |
+| CURRENT_SLICE | NOT_SELECTED — DESIGN/RESEARCH ONLY |
+| SLICE_STATUS | NOT_SELECTED_NOT_STARTED |
 | SLICE7_1_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | SLICE7_2_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | SLICE7_3_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
@@ -22,22 +22,31 @@
 | SLICE_7_2 | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | SLICE_7_3 | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | FIRST_ACTION | TASK_CANCEL |
-| CURRENT_ACTION | STAGE8_ENTRY_GATE_CONTRACT_SAVE |
-| RED_STARTED | NO_FOR_STAGE8 |
-| GREEN_STARTED | NO_FOR_STAGE8 |
+| CURRENT_ACTION | STAGE8_DESIGN_RESEARCH_ENTRY_DOCUMENTATION |
+| RED_STARTED | NO |
+| GREEN_STARTED | NO |
 | PRODUCTION_STARTED | NO_FOR_STAGE8 |
+| IMPLEMENTATION_STARTED | NO |
 | TARGETED_EVIDENCE | SLICE7_3_NEW=30_PASSED; SHARED_STAGE7_1_7_2=61_PASSED; DEPENDENCY=136_PASSED; EXPLICITLY_DISJOINT_TOTAL=227_PASSED_0_FAILED_0_ERRORS; RED_UNCHANGED_SHA256=1913c4ef87640d4626095bd40ec9f3f7dab7c10f73cded8102fbcd9d424ad9a0; CONTRACT_CONFORMANCE=PASS; SCOPE_DIFF=PASS |
 | FULL_REGRESSION | 683_PASSED_0_FAILED_0_ERRORS |
 | IMPLEMENTATION_CHECKPOINT | 6609a9899c1ebcc7573c33b30fee64c8fb4fe159 |
 | STAGE7_EXIT_GATE_CHECKPOINT | af94f932ae1eef9f0376f14001abe880ecbe633c |
 | OTHER_STAGE7_SLICES | DEFERRED_NON_BLOCKING_NO_PRODUCTION_CONSUMER |
-| STAGE8_ENTRY_GATE_CONTRACT | SAVED_PENDING_ENTRY_EXECUTION |
-| STAGE8_STATUS | NOT_STARTED_ENTRY_CONTRACT_SAVED |
-| STAGE8_STARTED | NO |
+| STAGE8_ENTRY_GATE_CONTRACT | SAVED_COMMITTED_AND_SYNCED |
+| STAGE8_ENTRY_GATE | GO_TO_DESIGN_RESEARCH_ONLY |
+| STAGE8_STATUS | IN_PROGRESS_DESIGN_RESEARCH_ONLY |
+| STAGE8_STARTED | YES_DESIGN_RESEARCH_ONLY |
+| FIRST_SLICE_STATUS | NOT_SELECTED_NOT_STARTED |
 | FIRST_SLICE_STARTED | NO |
-| NEXT | WAIT_FOR_OWNER_STAGE8_ENTRY_GATE_CONTRACT_COMMIT_APPROVAL |
-| LAST_TRUSTED_CHECKPOINT | Stage 7 closure commit عند `de201dece6bfeddf9a82e22884f491e854d7ff6f` محفوظ ومزامن؛ Stage 8 Entry Gate Contract محفوظ في Worktree كتغيير توثيقي pending commit، وStage 8 لم تبدأ. |
-| EVIDENCE_REFERENCES | Stage 7 Exit Gate=`GO` عند `af94f932ae1eef9f0376f14001abe880ecbe633c`؛ closure commit=`de201dece6bfeddf9a82e22884f491e854d7ff6f`؛ Full Regression=`683 passed / 0 failed / 0 errors`؛ عقد Stage 8 بين `STAGE8_ENTRY_GATE_CONTRACT_BEGIN/END` في Active Roadmap؛ لا Production أو Tests delta؛ Stage 8 وFirst Slice لم تبدآ. |
+| FIRST_SLICE_EXACT_CONSUMER | NOT_SELECTED |
+| FIRST_SLICE_RECOMMENDATION | LOCAL_PROCESS_CLEANUP_TERMINATION_ADAPTER_BOUNDARY_TYPE_ONLY |
+| SAFETY_CLEANUP_AUDIT_DECISION | REQUIRES_FIRST_SLICE_SCOPING |
+| STAGE8_EXIT_ACCOUNTABILITY | MANDATORY |
+| RESEARCH_GATE_REQUIRED | CONDITIONAL |
+| EXTERNAL_RESEARCH_RUN | NO |
+| NEXT | WAIT_FOR_OWNER_STAGE8_ENTRY_STATE_COMMIT_APPROVAL |
+| LAST_TRUSTED_CHECKPOINT | Stage 8 Entry Gate contract commit عند `a861b1f91a950b8b9abd3604869633b03f22419b` محفوظ ومزامن؛ Entry Gate execution=`GO_TO_DESIGN_RESEARCH_ONLY`؛ delta الحالية توثق بدء Design/Research إداريًا فقط pending commit. |
+| EVIDENCE_REFERENCES | Stage 7=`CLOSED_VERIFIED_COMMITTED_AND_SYNCED`؛ Stage 8 Entry Gate contract commit=`a861b1f91a950b8b9abd3604869633b03f22419b`؛ Entry Gate result=`GO_TO_DESIGN_RESEARCH_ONLY`؛ Full Regression=`683 passed / 0 failed / 0 errors`؛ لا Production أو Tests delta؛ لا First Slice أو external research بدأ. |
 <!-- SHUJAA_CURRENT_STATE_END -->
 
 ### Evidence summary
@@ -53,10 +62,14 @@
 - Submit تمنع replay/conflict والـautomatic retry عند outcome ملتبسة، و`execution.terminate` مستقلة عن `task.cancel`.
 - لا يدعي الإغلاق Access Graph أو RBAC/ABAC/ReBAC أو Policy DSL/Framework/Engine أو approvals أو retry authorization أو Runtime integration أو lifecycle mutation أو durability/recovery.
 - Runtime Adapter وsandbox وresource isolation والتنفيذ الحقيقي لـpause/resume/terminate تبقى Stage 8؛ غيابها ليس نقصًا في إغلاق Stage 7.
-- عقد Stage 8 Entry Gate محفوظ بين markers الفريدة في Active Roadmap بالحالة `SAVED_PENDING_ENTRY_EXECUTION`؛ حفظه لا يمنح Entry execution أو First Slice Design أو RED/GREEN.
-- `SAFETY_CLEANUP_AUDIT_DECISION=REQUIRES_FIRST_SLICE_SCOPING`، و`FIRST_SLICE_EXACT_CONSUMER=NOT_SELECTED`، و`STAGE8_EXIT_ACCOUNTABILITY=MANDATORY`.
-- لا Production أو Tests delta؛ Stage 8 وFirst Slice لم تبدآ.
-- `NEXT=WAIT_FOR_OWNER_STAGE8_ENTRY_GATE_CONTRACT_COMMIT_APPROVAL`.
+- عقد Stage 8 Entry Gate محفوظ وملتزم ومزامن عند `a861b1f91a950b8b9abd3604869633b03f22419b`، وتنفيذه أعطى `GO_TO_DESIGN_RESEARCH_ONLY`.
+- Stage 8 بدأت إداريًا في نطاق `DESIGN/RESEARCH` فقط؛ `IMPLEMENTATION_STARTED=NO`، ولا Runtime capability جديدة نُفذت بهذا الانتقال.
+- لا Sandbox أو Isolation أو Resource Limits أو Secrets Boundary أو Kill Switch primitive مكتملة.
+- لا First Slice معتمدة أو مرقمة؛ ترشيح cleanup/termination يبقى type-only و`FIRST_SLICE_EXACT_CONSUMER=NOT_SELECTED`.
+- `SAFETY_CLEANUP_AUDIT_DECISION=REQUIRES_FIRST_SLICE_SCOPING` و`STAGE8_EXIT_ACCOUNTABILITY=MANDATORY`؛ لا تقليص أو تأجيل صامت لالتزامات الخارطة.
+- `RESEARCH_GATE_REQUIRED=CONDITIONAL` و`EXTERNAL_RESEARCH_RUN=NO`؛ لم تُعتمد تقنية.
+- لا Production أو Tests delta، ولم تبدأ RED/GREEN.
+- `NEXT=WAIT_FOR_OWNER_STAGE8_ENTRY_STATE_COMMIT_APPROVAL`.
 
 #### أدلة Slices المرحلية — سجل تاريخي داخل Stage 7
 

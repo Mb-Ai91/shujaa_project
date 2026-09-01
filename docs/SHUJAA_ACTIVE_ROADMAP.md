@@ -2,7 +2,7 @@
 
 > **الصفة:** خارطة التنفيذ الرسمية النشطة لمشروع شجاع
 > **الإصدار:** 1.3
-> **آخر تحديث موثق:** 1 سبتمبر 2026 بعد حفظ عقد Stage 8 Entry Gate المنقح ومزامنة الحالة؛ Stage 7 مغلقة ومتحققة ومحفوظة ومزامنة، وStage 8 لم تبدأ.
+> **آخر تحديث موثق:** 1 سبتمبر 2026 بعد تنفيذ Stage 8 Entry Gate بحكم `GO_TO_DESIGN_RESEARCH_ONLY` وتسجيل بدء Stage 8 إداريًا في نطاق Design/Research فقط؛ لا Implementation أو First Slice أو بحث خارجي بدأ.
 > **النطاق:** 19 مرحلة مترابطة بالاعتماديات، من Stage 0 إلى Stage 18
 
 ---
@@ -14,9 +14,9 @@
 <!-- SHUJAA_CURRENT_STATE_MIRROR_BEGIN -->
 | الحقل | القيمة |
 |---|---|
-| CURRENT_STAGE | STAGE8_RUNTIME_ISOLATION_AND_SAFETY_ENTRY_GATE |
-| CURRENT_SLICE | Stage 8 — Entry Gate Contract |
-| SLICE_STATUS | SAVED_PENDING_ENTRY_EXECUTION |
+| CURRENT_STAGE | Stage 8 — Runtime Isolation & Safety |
+| CURRENT_SLICE | NOT_SELECTED — DESIGN/RESEARCH ONLY |
+| SLICE_STATUS | NOT_SELECTED_NOT_STARTED |
 | SLICE7_1_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | SLICE7_2_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | SLICE7_3_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
@@ -27,21 +27,38 @@
 | SLICE_7_2 | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | SLICE_7_3 | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | FIRST_ACTION | TASK_CANCEL |
-| CURRENT_ACTION | STAGE8_ENTRY_GATE_CONTRACT_SAVE |
-| RED_STARTED | NO_FOR_STAGE8 |
-| GREEN_STARTED | NO_FOR_STAGE8 |
+| CURRENT_ACTION | STAGE8_DESIGN_RESEARCH_ENTRY_DOCUMENTATION |
+| RED_STARTED | NO |
+| GREEN_STARTED | NO |
 | PRODUCTION_STARTED | NO_FOR_STAGE8 |
+| IMPLEMENTATION_STARTED | NO |
 | TARGETED_EVIDENCE | SLICE7_3_NEW=30_PASSED; SHARED_STAGE7_1_7_2=61_PASSED; DEPENDENCY=136_PASSED; EXPLICITLY_DISJOINT_TOTAL=227_PASSED_0_FAILED_0_ERRORS; RED_UNCHANGED_SHA256=1913c4ef87640d4626095bd40ec9f3f7dab7c10f73cded8102fbcd9d424ad9a0; CONTRACT_CONFORMANCE=PASS; SCOPE_DIFF=PASS |
 | FULL_REGRESSION | 683_PASSED_0_FAILED_0_ERRORS |
 | IMPLEMENTATION_CHECKPOINT | 6609a9899c1ebcc7573c33b30fee64c8fb4fe159 |
 | STAGE7_EXIT_GATE_CHECKPOINT | af94f932ae1eef9f0376f14001abe880ecbe633c |
 | OTHER_STAGE7_SLICES | DEFERRED_NON_BLOCKING_NO_PRODUCTION_CONSUMER |
-| STAGE8_ENTRY_GATE_CONTRACT | SAVED_PENDING_ENTRY_EXECUTION |
-| STAGE8_STATUS | NOT_STARTED_ENTRY_CONTRACT_SAVED |
-| STAGE8_STARTED | NO |
+| STAGE8_ENTRY_GATE_CONTRACT | SAVED_COMMITTED_AND_SYNCED |
+| STAGE8_ENTRY_GATE | GO_TO_DESIGN_RESEARCH_ONLY |
+| STAGE8_STATUS | IN_PROGRESS_DESIGN_RESEARCH_ONLY |
+| STAGE8_STARTED | YES_DESIGN_RESEARCH_ONLY |
+| FIRST_SLICE_STATUS | NOT_SELECTED_NOT_STARTED |
 | FIRST_SLICE_STARTED | NO |
-| NEXT | WAIT_FOR_OWNER_STAGE8_ENTRY_GATE_CONTRACT_COMMIT_APPROVAL |
+| FIRST_SLICE_EXACT_CONSUMER | NOT_SELECTED |
+| FIRST_SLICE_RECOMMENDATION | LOCAL_PROCESS_CLEANUP_TERMINATION_ADAPTER_BOUNDARY_TYPE_ONLY |
+| SAFETY_CLEANUP_AUDIT_DECISION | REQUIRES_FIRST_SLICE_SCOPING |
+| STAGE8_EXIT_ACCOUNTABILITY | MANDATORY |
+| RESEARCH_GATE_REQUIRED | CONDITIONAL |
+| EXTERNAL_RESEARCH_RUN | NO |
+| NEXT | WAIT_FOR_OWNER_STAGE8_ENTRY_STATE_COMMIT_APPROVAL |
 <!-- SHUJAA_CURRENT_STATE_MIRROR_END -->
+
+### Stage 8 entry boundary
+
+- Stage 8 بدأت إداريًا في نطاق `DESIGN/RESEARCH` فقط؛ لا Runtime capability جديدة نُفذت بهذا الانتقال.
+- لا Sandbox أو Isolation أو Resource Limits أو Secrets Boundary أو Kill Switch primitive مكتملة.
+- لا First Slice معتمدة أو مرقمة؛ ترشيح cleanup/termination يبقى type-only، والمستهلك الدقيق غير مختار.
+- Safety-cleanup Audit semantics ما زالت تحتاج First Slice Scoping قبل RED لأول Slice تستهلكها.
+- Stage 8 Exit Accountability إلزامية، ولا تقليص أو تأجيل صامت لالتزامات الخارطة.
 
 ---
 
@@ -120,7 +137,7 @@
 | 5 | Event Model + Audit Foundation | `VERIFIED COMPLETE — LOCAL/MOCK SCOPE` | Event/Audit منفصلان ومختبران مع Local stores خلف Protocols. |
 | 6 | Catalog Foundation | `VERIFIED COMPLETE — LOCAL/IN-MEMORY CATALOG & EXPLICIT BINDING FOUNDATION` | Capability Catalog بهوية وإصدار وDescriptor وLifecycle واعتماديات وصفية، وDependency Graph وimpact/candidate read models، وExplicit Binding validation/registry محلية؛ دون automatic selection أو Policy Enforcement أو Runtime integration. |
 | 7 | Policy & Access Control | `VERIFIED COMPLETE — LOCAL ACTION-SPECIFIC AUTHORIZATION FOUNDATION AND CURRENT COMMAND ENFORCEMENT` | إنفاذ fail-closed لمسار `task.cancel` الحالي ومساري `work.submit` الحاليين، مع prerequisite مستقلة وقابلة للاستهلاك لـpause/resume/terminate؛ دون Security Model عام أو Runtime integration. |
-| 8 | Runtime Isolation & Safety | `PLANNED` | Runtime Adapters قابلة للاستبدال مع العزل وSandbox وحدود الموارد والأسرار وKill Switch دون branching دائم داخل Manager. |
+| 8 | Runtime Isolation & Safety | `IN PROGRESS — DESIGN/RESEARCH ONLY` | Entry Gate=`GO_TO_DESIGN_RESEARCH_ONLY`؛ لا Implementation أو First Slice أو Runtime capability جديدة، وتبقى Runtime Adapters والعزل وSandbox وحدود الموارد والأسرار وKill Switch ضمن مساءلة Exit. |
 | 9 | Durable Workflows | `PLANNED` | Durable Engine خلف عقد شجاع للاستئناف والتعافي وRetry وReplay وCompensation وJournal، مع خطة خروج من المزود. |
 | 10 | Observability | `PLANNED` | Adapters مستقلة لـMetrics وLogs وTraces والتنبيهات مع portability وprivacy والتكاليف. |
 | 11 | Evaluation Framework | `PLANNED` | واجهات مستقلة لمشغلات ونماذج وبيانات التقييم، مع regression وقياس الجودة وقابلية استبدال المزود. |
