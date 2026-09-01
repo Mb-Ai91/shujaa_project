@@ -115,3 +115,63 @@ class SinglePrincipalSubmitEvaluator:
             ),
             policy_version=self.policy_version,
         )
+
+
+@dataclass(frozen=True)
+class SinglePrincipalRuntimeControlEvaluator:
+    """Local policy for the bounded runtime-control action family."""
+
+    principal: ActorRef
+    policy_version: str
+
+    _ACTIONS = frozenset(
+        {
+            "execution.pause",
+            "execution.resume",
+            "execution.terminate",
+        }
+    )
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.principal, ActorRef):
+            raise TypeError("principal must be an ActorRef")
+        if (
+            not isinstance(self.policy_version, str)
+            or not self.policy_version.strip()
+        ):
+            raise ValueError(
+                "policy_version must be a non-empty string"
+            )
+        object.__setattr__(
+            self,
+            "policy_version",
+            self.policy_version.strip(),
+        )
+
+    def evaluate(
+        self,
+        request: AuthorizationRequest,
+    ) -> AuthorizationDecision:
+        if not isinstance(request, AuthorizationRequest):
+            raise TypeError(
+                "request must be an AuthorizationRequest"
+            )
+
+        allowed = (
+            request.actor == self.principal
+            and request.action in self._ACTIONS
+            and request.resource.resource_type == "execution"
+        )
+        return AuthorizationDecision(
+            effect=(
+                AuthorizationEffect.ALLOW
+                if allowed
+                else AuthorizationEffect.DENY
+            ),
+            reason_code=(
+                "runtime_control_allowed"
+                if allowed
+                else "runtime_control_denied"
+            ),
+            policy_version=self.policy_version,
+        )

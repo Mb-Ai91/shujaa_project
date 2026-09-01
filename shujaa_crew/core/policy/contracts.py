@@ -133,3 +133,11 @@ class SubmitAuthorizationEvaluatorProtocol(Protocol):
         request: AuthorizationRequest,
     ) -> AuthorizationDecision:
         ...
+
+
+class RuntimeControlAuthorizationEvaluatorProtocol(Protocol):
+    def evaluate(
+        self,
+        request: AuthorizationRequest,
+    ) -> AuthorizationDecision:
+        ...

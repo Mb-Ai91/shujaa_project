@@ -2,7 +2,7 @@
 
 > **الصفة:** خارطة التنفيذ الرسمية النشطة لمشروع شجاع
 > **الإصدار:** 1.3
-> **آخر تحديث موثق:** 31 أغسطس 2026 بعد اعتماد وحفظ عقد Slice 7.3 بانتظار RED؛ Stage 7 ما زالت جارية وليست مكتملة.
+> **آخر تحديث موثق:** 1 سبتمبر 2026 بعد تنفيذ Slice 7.3 والتحقق الموجه منها، بانتظار Implementation Commit/Push؛ Stage 7 ما زالت جارية وليست مكتملة.
 > **النطاق:** 19 مرحلة مترابطة بالاعتماديات، من Stage 0 إلى Stage 18
 
 ---
@@ -16,25 +16,25 @@
 |---|---|
 | CURRENT_STAGE | STAGE7_POLICY_AND_ACCESS_CONTROL |
 | CURRENT_SLICE | Slice 7.3 — Stage 8 Runtime-Control Authorization Prerequisite |
-| SLICE_STATUS | CONTRACT_SAVED_PENDING_RED |
+| SLICE_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_PENDING_COMMIT_PUSH |
 | SLICE7_1_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | SLICE7_2_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
-| SLICE7_3_STATUS | CONTRACT_SAVED_PENDING_RED |
+| SLICE7_3_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_PENDING_COMMIT_PUSH |
 | STAGE7_STATUS | IN_PROGRESS_NOT_COMPLETE |
 | STAGE7_ENTRY_GATE | GO |
 | SLICE_7_1 | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | SLICE_7_2 | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
-| SLICE_7_3 | CONTRACT_SAVED_PENDING_RED |
+| SLICE_7_3 | IMPLEMENTED_AND_TARGETED_VERIFIED_PENDING_COMMIT_PUSH |
 | FIRST_ACTION | TASK_CANCEL |
 | CURRENT_ACTION | RUNTIME_CONTROL_AUTHORIZATION_PREREQUISITE |
-| RED_STARTED | NO_FOR_SLICE7_3 |
-| GREEN_STARTED | NO_FOR_SLICE7_3 |
+| RED_STARTED | YES_FOR_SLICE7_3 |
+| GREEN_STARTED | YES_FOR_SLICE7_3 |
 | PRODUCTION_STARTED | YES |
-| TARGETED_EVIDENCE | SLICE7_3_CONTRACT_SAVED_PENDING_RED; SLICE7_2_NEW=31_PASSED; AFFECTED=100_PASSED |
+| TARGETED_EVIDENCE | SLICE7_3_NEW=30_PASSED; SHARED_STAGE7_1_7_2=61_PASSED; DEPENDENCY=136_PASSED; EXPLICITLY_DISJOINT_TOTAL=227_PASSED_0_FAILED_0_ERRORS; RED_UNCHANGED_SHA256=1913c4ef87640d4626095bd40ec9f3f7dab7c10f73cded8102fbcd9d424ad9a0; CONTRACT_CONFORMANCE=PASS; SCOPE_DIFF=PASS |
 | FULL_REGRESSION | DEFERRED_TO_STAGE7_EXIT_GATE |
-| IMPLEMENTATION_CHECKPOINT | 3b5259a69fa23133e6886afcaa14cf748d998c94 |
+| IMPLEMENTATION_CHECKPOINT | PENDING_COMMIT_PUSH |
 | OTHER_STAGE7_SLICES | PROPOSAL_ONLY |
-| NEXT | COMMIT_PUSH_CONTRACT_THEN_RUN_SLICE7_3_RED |
+| NEXT | CREATE_AND_PUSH_SLICE7_3_IMPLEMENTATION_COMMIT |
 <!-- SHUJAA_CURRENT_STATE_MIRROR_END -->
 
 ---
@@ -113,7 +113,7 @@
 | 4 | Full Execution Lifecycle Control | `VERIFIED COMPLETE` | تحكم محلي/Mock في دورة التنفيذ وسباقات الحالات النهائية والإلغاء والمهلة وRetry الآمنة والتنظيف والملكية؛ Pause/Resume منقولة بالاعتماديات وفق ADR-023. |
 | 5 | Event Model + Audit Foundation | `VERIFIED COMPLETE — LOCAL/MOCK SCOPE` | Event/Audit منفصلان ومختبران مع Local stores خلف Protocols. |
 | 6 | Catalog Foundation | `VERIFIED COMPLETE — LOCAL/IN-MEMORY CATALOG & EXPLICIT BINDING FOUNDATION` | Capability Catalog بهوية وإصدار وDescriptor وLifecycle واعتماديات وصفية، وDependency Graph وimpact/candidate read models، وExplicit Binding validation/registry محلية؛ دون automatic selection أو Policy Enforcement أو Runtime integration. |
-| 7 | Policy & Access Control | `IN PROGRESS — SLICES 7.1–7.2 VERIFIED; SLICE 7.3 CONTRACT SAVED PENDING RED` | إنفاذ authorization محلي لـ`task.cancel` و`work.submit` مغلق ومتحقق منه؛ عقد Runtime-Control Authorization prerequisite محفوظ، وStage 7 ما زالت غير مكتملة. |
+| 7 | Policy & Access Control | `IN PROGRESS — SLICES 7.1–7.3 TARGETED VERIFIED; SLICE 7.3 PENDING COMMIT/PUSH` | إنفاذ authorization محلي لـ`task.cancel` و`work.submit` وبوابة authorization لأفعال Runtime Control الثلاثة متحقق منها موجهًا؛ Stage 7 ما زالت غير مكتملة. |
 | 8 | Runtime Isolation & Safety | `PLANNED` | Runtime Adapters قابلة للاستبدال مع العزل وSandbox وحدود الموارد والأسرار وKill Switch دون branching دائم داخل Manager. |
 | 9 | Durable Workflows | `PLANNED` | Durable Engine خلف عقد شجاع للاستئناف والتعافي وRetry وReplay وCompensation وJournal، مع خطة خروج من المزود. |
 | 10 | Observability | `PLANNED` | Adapters مستقلة لـMetrics وLogs وTraces والتنبيهات مع portability وprivacy والتكاليف. |
@@ -1858,7 +1858,7 @@ RED/GREEN affected tests:
 <!-- STAGE7_SLICE7_3_CONTRACT_BEGIN -->
 ## Slice 7.3 — Stage 8 Runtime-Control Authorization Prerequisite
 
-**الحالة:** `CONTRACT SAVED — PENDING RED`
+**الحالة:** `IMPLEMENTED AND TARGETED VERIFIED — PENDING COMMIT/PUSH`
 
 ### 1. الحاجة والسلطة المرحلية
 
@@ -2047,6 +2047,24 @@ RED الحالية فقط:
 - evaluator عام أو تعديل بروتوكولات 7.1 و7.2.
 - Stage 8/9 implementation أو Full Regression أو Green بلا موافقة مستقلة.
 - تغير HEAD أو Worktree أو scope غير متوقع.
+
+### 19. Implementation وTargeted Verification Closure
+
+- `SLICE7_3_STATUS=IMPLEMENTED_AND_TARGETED_VERIFIED_PENDING_COMMIT_PUSH`.
+- `STAGE7_STATUS=IN_PROGRESS_NOT_COMPLETE`؛ Stage 7 لم تُغلق بعد.
+- أضيفت Authorization Gate لأفعال Runtime Control الدقيقة: `execution.pause` و`execution.resume` و`execution.terminate`.
+- التنفيذ Authorization-only؛ لا Runtime Adapter أو Runtime stub أو signal أو process control أو lifecycle mutation أو أي side effect في Production.
+- مستهلك Stage 8 المستقبلي test double موجود داخل اختبار Slice 7.3 فقط، وليس عقد Runtime أو Adapter في Production.
+- `execution.terminate` مختلفة عن `task.cancel`، ونجاح authorization لا يدّعي تنفيذ الإنهاء أو نجاحه.
+- لا transferable أو reusable permit؛ كل نتيجة request-bound ولا تمنح صلاحية قابلة للنقل أو التخزين في Registry.
+- `APPENDED` فقط يسمح بنجاح authorization؛ `IDEMPOTENT_REPLAY` و`IDENTITY_CONFLICT` لا يمنحان authorization جديدًا.
+- New Slice tests: `30 passed`؛ Shared Stage 7.1/7.2 tests: `61 passed`؛ Dependency tests: `136 passed`.
+- المجموعات الثلاث متمايزة صراحة: `227 passed / 0 failed / 0 errors`.
+- ملف RED لم يتغير، وSHA-256 له: `1913c4ef87640d4626095bd40ec9f3f7dab7c10f73cded8102fbcd9d424ad9a0`.
+- Contract conformance: `PASS`؛ Scope and diff checks: `PASS`.
+- لم تتراجع Slice 7.1 أو Slice 7.2 ضمن التحقق المشترك.
+- بقية Stage 7 Slices مقترحات فقط، وتحتاج حاجة مثبتة وموافقة مستقلة.
+- `FULL_REGRESSION_TRIGGER=NONE`؛ Full Regression لم تُعد وتبقى مؤجلة إلى Stage 7 Exit Gate.
 
 <!-- STAGE7_SLICE7_3_CONTRACT_END -->
 
