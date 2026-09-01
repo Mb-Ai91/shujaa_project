@@ -4,37 +4,58 @@
 
 > **الوظيفة:** هذا القسم هو المالك البشري الوحيد لحالة المشروع الحالية ونقطة الاستئناف. Git/Codespace يملكان Runtime truth، وActive Roadmap تعكس الحالة المختصرة فقط، وADR تحفظ القرارات طويلة العمر.
 >
-> **آخر تحديث موثق:** 1 سبتمبر 2026 بعد تنفيذ Slice 7.3 والتحقق الموجه منها وحفظ Implementation Commit ومزامنته؛ Stage 7 ما زالت جارية وليست مكتملة.
+> **آخر تحديث موثق:** 1 سبتمبر 2026 بعد نجاح Stage 7 Exit Gate وإغلاق Stage 7 وثائقيًا ضمن foundation محلية action-specific؛ Stage 8 لم تبدأ.
 
 <!-- SHUJAA_CURRENT_STATE_BEGIN -->
 | الحقل | القيمة |
 |---|---|
 | CURRENT_STAGE | STAGE7_POLICY_AND_ACCESS_CONTROL |
-| CURRENT_SLICE | Slice 7.3 — Stage 8 Runtime-Control Authorization Prerequisite |
-| SLICE_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
+| CURRENT_SLICE | Stage 7 — Documentation Closure |
+| SLICE_STATUS | DOCUMENTATION_CLOSURE_VERIFIED_PENDING_COMMIT |
 | SLICE7_1_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | SLICE7_2_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | SLICE7_3_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
-| STAGE7_STATUS | IN_PROGRESS_NOT_COMPLETE |
+| STAGE7_STATUS | VERIFIED_COMPLETE_LOCAL_ACTION_SPECIFIC_AUTHORIZATION_FOUNDATION_AND_CURRENT_COMMAND_ENFORCEMENT |
 | STAGE7_ENTRY_GATE | GO |
+| STAGE7_EXIT_GATE | GO |
 | SLICE_7_1 | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | SLICE_7_2 | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | SLICE_7_3 | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | FIRST_ACTION | TASK_CANCEL |
-| CURRENT_ACTION | RUNTIME_CONTROL_AUTHORIZATION_PREREQUISITE |
+| CURRENT_ACTION | STAGE7_DOCUMENTATION_CLOSURE |
 | RED_STARTED | YES_FOR_SLICE7_3 |
 | GREEN_STARTED | YES_FOR_SLICE7_3 |
 | PRODUCTION_STARTED | YES |
 | TARGETED_EVIDENCE | SLICE7_3_NEW=30_PASSED; SHARED_STAGE7_1_7_2=61_PASSED; DEPENDENCY=136_PASSED; EXPLICITLY_DISJOINT_TOTAL=227_PASSED_0_FAILED_0_ERRORS; RED_UNCHANGED_SHA256=1913c4ef87640d4626095bd40ec9f3f7dab7c10f73cded8102fbcd9d424ad9a0; CONTRACT_CONFORMANCE=PASS; SCOPE_DIFF=PASS |
-| FULL_REGRESSION | DEFERRED_TO_STAGE7_EXIT_GATE |
+| FULL_REGRESSION | 683_PASSED_0_FAILED_0_ERRORS |
 | IMPLEMENTATION_CHECKPOINT | 6609a9899c1ebcc7573c33b30fee64c8fb4fe159 |
-| OTHER_STAGE7_SLICES | PROPOSAL_ONLY |
-| NEXT | WAIT_FOR_OWNER_STAGE7_EXIT_GATE_APPROVAL |
-| LAST_TRUSTED_CHECKPOINT | Slice 7.3 implementation checkpoint عند `6609a9899c1ebcc7573c33b30fee64c8fb4fe159`، committed وpushed إلى `origin/refactor/modular-architecture`؛ Stage 7 ما زالت غير مكتملة. |
-| EVIDENCE_REFERENCES | Slice 7.3 implementation commit=`6609a9899c1ebcc7573c33b30fee64c8fb4fe159`؛ العقد بين markers `STAGE7_SLICE7_3_CONTRACT_BEGIN/END`؛ `RUNTIME_CONTROL_OPERATION_ID_SOURCE=authorization_request.context.operation_id`؛ New=`30 passed`؛ Shared 7.1/7.2=`61 passed`؛ Dependency=`136 passed`؛ explicitly disjoint total=`227 passed / 0 failed / 0 errors`؛ RED SHA-256=`1913c4ef87640d4626095bd40ec9f3f7dab7c10f73cded8102fbcd9d424ad9a0`؛ Contract conformance وScope/diff=`PASS`؛ Full Regression مؤجلة إلى Stage 7 Exit Gate. |
+| STAGE7_EXIT_GATE_CHECKPOINT | af94f932ae1eef9f0376f14001abe880ecbe633c |
+| OTHER_STAGE7_SLICES | DEFERRED_NON_BLOCKING_NO_PRODUCTION_CONSUMER |
+| STAGE8_STARTED | NO |
+| NEXT | WAIT_FOR_OWNER_STAGE7_CLOSURE_COMMIT_APPROVAL |
+| LAST_TRUSTED_CHECKPOINT | Stage 7 Exit Gate عند `af94f932ae1eef9f0376f14001abe880ecbe633c`: `GO`؛ Full Regression=`683 passed / 0 failed / 0 errors`؛ لا Production delta بعد البوابة، وStage 8 لم تبدأ. |
+| EVIDENCE_REFERENCES | Stage 7 Exit Gate=`GO` عند `af94f932ae1eef9f0376f14001abe880ecbe633c`؛ Full Regression=`collected 683 / passed 683 / failed 0 / errors 0`؛ Slices 7.1/7.2/7.3=`IMPLEMENTED + TARGETED_VERIFIED + COMMITTED + SYNCED`؛ عقودها داخل Active Roadmap؛ لا Production delta بعد Exit Gate؛ Stage 8 لم تبدأ. |
 <!-- SHUJAA_CURRENT_STATE_END -->
 
 ### Evidence summary
+
+- `STAGE7_STATUS=VERIFIED_COMPLETE_LOCAL_ACTION_SPECIFIC_AUTHORIZATION_FOUNDATION_AND_CURRENT_COMMAND_ENFORCEMENT`.
+- Stage 7 Exit Gate: `GO` على checkpoint `af94f932ae1eef9f0376f14001abe880ecbe633c`.
+- Full Regression: `collected=683`، `passed=683`، `failed=0`، `errors=0`؛ لم تُعد في مهمة الإغلاق الوثائقي.
+- Slice 7.1 وSlice 7.2 وSlice 7.3 جميعها: `IMPLEMENTED` و`TARGETED_VERIFIED` و`COMMITTED` و`SYNCED`.
+- المثبت: fail-closed authorization لمسار task cancellation الحالي ومساري `work.submit` الحاليين، وauthorization prerequisite مستقلة وقابلة للاستهلاك لـpause/resume/terminate.
+- العقود المحلية immutable ومربوطة بـactor/action/resource/context، والـevaluators action-specific دون generalized evaluator.
+- pre-action evidence تسبق side effects؛ لا default/permissive allow ولا transferable permits.
+- post-action Audit failure يحفظ النتيجة وlifecycle winner ويصدر structured sanitized diagnostics دون raw exceptions أو secrets.
+- Submit تمنع replay/conflict والـautomatic retry عند outcome ملتبسة، و`execution.terminate` مستقلة عن `task.cancel`.
+- لا يدعي الإغلاق Access Graph أو RBAC/ABAC/ReBAC أو Policy DSL/Framework/Engine أو approvals أو retry authorization أو Runtime integration أو lifecycle mutation أو durability/recovery.
+- Runtime Adapter وsandbox وresource isolation والتنفيذ الحقيقي لـpause/resume/terminate تبقى Stage 8؛ غيابها ليس نقصًا في إغلاق Stage 7.
+- لا Production delta بعد Exit Gate؛ التغيير الحالي وثائقي في ملفي الحالة فقط.
+- Stage 8 لم تبدأ؛ `NEXT=WAIT_FOR_OWNER_STAGE7_CLOSURE_COMMIT_APPROVAL`.
+
+#### أدلة Slices المرحلية — سجل تاريخي داخل Stage 7
+
+الأسطر التالية تحفظ Evidence عند إغلاق كل Slice؛ حالات `IN_PROGRESS_NOT_COMPLETE` و`PROPOSAL_ONLY` الواردة فيها تجاوزها إغلاق Stage 7 السلطوي أعلاه.
 
 - Slice 7.3: `IMPLEMENTED AND TARGETED VERIFIED — COMMITTED AND SYNCED`.
 - implementation checkpoint: `6609a9899c1ebcc7573c33b30fee64c8fb4fe159`، مدفوع دفعًا عاديًا إلى `origin/refactor/modular-architecture` ومتطابق محليًا وبعيدًا.
@@ -104,6 +125,14 @@
 
 | ID | STATUS | WHY_IT_MATTERS | TRIGGER_TO_REOPEN | SOURCE_REFERENCE |
 |---|---|---|---|---|
+| `STAGE7-RETRY-AUTHORIZATION` | `DEFERRED_NON_BLOCKING_NO_PRODUCTION_CONSUMER` | لا يوجد مستهلك Production جديد يوجب Policy authorization مستقلة لـretry. | مستهلك Production فعلي وفجوة authorization مثبتة مع موافقة مستقلة. | Stage 7 Exit Gate and Documentation Closure. |
+| `STAGE7-APPROVALS` | `DEFERRED_NON_BLOCKING_NO_PRODUCTION_CONSUMER` | لا يوجد فعل حالي يحتاج approval workflow بشريًا. | فعل Production مثبت يحتاج موافقة بشرية وبوابة مستقلة. | Stage 7 Exit Gate and Documentation Closure. |
+| `STAGE7-ACCESS-GRAPH` | `DEFERRED_NON_BLOCKING_NO_PRODUCTION_CONSUMER` | لا توجد علاقات وصول Production مثبتة تبرر Access Graph. | مستهلك وعلاقات وصول فعلية مع Research/Design Gate المناسبة. | Stage 7 Exit Gate and Documentation Closure. |
+| `STAGE7-GENERAL-SECURITY-MODEL` | `DEFERRED_NON_BLOCKING_NO_PRODUCTION_CONSUMER` | العقود الحالية محلية وaction-specific ولا تجمد Security Model عامًا. | مستهلك عام مثبت وResearch Gate قبل التجميد. | Stage 7 Exit Gate and Documentation Closure. |
+| `STAGE7-RBAC-ABAC-REBAC` | `DEFERRED_NON_BLOCKING_NO_PRODUCTION_CONSUMER` | لا يوجد مستهلك يوجب نموذج RBAC أو ABAC أو ReBAC. | علاقات وprincipals وسياسات Production مثبتة وبوابة مستقلة. | Stage 7 Exit Gate and Documentation Closure. |
+| `STAGE7-POLICY-DSL-ENGINE` | `DEFERRED_NON_BLOCKING_NO_PRODUCTION_CONSUMER` | لا حاجة مثبتة لـPolicy DSL أو Framework أو Engine. | حاجة Production مثبتة وResearch Gate مستقلة. | Stage 7 Exit Gate and Documentation Closure. |
+| `STAGE7-GENERALIZED-EVALUATOR` | `DEFERRED_NON_BLOCKING_NO_PRODUCTION_CONSUMER` | evaluators الحالية action-specific ولا يوجد تكرار Production يوجب تعميمًا. | فعل إضافي ذو مستهلك فعلي وتكرار بنيوي مثبت وDesign Gate. | Stage 7 Exit Gate and Documentation Closure. |
+| `STAGE7-LIFECYCLE-ELIGIBILITY-MUTATION` | `DEFERRED_NON_BLOCKING_NO_PRODUCTION_CONSUMER` | لا يوجد مستهلك حالي لـlifecycle eligibility/mutation ضمن Stage 7. | مستهلك Production مثبت مع الحفاظ على ملكية lifecycle وبوابة مستقلة. | Stage 7 Exit Gate and Documentation Closure. |
 | `SKILL-V071` | `EXPERIMENTAL / DEFERRED — FROZEN` | تحسين جانبي لا يوقف بناء شجاع؛ v0.7 تبقى النشطة | خطأ أمني، مشكلة متكررة، False Block متكرر، فشل جوهري، Milestone مخصص، أو طلب مالك صريح | Candidate `0.7.1` غير مثبت وغير مروّج |
 
 ## OWNER DECISIONS PENDING

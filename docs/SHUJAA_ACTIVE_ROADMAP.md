@@ -2,7 +2,7 @@
 
 > **الصفة:** خارطة التنفيذ الرسمية النشطة لمشروع شجاع
 > **الإصدار:** 1.3
-> **آخر تحديث موثق:** 1 سبتمبر 2026 بعد تنفيذ Slice 7.3 والتحقق الموجه منها وحفظ Implementation Commit ومزامنته؛ Stage 7 ما زالت جارية وليست مكتملة.
+> **آخر تحديث موثق:** 1 سبتمبر 2026 بعد نجاح Stage 7 Exit Gate وإغلاق Stage 7 وثائقيًا ضمن foundation محلية action-specific؛ Stage 8 لم تبدأ.
 > **النطاق:** 19 مرحلة مترابطة بالاعتماديات، من Stage 0 إلى Stage 18
 
 ---
@@ -15,26 +15,29 @@
 | الحقل | القيمة |
 |---|---|
 | CURRENT_STAGE | STAGE7_POLICY_AND_ACCESS_CONTROL |
-| CURRENT_SLICE | Slice 7.3 — Stage 8 Runtime-Control Authorization Prerequisite |
-| SLICE_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
+| CURRENT_SLICE | Stage 7 — Documentation Closure |
+| SLICE_STATUS | DOCUMENTATION_CLOSURE_VERIFIED_PENDING_COMMIT |
 | SLICE7_1_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | SLICE7_2_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | SLICE7_3_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
-| STAGE7_STATUS | IN_PROGRESS_NOT_COMPLETE |
+| STAGE7_STATUS | VERIFIED_COMPLETE_LOCAL_ACTION_SPECIFIC_AUTHORIZATION_FOUNDATION_AND_CURRENT_COMMAND_ENFORCEMENT |
 | STAGE7_ENTRY_GATE | GO |
+| STAGE7_EXIT_GATE | GO |
 | SLICE_7_1 | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | SLICE_7_2 | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | SLICE_7_3 | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | FIRST_ACTION | TASK_CANCEL |
-| CURRENT_ACTION | RUNTIME_CONTROL_AUTHORIZATION_PREREQUISITE |
+| CURRENT_ACTION | STAGE7_DOCUMENTATION_CLOSURE |
 | RED_STARTED | YES_FOR_SLICE7_3 |
 | GREEN_STARTED | YES_FOR_SLICE7_3 |
 | PRODUCTION_STARTED | YES |
 | TARGETED_EVIDENCE | SLICE7_3_NEW=30_PASSED; SHARED_STAGE7_1_7_2=61_PASSED; DEPENDENCY=136_PASSED; EXPLICITLY_DISJOINT_TOTAL=227_PASSED_0_FAILED_0_ERRORS; RED_UNCHANGED_SHA256=1913c4ef87640d4626095bd40ec9f3f7dab7c10f73cded8102fbcd9d424ad9a0; CONTRACT_CONFORMANCE=PASS; SCOPE_DIFF=PASS |
-| FULL_REGRESSION | DEFERRED_TO_STAGE7_EXIT_GATE |
+| FULL_REGRESSION | 683_PASSED_0_FAILED_0_ERRORS |
 | IMPLEMENTATION_CHECKPOINT | 6609a9899c1ebcc7573c33b30fee64c8fb4fe159 |
-| OTHER_STAGE7_SLICES | PROPOSAL_ONLY |
-| NEXT | WAIT_FOR_OWNER_STAGE7_EXIT_GATE_APPROVAL |
+| STAGE7_EXIT_GATE_CHECKPOINT | af94f932ae1eef9f0376f14001abe880ecbe633c |
+| OTHER_STAGE7_SLICES | DEFERRED_NON_BLOCKING_NO_PRODUCTION_CONSUMER |
+| STAGE8_STARTED | NO |
+| NEXT | WAIT_FOR_OWNER_STAGE7_CLOSURE_COMMIT_APPROVAL |
 <!-- SHUJAA_CURRENT_STATE_MIRROR_END -->
 
 ---
@@ -113,7 +116,7 @@
 | 4 | Full Execution Lifecycle Control | `VERIFIED COMPLETE` | تحكم محلي/Mock في دورة التنفيذ وسباقات الحالات النهائية والإلغاء والمهلة وRetry الآمنة والتنظيف والملكية؛ Pause/Resume منقولة بالاعتماديات وفق ADR-023. |
 | 5 | Event Model + Audit Foundation | `VERIFIED COMPLETE — LOCAL/MOCK SCOPE` | Event/Audit منفصلان ومختبران مع Local stores خلف Protocols. |
 | 6 | Catalog Foundation | `VERIFIED COMPLETE — LOCAL/IN-MEMORY CATALOG & EXPLICIT BINDING FOUNDATION` | Capability Catalog بهوية وإصدار وDescriptor وLifecycle واعتماديات وصفية، وDependency Graph وimpact/candidate read models، وExplicit Binding validation/registry محلية؛ دون automatic selection أو Policy Enforcement أو Runtime integration. |
-| 7 | Policy & Access Control | `IN PROGRESS — SLICES 7.1–7.3 TARGETED VERIFIED; SLICE 7.3 COMMITTED AND SYNCED` | إنفاذ authorization محلي لـ`task.cancel` و`work.submit` وبوابة authorization لأفعال Runtime Control الثلاثة متحقق منها موجهًا ومحفوظ ومزامن؛ Stage 7 ما زالت غير مكتملة. |
+| 7 | Policy & Access Control | `VERIFIED COMPLETE — LOCAL ACTION-SPECIFIC AUTHORIZATION FOUNDATION AND CURRENT COMMAND ENFORCEMENT` | إنفاذ fail-closed لمسار `task.cancel` الحالي ومساري `work.submit` الحاليين، مع prerequisite مستقلة وقابلة للاستهلاك لـpause/resume/terminate؛ دون Security Model عام أو Runtime integration. |
 | 8 | Runtime Isolation & Safety | `PLANNED` | Runtime Adapters قابلة للاستبدال مع العزل وSandbox وحدود الموارد والأسرار وKill Switch دون branching دائم داخل Manager. |
 | 9 | Durable Workflows | `PLANNED` | Durable Engine خلف عقد شجاع للاستئناف والتعافي وRetry وReplay وCompensation وJournal، مع خطة خروج من المزود. |
 | 10 | Observability | `PLANNED` | Adapters مستقلة لـMetrics وLogs وTraces والتنبيهات مع portability وprivacy والتكاليف. |
@@ -1435,7 +1438,7 @@ Slice 6.6 مغلقة ومتحققة ضمن Local/In-Memory scope. Evidence ال�
 <!-- STAGE7_ENTRY_GATE_CONTRACT_BEGIN -->
 ## Stage 7 Entry Gate Contract
 
-**الحالة:** `SAVED — PENDING ENTRY EXECUTION`
+**الحالة:** `EXECUTED — GO`
 
 ### السلطة والحكم
 
@@ -1637,8 +1640,8 @@ Matrix الاختبارات المقترحة، دون إنشاء الاختبا�
 - مجموعات الأدلة الثلاث متداخلة، ولا تُجمع كعدد اختبارات فريد.
 - لم يُشغّل Full Regression لعدم وجود trigger ضمن هذه الحزمة.
 - implementation checkpoint هو `15b6887792b5c8c05ab08de8aa4631f6a1b67ae2`.
-- Stage 7 ما زالت `IN_PROGRESS_NOT_COMPLETE`.
-- بقية Slices في Stage 7 تبقى `PROPOSAL_ONLY`، وتحتاج إثبات حاجة وموافقة مستقلة.
+- عند checkpoint إغلاق Slice 7.1 كانت Stage 7 `IN_PROGRESS_NOT_COMPLETE`؛ تجاوزتها حالة Exit Gate النهائية المسجلة أدناه.
+- عند checkpoint إغلاق Slice 7.1 بقيت بقية Slices `PROPOSAL_ONLY` وتحتاج إثبات حاجة وموافقة مستقلة.
 - لم تبدأ Slice 7.2 أو أي First Slice أخرى.
 - لا يتضمن الإغلاق ADR جديدًا؛ الإصلاح داخل عقد Slice 7.1 المحفوظ.
 
@@ -1850,7 +1853,7 @@ RED/GREEN affected tests:
 - المصدر الوحيد لهوية العملية هو `authorization_request.context.operation_id`، وتُستهلك الهوية عند `APPENDED` قبل dispatch.
 - `IDEMPOTENT_REPLAY` و`IDENTITY_CONFLICT` ينتجان `SUBMIT_OPERATION_REUSED` وHTTP `409` بلا Submission أخرى.
 - لا automatic retry عند outcome ملتبسة، لا بالهوية نفسها ولا بهوية جديدة يولدها النظام.
-- Stage 7 ما زالت `IN_PROGRESS_NOT_COMPLETE`، وبقية Slices تبقى `PROPOSAL_ONLY`.
+- عند checkpoint إغلاق Slice 7.2 كانت Stage 7 `IN_PROGRESS_NOT_COMPLETE` وبقية Slices `PROPOSAL_ONLY`؛ تجاوزتها حالة Exit Gate النهائية المسجلة أدناه.
 
 <!-- STAGE7_SLICE7_2_CONTRACT_END -->
 
@@ -1865,7 +1868,7 @@ RED/GREEN affected tests:
 - هذه الشريحة تغلق prerequisite مثبتة لدخول Stage 8 وفق ADR-023: قرار authorization ثابت وقابل للاستهلاك لأوامر Runtime Control قبل إضافة تنفيذها الفعلي.
 - Stage 7.3 تقرر authorization فقط. لا تنفذ Runtime Control ولا تثبت دعم runtime أو lifecycle eligibility.
 - Stage 8 وحدها تملك التكامل الحقيقي مع Runtime Adapter وتنفيذ الفعل أو رفض runtime غير المدعومة افتراضيًا.
-- بقية Stage 7 Slices تبقى `PROPOSAL_ONLY`، وStage 7 تبقى `IN_PROGRESS_NOT_COMPLETE`.
+- عند اعتماد عقد Slice 7.3 بقيت بقية Stage 7 Slices `PROPOSAL_ONLY` وStage 7 `IN_PROGRESS_NOT_COMPLETE`؛ الحالة النهائية بعد التنفيذ في قسم Exit Gate أدناه.
 
 ### 2. Authorization مقابل technical support
 
@@ -2051,7 +2054,7 @@ RED الحالية فقط:
 ### 19. Implementation وTargeted Verification Closure
 
 - `SLICE7_3_STATUS=IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED`.
-- `STAGE7_STATUS=IN_PROGRESS_NOT_COMPLETE`؛ Stage 7 لم تُغلق بعد.
+- عند checkpoint إغلاق Slice 7.3 كانت `STAGE7_STATUS=IN_PROGRESS_NOT_COMPLETE`؛ تجاوزها Stage 7 Exit Gate النهائي أدناه.
 - Implementation Commit: `6609a9899c1ebcc7573c33b30fee64c8fb4fe159` (`feat(policy): add runtime control authorization gate`)، مدفوع دفعًا عاديًا إلى `origin/refactor/modular-architecture` ومتطابق محليًا وبعيدًا.
 - أضيفت Authorization Gate لأفعال Runtime Control الدقيقة: `execution.pause` و`execution.resume` و`execution.terminate`.
 - التنفيذ Authorization-only؛ لا Runtime Adapter أو Runtime stub أو signal أو process control أو lifecycle mutation أو أي side effect في Production.
@@ -2064,10 +2067,62 @@ RED الحالية فقط:
 - ملف RED لم يتغير، وSHA-256 له: `1913c4ef87640d4626095bd40ec9f3f7dab7c10f73cded8102fbcd9d424ad9a0`.
 - Contract conformance: `PASS`؛ Scope and diff checks: `PASS`.
 - لم تتراجع Slice 7.1 أو Slice 7.2 ضمن التحقق المشترك.
-- بقية Stage 7 Slices مقترحات فقط، وتحتاج حاجة مثبتة وموافقة مستقلة.
-- `FULL_REGRESSION_TRIGGER=NONE`؛ Full Regression لم تُعد وتبقى مؤجلة إلى Stage 7 Exit Gate.
+- عند checkpoint Slice 7.3 بقيت بقية Stage 7 Slices مقترحات فقط وتحتاج حاجة مثبتة وموافقة مستقلة؛ صنفها Exit Gate لاحقًا `DEFERRED_NON_BLOCKING_NO_PRODUCTION_CONSUMER`.
+- ضمن إغلاق Slice 7.3 كان `FULL_REGRESSION_TRIGGER=NONE`؛ شُغلت Full Regression لاحقًا مرة واحدة في Stage 7 Exit Gate ونجحت `683/683`.
 
 <!-- STAGE7_SLICE7_3_CONTRACT_END -->
+
+
+<!-- STAGE7_EXIT_GATE_CLOSURE_BEGIN -->
+## Stage 7 Exit Gate and Documentation Closure
+
+**الحالة:** `VERIFIED COMPLETE — LOCAL ACTION-SPECIFIC AUTHORIZATION FOUNDATION AND CURRENT COMMAND ENFORCEMENT`
+
+`STAGE7_STATUS=VERIFIED_COMPLETE_LOCAL_ACTION_SPECIFIC_AUTHORIZATION_FOUNDATION_AND_CURRENT_COMMAND_ENFORCEMENT`
+
+### أدلة الإغلاق
+
+- Stage 7 Exit Gate: `GO` على checkpoint `af94f932ae1eef9f0376f14001abe880ecbe633c`.
+- Full Regression: `collected=683`، `passed=683`، `failed=0`، `errors=0`.
+- Slice 7.1 وSlice 7.2 وSlice 7.3 جميعها: `IMPLEMENTED` و`TARGETED_VERIFIED` و`COMMITTED` و`SYNCED`.
+- لا Production delta بعد Exit Gate؛ delta الخاصة بهذه المهمة وثائقية في ملفي الحالة فقط.
+- Stage 8 لم تبدأ، ولم يُضف ADR أو قرار معماري جديد.
+- عبارات `IN_PROGRESS_NOT_COMPLETE` و`PROPOSAL_ONLY` داخل checkpoints المرحلية لكل Slice تسجل حالة تلك اللحظة، وقد تجاوزها هذا الإغلاق السلطوي.
+
+### القدرة المثبتة
+
+- fail-closed authorization enforcement داخل Manager لمسار task cancellation الحالي.
+- fail-closed authorization enforcement لمساري `work.submit` الحاليين.
+- authorization prerequisite مستقلة وقابلة للاستهلاك لأفعال Runtime Control: pause وresume وterminate.
+- عقود actor/action/resource/context محلية immutable، مع evaluators مستقلة action-specific ودون generalized evaluator.
+- pre-action authorization evidence تسبق أي side effect، ولا default أو permissive allow.
+- فشل post-action Audit لا يعكس النتيجة الفعلية ولا lifecycle winner، ويصدر structured sanitized diagnostics دون raw exceptions أو secrets.
+- لا transferable permits؛ Submit تقبل `APPENDED` فقط، وتمنع replay/conflict والـautomatic retry عند outcome ملتبسة.
+- `execution.terminate` مستقلة عن `task.cancel` ولا تعيد استخدام دلالاتها تلقائيًا.
+
+### المؤجلات غير المانعة
+
+| البند | الحالة |
+|---|---|
+| retry authorization | `DEFERRED_NON_BLOCKING_NO_PRODUCTION_CONSUMER` |
+| approvals | `DEFERRED_NON_BLOCKING_NO_PRODUCTION_CONSUMER` |
+| Access Graph | `DEFERRED_NON_BLOCKING_NO_PRODUCTION_CONSUMER` |
+| generalized Security Model | `DEFERRED_NON_BLOCKING_NO_PRODUCTION_CONSUMER` |
+| RBAC/ABAC/ReBAC | `DEFERRED_NON_BLOCKING_NO_PRODUCTION_CONSUMER` |
+| Policy DSL/Framework/Engine | `DEFERRED_NON_BLOCKING_NO_PRODUCTION_CONSUMER` |
+| generalized evaluator | `DEFERRED_NON_BLOCKING_NO_PRODUCTION_CONSUMER` |
+| lifecycle eligibility/mutation غير المستهلكة حاليًا | `DEFERRED_NON_BLOCKING_NO_PRODUCTION_CONSUMER` |
+
+عدم تنفيذ هذه البنود ليس نقصًا في إغلاق Stage 7، ولا يدعي هذا الإغلاق وجود Access Graph أو RBAC/ABAC/ReBAC أو Policy DSL/Framework/Engine أو approval workflow أو retry authorization أو generalized evaluator أو lifecycle mutation.
+
+### حدود Stage 8 وStage 9
+
+- Runtime Adapter وsandbox وresource isolation والتكامل والتنفيذ الحقيقي لأفعال pause/resume/terminate تبقى ضمن Stage 8، ولا يعد غيابها نقصًا في Stage 7.
+- لا تدعي Stage 7 دعم runtime أو تنفيذ pause/resume/terminate أو lifecycle mutation.
+- durability وrecovery تبقيان ضمن Stage 9.
+- الخطوة التالية ليست بدء Stage 8؛ بل انتظار موافقة المالك على Commit إغلاق Stage 7 الوثائقي.
+
+<!-- STAGE7_EXIT_GATE_CLOSURE_END -->
 
 
 <!-- CONTRACT_ADVERSARIAL_REVIEW_GATE_BEGIN -->
