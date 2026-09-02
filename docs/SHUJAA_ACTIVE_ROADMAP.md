@@ -2,7 +2,7 @@
 
 > **الصفة:** خارطة التنفيذ الرسمية النشطة لمشروع شجاع
 > **الإصدار:** 1.3
-> **آخر تحديث موثق:** 1 سبتمبر 2026 بعد حفظ عقد Slice 8.1 لمسار `task.cancel` المحلي فقط؛ لا RED أو GREEN أو Implementation أو بحث خارجي بدأ.
+> **آخر تحديث موثق:** 2 سبتمبر 2026 بعد اعتماد تعديل عقد Slice 8.1 لإضافة bounded local atomic ownership claim؛ RED مثبتة ومتوقفة عند فجوة concurrency، ولا GREEN أو Implementation بدأ.
 > **النطاق:** 19 مرحلة مترابطة بالاعتماديات، من Stage 0 إلى Stage 18
 
 ---
@@ -15,8 +15,8 @@
 | الحقل | القيمة |
 |---|---|
 | CURRENT_STAGE | Stage 8 — Runtime Isolation & Safety |
-| CURRENT_SLICE | Slice 8.1 — CONTRACT ONLY |
-| SLICE_STATUS | CONTRACT_SAVED_PENDING_RED_APPROVAL |
+| CURRENT_SLICE | Slice 8.1 — RED HOLD / CONTRACT AMENDMENT |
+| SLICE_STATUS | CONTRACT_AMENDED_PENDING_COMMIT_RED_AMENDMENT_REQUIRED |
 | SLICE7_1_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | SLICE7_2_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | SLICE7_3_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
@@ -27,8 +27,8 @@
 | SLICE_7_2 | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | SLICE_7_3 | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | FIRST_ACTION | TASK_CANCEL |
-| CURRENT_ACTION | STAGE8_SLICE8_1_CONTRACT_DOCUMENTATION |
-| RED_STARTED | NO |
+| CURRENT_ACTION | STAGE8_SLICE8_1_CONCURRENCY_CONTRACT_AMENDMENT |
+| RED_STARTED | YES |
 | GREEN_STARTED | NO |
 | PRODUCTION_STARTED | NO_FOR_STAGE8 |
 | IMPLEMENTATION_STARTED | NO |
@@ -41,27 +41,31 @@
 | STAGE8_ENTRY_GATE | GO_TO_DESIGN_RESEARCH_ONLY |
 | STAGE8_STATUS | IN_PROGRESS_DESIGN_RESEARCH_ONLY |
 | STAGE8_STARTED | YES_DESIGN_RESEARCH_ONLY |
-| FIRST_SLICE_STATUS | CONTRACT_SAVED_PENDING_RED_APPROVAL |
-| FIRST_SLICE_STARTED | NO |
+| FIRST_SLICE_STATUS | CONTRACT_AMENDED_PENDING_COMMIT_RED_AMENDMENT_REQUIRED |
+| FIRST_SLICE_STARTED | YES_RED_ONLY |
 | FIRST_SLICE_EXACT_CONSUMER | TASK_CANCEL_LOCAL_PROCESS_CLEANUP_PATH_ONLY |
 | FIRST_SLICE_RECOMMENDATION | ADOPTED_AS_SLICE8_1_CONTRACT_BOUNDARY |
-| SLICE8_1_STATUS | CONTRACT_SAVED_PENDING_RED_APPROVAL |
+| SLICE8_1_STATUS | CONTRACT_AMENDED_PENDING_COMMIT_RED_AMENDMENT_REQUIRED |
 | SLICE8_1_EXACT_CONSUMER | TASK_CANCEL_LOCAL_PROCESS_CLEANUP_PATH_ONLY |
-| SLICE8_1_RED_STARTED | NO |
+| SLICE8_1_RED_STARTED | YES |
 | SLICE8_1_GREEN_STARTED | NO |
+| SLICE8_1_RED_EVIDENCE | SHA256=ad2c89b834f69ee03aa734aecbd14b6c067e191d06166378b917a1ac0cb52344; COLLECTED=32; PASSED=3; FAILED=29; ERRORS=0; CONCURRENT_SIDE_EFFECT_ATTEMPTS=2 |
+| RED_GATE | HOLD_WITH_CONCURRENCY_GAP |
+| RED_AMENDMENT_REQUIRED | YES_BEFORE_GREEN |
+| CONCURRENCY_MECHANISM | BOUNDED_LOCAL_ATOMIC_OWNERSHIP_CLAIM |
 | SAFETY_CLEANUP_AUDIT_DECISION | CONTAINMENT_PRESERVING_EXECUTION_WITH_STRUCTURED_AUDIT_FAILURE |
 | STAGE8_EXIT_ACCOUNTABILITY | MANDATORY |
 | RESEARCH_GATE_REQUIRED | CONDITIONAL |
 | RESEARCH_GATE_TRIGGERED | NO |
 | EXTERNAL_RESEARCH_RUN | NO |
-| NEXT | WAIT_FOR_OWNER_STAGE8_SLICE8_1_CONTRACT_COMMIT_APPROVAL |
+| NEXT | WAIT_FOR_OWNER_STAGE8_SLICE8_1_CONCURRENCY_CONTRACT_COMMIT_APPROVAL |
 <!-- SHUJAA_CURRENT_STATE_MIRROR_END -->
 
 ### Stage 8 entry boundary
 
 - Stage 8 بدأت إداريًا في نطاق `DESIGN/RESEARCH` فقط؛ لا Runtime capability جديدة نُفذت بهذا الانتقال.
 - لا Sandbox أو Isolation أو Resource Limits أو Secrets Boundary أو Kill Switch primitive مكتملة.
-- عقد Slice 8.1 محفوظ لمسار `task.cancel` المحلي فقط وحالته `CONTRACT_SAVED_PENDING_RED_APPROVAL`؛ لم تبدأ RED أو GREEN أو أي Runtime implementation.
+- عقد Slice 8.1 المعدل لمسار `task.cancel` المحلي فقط حالته `CONTRACT_AMENDED_PENDING_COMMIT_RED_AMENDMENT_REQUIRED`؛ RED بدأت وأثبتت فجوة concurrency، بينما لم تبدأ GREEN أو أي Runtime implementation.
 - المستهلك الدقيق هو `TASK_CANCEL_LOCAL_PROCESS_CLEANUP_PATH_ONLY`؛ وتبقى timeout/error/startup/shutdown/owner-conflict خارج هذه الشريحة ومجرودة ومؤجلة صراحة.
 - Safety-cleanup Audit semantics لهذه الشريحة هي `CONTAINMENT_PRESERVING_EXECUTION_WITH_STRUCTURED_AUDIT_FAILURE` مع بقاء pre-action evidence fail-closed وفق Stage 7.
 - Stage 8 Exit Accountability إلزامية، ولا تقليص أو تأجيل صامت لالتزامات الخارطة.
@@ -2287,14 +2291,14 @@ RED الحالية فقط:
 <!-- STAGE8_SLICE8_1_CONTRACT_BEGIN -->
 ## Slice 8.1 — Task-Cancel Owned Local Process Termination Adapter Boundary
 
-**الحالة:** `CONTRACT_SAVED_PENDING_RED_APPROVAL`
+**الحالة:** `CONTRACT_AMENDED_PENDING_COMMIT_RED_AMENDMENT_REQUIRED`
 
-`SLICE8_1_STATUS=CONTRACT_SAVED_PENDING_RED_APPROVAL`
+`SLICE8_1_STATUS=CONTRACT_AMENDED_PENDING_COMMIT_RED_AMENDMENT_REQUIRED`
 
 ### 1. الهوية وحدود المرحلة
 
 - المستهلك الدقيق الوحيد هو `TASK_CANCEL_LOCAL_PROCESS_CLEANUP_PATH_ONLY`.
-- يحفظ هذا العقد حدود Slice 8.1 في `DESIGN/RESEARCH` فقط؛ لا يبدأ RED أو GREEN أو Runtime implementation، ولا ينشئ Adapter أو stub أو fake.
+- يحفظ هذا العقد حدود Slice 8.1 بعد بدء RED وإثبات فجوة concurrency؛ لا يبدأ GREEN أو Runtime implementation، ولا ينشئ Adapter أو stub أو fake.
 - يبدأ النطاق المرحّل بعد نجاح Stage 7 cancel authorization وpre-action evidence، وبعد إثبات lifecycle reconciliation أن cancel هو الفائز أو replay صالح وفق العقود الحالية، وعند وجود Process Ownership محلية موثقة وقابلة للتحقق.
 - الفعل المرحّل هو إنهاء process أو process group المملوكة محليًا عبر Runtime Adapter واحدة.
 - لا تعامل cancel/timeout/error/startup/shutdown/owner-conflict كعائلة مستهلك واحدة في هذه الشريحة.
@@ -2318,6 +2322,7 @@ RED الحالية فقط:
 - إنشاء أمر تقني محدود للـAdapter واستهلاك نتيجتها.
 - lifecycle/result mapping وحفظ lifecycle truth.
 - ownership release بعد نجاح تقني مثبت فقط أو already-exited مثبت وآمن.
+- طلب atomic ownership claim من `ProcessRegistry` قبل استدعاء الـAdapter، ثم تفسير claim/finalization states دون نقل Policy أو lifecycle authority إلى Registry.
 - Outcome Event/Audit والتشخيصات المنظمة وحماية مسار cancel من bypass.
 
 تقتصر Runtime Adapter على:
@@ -2353,12 +2358,15 @@ Runtime Adapter لا تقرر Policy أو Authorization أو lifecycle، ولا 
 2. تنجح pre-action authorization evidence وفق عقد cancel الحالي.
 3. يحسم Manager lifecycle winner/replay.
 4. يسترجع Manager Process Ownership ويتحقق منها.
-5. يبني Manager أمرًا تقنيًا محدودًا.
-6. تتحقق Runtime Adapter من process identity والملكية.
-7. تنفذ Runtime Adapter termination.
-8. يستهلك Manager النتيجة ويحفظ lifecycle truth.
-9. يحدث ownership release فقط بعد نجاح تقني مثبت أو already-exited مثبت وآمن.
-10. تسجل Outcome Event/Audit النتيجة دون أسرار.
+5. يطلب Manager atomic claim من `ProcessRegistry` بالهوية الكاملة و`cleanup_operation_id`.
+6. لا يُقبل سوى claim واحد؛ loser لا يستدعي Adapter، ويُحرر path-scoped lock قبل أي Adapter call.
+7. يبني Manager أمرًا تقنيًا محدودًا.
+8. تتحقق Runtime Adapter من process identity والملكية.
+9. تنفذ Runtime Adapter termination دون إبقاء Registry lock ممسوكًا.
+10. يستهلك Manager النتيجة ويحفظ lifecycle truth ويختار finalize decision من العقد المحدد.
+11. تنفذ `ProcessRegistry` finalization atomically وفق القرار والدليل.
+12. يحدث ownership release فقط بعد نجاح تقني مثبت أو already-exited مثبت وآمن.
+13. تسجل Outcome Event/Audit النتيجة دون أسرار.
 
 إذا كانت Adapter مفقودة أو غير صالحة أو أعادت نتيجة malformed، فالسلوك fail-safe ومنظم: لا permissive fallback، ولا direct POSIX fallback، ولا side effect بديل مخفي.
 
@@ -2383,12 +2391,65 @@ Runtime Adapter لا تقرر Policy أو Authorization أو lifecycle، ولا 
 
 `CONCURRENCY_GAP_BEHAVIOR=HOLD_WITH_CONCURRENCY_GAP`
 
+`CONCURRENCY_MECHANISM=BOUNDED_LOCAL_ATOMIC_OWNERSHIP_CLAIM`
+
+`CLAIM_OWNER=PROCESS_OWNERSHIP_REGISTRY`
+
+`CLAIM_SCOPE=IN_PROCESS_PER_REGISTRY_PATH_EXACT_OWNERSHIP_GENERATION`
+
+`CLAIM_PERSISTENCE=NON_DURABLE`
+
+`LOCK_HELD_DURING_ADAPTER_CALL=NO`
+
+`CONCURRENT_WINNER_COUNT=1`
+
+`LOSER_ADAPTER_INVOCATION=0`
+
+`EXACTLY_ONCE_GUARANTEE=NO`
+
+`DISTRIBUTED_COORDINATION=NO`
+
+`RESTART_DURABILITY=NO`
+
 - لا تدعي الشريحة exactly-once أو universal at-most-once أو concurrency safety غير المثبتة.
 - إذا أثبتت الحالة إنهاء العملية والإفراج عن ownership بعد نجاح مثبت، فلا يرسل replay signal جديدة.
 - `OUTCOME_UNKNOWN` لا يسمح بـautomatic retry أو signal ثانية، ولا يفسر replay كتصريح جديد.
 - تصف RED محاولتي cancel متزامنتين وتقيس adapter/signal invocations والنتيجة.
 - إذا أثبتت RED إمكان side effects مكررة غير آمنة ضمن العقود الحالية، تتوقف عند `HOLD_WITH_CONCURRENCY_GAP` دون إصلاح صامت أو ادعاء exactly-once.
-- bounded local atomic claim أو single-flight يحتاج تعديل عقد مستقل وموافقة مالك؛ durability وdistributed coordination وrecovery journal وoutbox تبقى Stage 9.
+- أثبتت RED محاولتي side effect متزامنتين، واعتمد المالك bounded local atomic ownership claim قبل GREEN؛ durability وdistributed coordination وrecovery journal وoutbox تبقى Stage 9.
+
+#### 7.1 عقد bounded local atomic ownership claim
+
+`At most one admitted local termination attempt per exact process-ownership generation among concurrent in-process callers.`
+
+- تنفذ `ProcessRegistry` claim atomية على المفتاح الكامل `(registry_path, task_id, execution_id, pid, pgid, process_start_time_ticks)`، ومالك الـclaim هو `cleanup_operation_id`.
+- تكون claim مشتركة في الذاكرة بين مثيلات `ProcessRegistry` التي تشير إلى `registry_path` نفسه، وتستخدم current path-scoped lock أثناء claim وfinalize فقط.
+- لا يُمسك lock أثناء Adapter call، والـclaim ليست permit أو policy أو lifecycle decision، وغير قابلة للنقل إلى operation أو ownership generation أخرى.
+- لا تفسر Registry policy أو lifecycle أو signals؛ Manager يحتفظ بهذه المسؤوليات ويحوّل نتائج claim/finalize إلى السلوك المنظم.
+
+الحالات الدنيا الملزمة:
+
+- `ACQUIRED`
+- `NOT_FOUND`
+- `OWNERSHIP_MISMATCH`
+- `CLAIMED_BY_OTHER_OPERATION`
+- `SAME_OPERATION_REPLAY`
+- `FINALIZED_AND_RELEASED`
+- `OUTCOME_UNKNOWN_BLOCKED`
+
+قرارات finalization الملزمة:
+
+- `RELEASE_OWNERSHIP`
+- `RETAIN_OWNERSHIP_AND_RELEASE_CLAIM`
+- `RETAIN_OWNERSHIP_AND_QUARANTINE`
+
+قواعد fail-safe:
+
+- النجاح المثبت أو already-exited المثبت يختار `RELEASE_OWNERSHIP` وينهي claim دون replay signal.
+- الفشل المثبت قبل أي side effect يختار `RETAIN_OWNERSHIP_AND_RELEASE_CLAIM` فقط إذا أثبتت نتيجة منظمة موثوقة عدم إرسال signal؛ ولا ينشئ ذلك automatic retry داخل الاستدعاء نفسه.
+- النتيجة المعروفة بعد side effect لا تُعكس ولا تعاد تلقائيًا؛ تحفظ technical truth وlifecycle winner ويُختار release أو retain وفق الدليل المثبت.
+- exception أو malformed result هي `OUTCOME_UNKNOWN` افتراضيًا ما لم تثبت نتيجة منظمة موثوقة خلاف ذلك؛ يحتفظ بالownership، ويختار `RETAIN_OWNERSHIP_AND_QUARANTINE`، ويمنع أي Adapter invocation لاحق للgeneration نفسها، ويصدر sanitized diagnostic.
+- `OUTCOME_UNKNOWN_BLOCKED` لا يسمح signal ثانية أو automatic retry أو تحرير claim بطريقة تسمح بمحاولة جديدة؛ يحتفظ بالownership وبحالة quarantine محلية، وdurable recovery تبقى Stage 9.
 
 ### 8. Bypass وAPI والخصوصية
 
@@ -2405,6 +2466,8 @@ Runtime Adapter لا تقرر Policy أو Authorization أو lifecycle، ولا 
 هذه Production candidates وليست تعديلات مسموحة في مهمة حفظ العقد:
 
 - `shujaa_crew/core/runtime/owned_local_process_termination_contract.py`
+- `shujaa_crew/core/runtime/process_registry_contract.py`
+- `shujaa_crew/core/runtime/process_registry.py`
 - `shujaa_crew/adapters/runtime/__init__.py`
 - `shujaa_crew/adapters/runtime/local_process_termination.py`
 - `shujaa_crew/core/manager/service.py`
@@ -2429,7 +2492,15 @@ Runtime Adapter لا تقرر Policy أو Authorization أو lifecycle، ولا 
 - Stage 7 authorization وpre-action evidence قبل Runtime side effect.
 - post-action Audit failure يحفظ النتيجة ويظهر diagnostic منظمًا.
 - replay بعد نجاح مثبت لا يرسل signal أخرى، وoutcome unknown لا يطلق automatic retry.
-- محاولتي cancel متزامنتين مع قياس side effects دون افتراض exactly-once مسبق.
+- محاولتي cancel متزامنتين تثبتان winner واحدًا فقط و`LOSER_ADAPTER_INVOCATION=0` لنفس ownership generation عبر مثيلات Registry للمسار نفسه.
+- claim identity تشمل `registry_path/task_id/execution_id/pid/pgid/process_start_time_ticks` كاملة، ولا تتصادم ownership generations المختلفة.
+- `SAME_OPERATION_REPLAY` و`CLAIMED_BY_OTHER_OPERATION` لا يستدعيان Adapter، والـclaim غير قابلة للنقل.
+- Registry lock ممسوك أثناء claim/finalize فقط وغير ممسوك أثناء Adapter call.
+- نجاح مثبت أو already-exited يحرر ownership؛ proven pre-side-effect failure يحتفظ بالownership ويحرر claim دون automatic retry.
+- known post-side-effect outcome تحفظ technical truth وlifecycle winner دون rollback أو automatic retry، وتختار ownership finalization وفق الدليل.
+- exception وmalformed/untrusted result ينتجان `OUTCOME_UNKNOWN_BLOCKED` مع ownership retained وclaim quarantined وsanitized diagnostic ودون signal لاحقة.
+- تبقى Stage 7 authorization وlifecycle winner semantics دون تغيير بعد إضافة claim.
+- Registry لا تفسر policy/lifecycle/signals، ولا يدعي العقد exactly-once أو distributed coordination أو restart durability.
 - anti-bypass call-site/AST checks للمسار المرحّل.
 - عدم تسريب secrets أو process identifiers الحساسة، وتوافق API ودلالات cancel الحالية، وعدم تراجع Slice 7.1.
 - إثبات أن timeout/error/startup/shutdown/owner-conflict لم تدّع كمسارات مرحلة.
@@ -2462,7 +2533,9 @@ Runtime Adapter لا تقرر Policy أو Authorization أو lifecycle، ولا 
 - لا يلزم بحث خارجي لحفظ هذا العقد؛ الشريحة محلية وframework-neutral، ولا تعتمد sandbox/container technology أو تجمد OS mechanism كعقد عام أو تضيف dependency أمنية خارجية.
 - يصبح البحث إلزاميًا قبل اعتماد أو تجميد أي تقنية خارجية أو OS-specific public contract وفق Stage 8 Entry Gate.
 - `STAGE8_STATUS=IN_PROGRESS_DESIGN_RESEARCH_ONLY` و`STAGE8_STARTED=YES_DESIGN_RESEARCH_ONLY` و`IMPLEMENTATION_STARTED=NO`.
-- `SLICE8_1_RED_STARTED=NO` و`SLICE8_1_GREEN_STARTED=NO`؛ لا تعتبر Slice 8.1 بدأت تنفيذيًا.
+- `SLICE8_1_RED_STARTED=YES` و`RED_GATE=HOLD_WITH_CONCURRENCY_GAP` و`RED_AMENDMENT_REQUIRED=YES_BEFORE_GREEN`.
+- `SLICE8_1_GREEN_STARTED=NO` و`IMPLEMENTATION_STARTED=NO`؛ لا Production implementation بدأت.
+- `NEXT=WAIT_FOR_OWNER_STAGE8_SLICE8_1_CONCURRENCY_CONTRACT_COMMIT_APPROVAL`.
 
 <!-- STAGE8_SLICE8_1_CONTRACT_END -->
 
