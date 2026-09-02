@@ -4,14 +4,14 @@
 
 > **الوظيفة:** هذا القسم هو المالك البشري الوحيد لحالة المشروع الحالية ونقطة الاستئناف. Git/Codespace يملكان Runtime truth، وActive Roadmap تعكس الحالة المختصرة فقط، وADR تحفظ القرارات طويلة العمر.
 >
-> **آخر تحديث موثق:** 1 سبتمبر 2026 بعد تنفيذ Stage 8 Entry Gate بحكم `GO_TO_DESIGN_RESEARCH_ONLY` وتسجيل بدء Stage 8 إداريًا في نطاق Design/Research فقط؛ لا Implementation أو First Slice أو بحث خارجي بدأ.
+> **آخر تحديث موثق:** 1 سبتمبر 2026 بعد حفظ عقد Slice 8.1 لمسار `task.cancel` المحلي فقط؛ لا RED أو GREEN أو Implementation أو بحث خارجي بدأ.
 
 <!-- SHUJAA_CURRENT_STATE_BEGIN -->
 | الحقل | القيمة |
 |---|---|
 | CURRENT_STAGE | Stage 8 — Runtime Isolation & Safety |
-| CURRENT_SLICE | NOT_SELECTED — DESIGN/RESEARCH ONLY |
-| SLICE_STATUS | NOT_SELECTED_NOT_STARTED |
+| CURRENT_SLICE | Slice 8.1 — CONTRACT ONLY |
+| SLICE_STATUS | CONTRACT_SAVED_PENDING_RED_APPROVAL |
 | SLICE7_1_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | SLICE7_2_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | SLICE7_3_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
@@ -22,7 +22,7 @@
 | SLICE_7_2 | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | SLICE_7_3 | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | FIRST_ACTION | TASK_CANCEL |
-| CURRENT_ACTION | STAGE8_DESIGN_RESEARCH_ENTRY_DOCUMENTATION |
+| CURRENT_ACTION | STAGE8_SLICE8_1_CONTRACT_DOCUMENTATION |
 | RED_STARTED | NO |
 | GREEN_STARTED | NO |
 | PRODUCTION_STARTED | NO_FOR_STAGE8 |
@@ -36,17 +36,22 @@
 | STAGE8_ENTRY_GATE | GO_TO_DESIGN_RESEARCH_ONLY |
 | STAGE8_STATUS | IN_PROGRESS_DESIGN_RESEARCH_ONLY |
 | STAGE8_STARTED | YES_DESIGN_RESEARCH_ONLY |
-| FIRST_SLICE_STATUS | NOT_SELECTED_NOT_STARTED |
+| FIRST_SLICE_STATUS | CONTRACT_SAVED_PENDING_RED_APPROVAL |
 | FIRST_SLICE_STARTED | NO |
-| FIRST_SLICE_EXACT_CONSUMER | NOT_SELECTED |
-| FIRST_SLICE_RECOMMENDATION | LOCAL_PROCESS_CLEANUP_TERMINATION_ADAPTER_BOUNDARY_TYPE_ONLY |
-| SAFETY_CLEANUP_AUDIT_DECISION | REQUIRES_FIRST_SLICE_SCOPING |
+| FIRST_SLICE_EXACT_CONSUMER | TASK_CANCEL_LOCAL_PROCESS_CLEANUP_PATH_ONLY |
+| FIRST_SLICE_RECOMMENDATION | ADOPTED_AS_SLICE8_1_CONTRACT_BOUNDARY |
+| SLICE8_1_STATUS | CONTRACT_SAVED_PENDING_RED_APPROVAL |
+| SLICE8_1_EXACT_CONSUMER | TASK_CANCEL_LOCAL_PROCESS_CLEANUP_PATH_ONLY |
+| SLICE8_1_RED_STARTED | NO |
+| SLICE8_1_GREEN_STARTED | NO |
+| SAFETY_CLEANUP_AUDIT_DECISION | CONTAINMENT_PRESERVING_EXECUTION_WITH_STRUCTURED_AUDIT_FAILURE |
 | STAGE8_EXIT_ACCOUNTABILITY | MANDATORY |
 | RESEARCH_GATE_REQUIRED | CONDITIONAL |
+| RESEARCH_GATE_TRIGGERED | NO |
 | EXTERNAL_RESEARCH_RUN | NO |
-| NEXT | WAIT_FOR_OWNER_STAGE8_ENTRY_STATE_COMMIT_APPROVAL |
-| LAST_TRUSTED_CHECKPOINT | Stage 8 Entry Gate contract commit عند `a861b1f91a950b8b9abd3604869633b03f22419b` محفوظ ومزامن؛ Entry Gate execution=`GO_TO_DESIGN_RESEARCH_ONLY`؛ delta الحالية توثق بدء Design/Research إداريًا فقط pending commit. |
-| EVIDENCE_REFERENCES | Stage 7=`CLOSED_VERIFIED_COMMITTED_AND_SYNCED`؛ Stage 8 Entry Gate contract commit=`a861b1f91a950b8b9abd3604869633b03f22419b`؛ Entry Gate result=`GO_TO_DESIGN_RESEARCH_ONLY`؛ Full Regression=`683 passed / 0 failed / 0 errors`؛ لا Production أو Tests delta؛ لا First Slice أو external research بدأ. |
+| NEXT | WAIT_FOR_OWNER_STAGE8_SLICE8_1_CONTRACT_COMMIT_APPROVAL |
+| LAST_TRUSTED_CHECKPOINT | Stage 8 Design/Research entry commit عند `8bac5554bfd89556abdf8ed8af15b9d6644eca7d` محفوظ ومزامن؛ delta الحالية تحفظ عقد Slice 8.1 فقط pending commit. |
+| EVIDENCE_REFERENCES | Stage 7=`CLOSED_VERIFIED_COMMITTED_AND_SYNCED`؛ Entry Gate contract SHA-256=`d26e2d66ac6c28709fa71a54949615376c91ffb63938097ba4531ebf2c415460`؛ Stage 8 entry commit=`8bac5554bfd89556abdf8ed8af15b9d6644eca7d`؛ Full Regression reference=`683 passed / 0 failed / 0 errors`؛ لا Production أو Tests delta ولا RED/GREEN أو external research. |
 <!-- SHUJAA_CURRENT_STATE_END -->
 
 ### Evidence summary
@@ -65,11 +70,13 @@
 - عقد Stage 8 Entry Gate محفوظ وملتزم ومزامن عند `a861b1f91a950b8b9abd3604869633b03f22419b`، وتنفيذه أعطى `GO_TO_DESIGN_RESEARCH_ONLY`.
 - Stage 8 بدأت إداريًا في نطاق `DESIGN/RESEARCH` فقط؛ `IMPLEMENTATION_STARTED=NO`، ولا Runtime capability جديدة نُفذت بهذا الانتقال.
 - لا Sandbox أو Isolation أو Resource Limits أو Secrets Boundary أو Kill Switch primitive مكتملة.
-- لا First Slice معتمدة أو مرقمة؛ ترشيح cleanup/termination يبقى type-only و`FIRST_SLICE_EXACT_CONSUMER=NOT_SELECTED`.
-- `SAFETY_CLEANUP_AUDIT_DECISION=REQUIRES_FIRST_SLICE_SCOPING` و`STAGE8_EXIT_ACCOUNTABILITY=MANDATORY`؛ لا تقليص أو تأجيل صامت لالتزامات الخارطة.
+- عقد Slice 8.1 محفوظ في Active Roadmap بين markers عقد `STAGE8_SLICE8_1_CONTRACT` وحالته `CONTRACT_SAVED_PENDING_RED_APPROVAL`؛ لم تبدأ الشريحة تنفيذيًا.
+- المستهلك الدقيق هو `TASK_CANCEL_LOCAL_PROCESS_CLEANUP_PATH_ONLY`؛ timeout/error/startup/shutdown/owner-conflict ليست عائلة مستهلك واحدة في هذه الشريحة وتبقى مجرودة ومؤجلة صراحة.
+- authority provenance إلزامية عند Manager/orchestration boundary، ولا تحمل Runtime Adapter authority reference افتراضيًا؛ `operation_id` اختيارية للربط التقني فقط وليست permit.
+- `SAFETY_CLEANUP_AUDIT_DECISION=CONTAINMENT_PRESERVING_EXECUTION_WITH_STRUCTURED_AUDIT_FAILURE` و`STAGE8_EXIT_ACCOUNTABILITY=MANDATORY`؛ لا تقليص أو تأجيل صامت لالتزامات الخارطة.
 - `RESEARCH_GATE_REQUIRED=CONDITIONAL` و`EXTERNAL_RESEARCH_RUN=NO`؛ لم تُعتمد تقنية.
 - لا Production أو Tests delta، ولم تبدأ RED/GREEN.
-- `NEXT=WAIT_FOR_OWNER_STAGE8_ENTRY_STATE_COMMIT_APPROVAL`.
+- `NEXT=WAIT_FOR_OWNER_STAGE8_SLICE8_1_CONTRACT_COMMIT_APPROVAL`.
 
 #### أدلة Slices المرحلية — سجل تاريخي داخل Stage 7
 

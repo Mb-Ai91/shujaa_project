@@ -2,7 +2,7 @@
 
 > **الصفة:** خارطة التنفيذ الرسمية النشطة لمشروع شجاع
 > **الإصدار:** 1.3
-> **آخر تحديث موثق:** 1 سبتمبر 2026 بعد تنفيذ Stage 8 Entry Gate بحكم `GO_TO_DESIGN_RESEARCH_ONLY` وتسجيل بدء Stage 8 إداريًا في نطاق Design/Research فقط؛ لا Implementation أو First Slice أو بحث خارجي بدأ.
+> **آخر تحديث موثق:** 1 سبتمبر 2026 بعد حفظ عقد Slice 8.1 لمسار `task.cancel` المحلي فقط؛ لا RED أو GREEN أو Implementation أو بحث خارجي بدأ.
 > **النطاق:** 19 مرحلة مترابطة بالاعتماديات، من Stage 0 إلى Stage 18
 
 ---
@@ -15,8 +15,8 @@
 | الحقل | القيمة |
 |---|---|
 | CURRENT_STAGE | Stage 8 — Runtime Isolation & Safety |
-| CURRENT_SLICE | NOT_SELECTED — DESIGN/RESEARCH ONLY |
-| SLICE_STATUS | NOT_SELECTED_NOT_STARTED |
+| CURRENT_SLICE | Slice 8.1 — CONTRACT ONLY |
+| SLICE_STATUS | CONTRACT_SAVED_PENDING_RED_APPROVAL |
 | SLICE7_1_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | SLICE7_2_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | SLICE7_3_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
@@ -27,7 +27,7 @@
 | SLICE_7_2 | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | SLICE_7_3 | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | FIRST_ACTION | TASK_CANCEL |
-| CURRENT_ACTION | STAGE8_DESIGN_RESEARCH_ENTRY_DOCUMENTATION |
+| CURRENT_ACTION | STAGE8_SLICE8_1_CONTRACT_DOCUMENTATION |
 | RED_STARTED | NO |
 | GREEN_STARTED | NO |
 | PRODUCTION_STARTED | NO_FOR_STAGE8 |
@@ -41,23 +41,29 @@
 | STAGE8_ENTRY_GATE | GO_TO_DESIGN_RESEARCH_ONLY |
 | STAGE8_STATUS | IN_PROGRESS_DESIGN_RESEARCH_ONLY |
 | STAGE8_STARTED | YES_DESIGN_RESEARCH_ONLY |
-| FIRST_SLICE_STATUS | NOT_SELECTED_NOT_STARTED |
+| FIRST_SLICE_STATUS | CONTRACT_SAVED_PENDING_RED_APPROVAL |
 | FIRST_SLICE_STARTED | NO |
-| FIRST_SLICE_EXACT_CONSUMER | NOT_SELECTED |
-| FIRST_SLICE_RECOMMENDATION | LOCAL_PROCESS_CLEANUP_TERMINATION_ADAPTER_BOUNDARY_TYPE_ONLY |
-| SAFETY_CLEANUP_AUDIT_DECISION | REQUIRES_FIRST_SLICE_SCOPING |
+| FIRST_SLICE_EXACT_CONSUMER | TASK_CANCEL_LOCAL_PROCESS_CLEANUP_PATH_ONLY |
+| FIRST_SLICE_RECOMMENDATION | ADOPTED_AS_SLICE8_1_CONTRACT_BOUNDARY |
+| SLICE8_1_STATUS | CONTRACT_SAVED_PENDING_RED_APPROVAL |
+| SLICE8_1_EXACT_CONSUMER | TASK_CANCEL_LOCAL_PROCESS_CLEANUP_PATH_ONLY |
+| SLICE8_1_RED_STARTED | NO |
+| SLICE8_1_GREEN_STARTED | NO |
+| SAFETY_CLEANUP_AUDIT_DECISION | CONTAINMENT_PRESERVING_EXECUTION_WITH_STRUCTURED_AUDIT_FAILURE |
 | STAGE8_EXIT_ACCOUNTABILITY | MANDATORY |
 | RESEARCH_GATE_REQUIRED | CONDITIONAL |
+| RESEARCH_GATE_TRIGGERED | NO |
 | EXTERNAL_RESEARCH_RUN | NO |
-| NEXT | WAIT_FOR_OWNER_STAGE8_ENTRY_STATE_COMMIT_APPROVAL |
+| NEXT | WAIT_FOR_OWNER_STAGE8_SLICE8_1_CONTRACT_COMMIT_APPROVAL |
 <!-- SHUJAA_CURRENT_STATE_MIRROR_END -->
 
 ### Stage 8 entry boundary
 
 - Stage 8 بدأت إداريًا في نطاق `DESIGN/RESEARCH` فقط؛ لا Runtime capability جديدة نُفذت بهذا الانتقال.
 - لا Sandbox أو Isolation أو Resource Limits أو Secrets Boundary أو Kill Switch primitive مكتملة.
-- لا First Slice معتمدة أو مرقمة؛ ترشيح cleanup/termination يبقى type-only، والمستهلك الدقيق غير مختار.
-- Safety-cleanup Audit semantics ما زالت تحتاج First Slice Scoping قبل RED لأول Slice تستهلكها.
+- عقد Slice 8.1 محفوظ لمسار `task.cancel` المحلي فقط وحالته `CONTRACT_SAVED_PENDING_RED_APPROVAL`؛ لم تبدأ RED أو GREEN أو أي Runtime implementation.
+- المستهلك الدقيق هو `TASK_CANCEL_LOCAL_PROCESS_CLEANUP_PATH_ONLY`؛ وتبقى timeout/error/startup/shutdown/owner-conflict خارج هذه الشريحة ومجرودة ومؤجلة صراحة.
+- Safety-cleanup Audit semantics لهذه الشريحة هي `CONTAINMENT_PRESERVING_EXECUTION_WITH_STRUCTURED_AUDIT_FAILURE` مع بقاء pre-action evidence fail-closed وفق Stage 7.
 - Stage 8 Exit Accountability إلزامية، ولا تقليص أو تأجيل صامت لالتزامات الخارطة.
 
 ---
@@ -2276,6 +2282,189 @@ RED الحالية فقط:
 - يلزم إثبات fail-closed أو containment-preserving behavior بحسب السلطة والمسار، واختبار ownership/identity/race/timeout/capability behavior، وتوثيق قرارات التنفيذ/التأجيل، ثم Full Regression وExit Gate وState Sync.
 
 <!-- STAGE8_ENTRY_GATE_CONTRACT_END -->
+
+
+<!-- STAGE8_SLICE8_1_CONTRACT_BEGIN -->
+## Slice 8.1 — Task-Cancel Owned Local Process Termination Adapter Boundary
+
+**الحالة:** `CONTRACT_SAVED_PENDING_RED_APPROVAL`
+
+`SLICE8_1_STATUS=CONTRACT_SAVED_PENDING_RED_APPROVAL`
+
+### 1. الهوية وحدود المرحلة
+
+- المستهلك الدقيق الوحيد هو `TASK_CANCEL_LOCAL_PROCESS_CLEANUP_PATH_ONLY`.
+- يحفظ هذا العقد حدود Slice 8.1 في `DESIGN/RESEARCH` فقط؛ لا يبدأ RED أو GREEN أو Runtime implementation، ولا ينشئ Adapter أو stub أو fake.
+- يبدأ النطاق المرحّل بعد نجاح Stage 7 cancel authorization وpre-action evidence، وبعد إثبات lifecycle reconciliation أن cancel هو الفائز أو replay صالح وفق العقود الحالية، وعند وجود Process Ownership محلية موثقة وقابلة للتحقق.
+- الفعل المرحّل هو إنهاء process أو process group المملوكة محليًا عبر Runtime Adapter واحدة.
+- لا تعامل cancel/timeout/error/startup/shutdown/owner-conflict كعائلة مستهلك واحدة في هذه الشريحة.
+
+المسارات غير المرحلة هي:
+
+- timeout cleanup.
+- execution-error cleanup.
+- startup recovery cleanup.
+- shutdown cleanup.
+- owner-conflict cleanup.
+
+تبقى هذه المسارات مجرودة ومؤجلة إلى عقود مستقلة عند وجود حاجة مثبتة، ولا تحسب كقدرات Stage 8 مكتملة، ولا يشملها ادعاء anti-bypass لهذه الشريحة قبل ترحيلها صراحة.
+
+### 2. حدود الملكية والمسؤوليات
+
+يبقى `ShujaaManager` مسؤولًا عن:
+
+- استهلاك قرار Stage 7 authorization وحسم lifecycle winner ودلالة replay/conflict.
+- استرجاع Process Ownership والتحقق من ملاءمتها orchestration-side.
+- إنشاء أمر تقني محدود للـAdapter واستهلاك نتيجتها.
+- lifecycle/result mapping وحفظ lifecycle truth.
+- ownership release بعد نجاح تقني مثبت فقط أو already-exited مثبت وآمن.
+- Outcome Event/Audit والتشخيصات المنظمة وحماية مسار cancel من bypass.
+
+تقتصر Runtime Adapter على:
+
+- التحقق التقني من process identity والملكية وPID/PGID/start-time أو الحقول التي تثبتها العقود الحالية.
+- إرسال `SIGTERM` وانتظار grace period محدود، ثم التصعيد إلى `SIGKILL` عند الحاجة.
+- التحقق من النتيجة التقنية وإعادة نتيجة immutable ومنظمة.
+
+Runtime Adapter لا تقرر Policy أو Authorization أو lifecycle، ولا تختار actor أو policy version، ولا تملك Audit semantics، ولا تفسر API credentials، ولا تعيد استخدام authority كتصريح قابل للنقل، ولا تنفذ Runtime Framework أو isolation أو sandbox عامًا في هذه الشريحة.
+
+### 3. Authority provenance boundary
+
+`Explicit authority provenance remains mandatory at the Manager/orchestration boundary, not necessarily inside the Runtime Adapter payload.`
+
+- يثبت Manager مصدر السلطة قبل طلب أي side effect؛ وفعل `task.cancel` الخارجي يستهلك عقد Stage 7 authorization المنطبق.
+- لا يمرر إلى Runtime Adapter افتراضيًا actor أو policy version أو authorization decision أو authorization evidence reference أو API key أو request headers أو command/payload خام.
+- لا تفرض Authority/Evidence reference على Adapter ما لم تكشف RED حاجة تقنية مثبتة لا تلبيها معرّفات العملية والملكية؛ أي حاجة لاحقة لها تستلزم تعديل عقد صريح ومراجعة مستقلة.
+- يجوز تمرير `operation_id` فقط للربط التقني أو diagnostic correlation عند ثبوت الحاجة؛ ليست permit أو authorization token، ولا يعاد استخدامها لفعل أو مورد آخر.
+
+### 4. الأمر التقني والنتيجة
+
+- تصمم RED لاحقًا عقدًا immutable وبأقل بيانات لازمة، ومن أمثلته غير المجمدة `OwnedLocalProcessTerminationCommand`؛ لا تجمد الأسماء أو الحقول قبل فحص العقود الحالية.
+- تقتصر البيانات المرشحة على هوية cleanup operation عند الحاجة التقنية، وProcess Ownership اللازمة للتحقق، وcapability ثابتة خاصة بإنهاء process محلية مملوكة، وgrace timeout محدود إذا كان جزءًا من العقد الحالي أو ثبتت الحاجة إليه.
+- يمنع تضمين actor/principal أو policy version أو authorization evidence أو API key/secret أو HTTP data أو task command/payload أو agent output أو raw exception.
+- تكون نتيجة الـAdapter immutable ومنظمة، وتميز فقط الحالات التي يثبت احتياج السلوك الحالي والاختبارات إليها؛ المرشح منها graceful termination، forced termination after escalation، already exited، identity mismatch، process-group mismatch، ownership verification failure، unsupported operation، termination failure، وoutcome unknown.
+- لا تضاف dispositions لمجرد التناظر.
+
+### 5. ترتيب الـside effect والسلوك الآمن
+
+الترتيب الإلزامي:
+
+1. تنجح Stage 7 authorization.
+2. تنجح pre-action authorization evidence وفق عقد cancel الحالي.
+3. يحسم Manager lifecycle winner/replay.
+4. يسترجع Manager Process Ownership ويتحقق منها.
+5. يبني Manager أمرًا تقنيًا محدودًا.
+6. تتحقق Runtime Adapter من process identity والملكية.
+7. تنفذ Runtime Adapter termination.
+8. يستهلك Manager النتيجة ويحفظ lifecycle truth.
+9. يحدث ownership release فقط بعد نجاح تقني مثبت أو already-exited مثبت وآمن.
+10. تسجل Outcome Event/Audit النتيجة دون أسرار.
+
+إذا كانت Adapter مفقودة أو غير صالحة أو أعادت نتيجة malformed، فالسلوك fail-safe ومنظم: لا permissive fallback، ولا direct POSIX fallback، ولا side effect بديل مخفي.
+
+### 6. Audit semantics
+
+- قبل الفعل الخارجي تبقى Stage 7 pre-action authorization evidence fail-closed كما هي؛ فشلها يمنع termination ولا يغير دلالات Slice 7.1.
+- بعد بدء أو حدوث containment side effect يعتمد:
+
+`SAFETY_CLEANUP_AUDIT_DECISION=CONTAINMENT_PRESERVING_EXECUTION_WITH_STRUCTURED_AUDIT_FAILURE`
+
+- فشل Outcome Audit بعد termination لا يعكس الفعل، ولا يعيد إرسال signal، ولا يغير lifecycle winner أو يضيع cleanup truth.
+- يظهر structured sanitized diagnostic دون raw exception أو traceback أو secrets، ويحظر silent audit failure.
+- لا تورث دلالة `AUDIT_UNAVAILABLE/no-side-effect` الخاصة بمرحلة ما قبل الفعل إلى ما بعد containment side effect.
+
+### 7. Replay والتكرار وconcurrency
+
+`EXACTLY_ONCE_CLAIM=NO`
+
+`DUPLICATE_SIDE_EFFECT_POLICY=PREVENT_ONLY_WHERE_PROVEN_BY_CURRENT_LIFECYCLE_AND_OWNERSHIP_CONTRACTS`
+
+`CONCURRENCY_STATUS=REQUIRES_RED_CHARACTERIZATION`
+
+`CONCURRENCY_GAP_BEHAVIOR=HOLD_WITH_CONCURRENCY_GAP`
+
+- لا تدعي الشريحة exactly-once أو universal at-most-once أو concurrency safety غير المثبتة.
+- إذا أثبتت الحالة إنهاء العملية والإفراج عن ownership بعد نجاح مثبت، فلا يرسل replay signal جديدة.
+- `OUTCOME_UNKNOWN` لا يسمح بـautomatic retry أو signal ثانية، ولا يفسر replay كتصريح جديد.
+- تصف RED محاولتي cancel متزامنتين وتقيس adapter/signal invocations والنتيجة.
+- إذا أثبتت RED إمكان side effects مكررة غير آمنة ضمن العقود الحالية، تتوقف عند `HOLD_WITH_CONCURRENCY_GAP` دون إصلاح صامت أو ادعاء exactly-once.
+- bounded local atomic claim أو single-flight يحتاج تعديل عقد مستقل وموافقة مالك؛ durability وdistributed coordination وrecovery journal وoutbox تبقى Stage 9.
+
+### 8. Bypass وAPI والخصوصية
+
+`No direct runtime bypass is permitted for task.cancel side effects migrated into Slice 8.1.`
+
+- تثبت الاختبارات لاحقًا أن مسار cancel المرحّل لا يستدعي POSIX termination مباشرة خارج Adapter، وأن Manager لا يتجاوزها، وأن API لا تستدعي Adapter مباشرة، وأن Adapter لا تقرر policy أو lifecycle بدل Manager.
+- لا يدعي ذلك حماية من كود عدائي يملك تنفيذًا حرًا داخل العملية؛ العزل الأوسع من التزامات Stage 8 اللاحقة.
+- لا API عامة جديدة ولا public command باسم `execution.terminate`، ولا تغيير غير مقصود في HTTP status أو cancel result.
+- لا PID أو PGID أو start-time أو raw exception في API response أو Audit، ولا API key أو payload أو command خام في Runtime contracts أو Audit.
+- تحفظ دلالات Stages 4/5/7 الحالية؛ إذا كشفت RED تعارضًا مثبتًا تتوقف دون إعادة تصميم تلقائية.
+
+### 9. نطاق التنفيذ المرشح لاحقًا
+
+هذه Production candidates وليست تعديلات مسموحة في مهمة حفظ العقد:
+
+- `shujaa_crew/core/runtime/owned_local_process_termination_contract.py`
+- `shujaa_crew/adapters/runtime/__init__.py`
+- `shujaa_crew/adapters/runtime/local_process_termination.py`
+- `shujaa_crew/core/manager/service.py`
+- `shujaa_crew/apps/api/app.py` فقط إذا ثبتت حاجة mapping، وليس لمجرد التناظر.
+
+مرشح RED:
+
+- `shujaa_crew/tests/test_stage8_task_cancel_owned_local_process_termination_adapter.py`
+
+لا Production fake أو stub؛ Test doubles تبقى داخل Tests فقط.
+
+### 10. مصفوفة RED لموافقة لاحقة
+
+يجب أن تغطي RED على الأقل:
+
+- immutability وminimality لعقد command/result، وغياب actor/policy/evidence/API key/payload عن Adapter command.
+- أن `operation_id` إن استعملت لا تعمل كpermit.
+- missing/malformed Adapter تفشل بأمان دون direct fallback.
+- identity وownership verification قبل signal؛ وPID/start-time أو PGID mismatch يمنع termination.
+- graceful termination، والتصعيد بعد grace period، وalready-exited، وtermination failure، وoutcome unknown.
+- ownership release بعد النجاح المثبت فقط، وعدم release عند identity mismatch أو outcome unknown.
+- Stage 7 authorization وpre-action evidence قبل Runtime side effect.
+- post-action Audit failure يحفظ النتيجة ويظهر diagnostic منظمًا.
+- replay بعد نجاح مثبت لا يرسل signal أخرى، وoutcome unknown لا يطلق automatic retry.
+- محاولتي cancel متزامنتين مع قياس side effects دون افتراض exactly-once مسبق.
+- anti-bypass call-site/AST checks للمسار المرحّل.
+- عدم تسريب secrets أو process identifiers الحساسة، وتوافق API ودلالات cancel الحالية، وعدم تراجع Slice 7.1.
+- إثبات أن timeout/error/startup/shutdown/owner-conflict لم تدّع كمسارات مرحلة.
+
+### 11. التحقق المستهدف المقترح لـGREEN لاحقة
+
+عند موافقة مستقلة على RED/GREEN تشمل مجموعة التحقق المقترحة:
+
+- اختبار Stage 8.1 الجديد، وStage 7 cancel authorization suite.
+- process cleanup manager tests، وprocess ownership contract/manager tests، وterminal reconciliation tests.
+- Stage 5 cleanup lifecycle/audit/conformance tests، وAPI cancel tests إذا تأثرت.
+- AST/call-site anti-bypass check، وsecret minimization check، وscope check، و`git diff --check`.
+
+لا Full Regression الآن. مرجعها الحالي فقط `683 passed; 0 failed; 0 errors`، وتجرى عند Stage 8 Exit Gate أو trigger واسع أو أثر غير قابل للحصر.
+
+### 12. التزامات Stage 8 المؤجلة وExit Accountability
+
+`STAGE8_EXIT_ACCOUNTABILITY=MANDATORY`
+
+- إغلاق Slice 8.1 مستقبلًا لا يغلق Stage 8 ولا يسقط Runtime Adapters المتبقية أو Isolation/Sandbox أو Resource limits أو Secrets safety أو Runtime-level Kill Switch primitive أو safe runtime-specific pause/resume.
+- تخضع هذه البنود لـExit Gap Review مستقل، ويحصل كل بند على حكم واحد فقط: `IMPLEMENTED_AND_VERIFIED` أو `NOT_REQUIRED_IN_CURRENT_SCOPE_WITH_EVIDENCE` أو `DEFERRED_OR_REALLOCATED_BY_EXPLICIT_OWNER_DECISION`.
+- لا silent deferral ولا implicit roadmap scope reduction.
+
+### 13. Research Gate والحالة
+
+`RESEARCH_GATE_REQUIRED=CONDITIONAL`
+
+`RESEARCH_GATE_TRIGGERED=NO`
+
+- لا يلزم بحث خارجي لحفظ هذا العقد؛ الشريحة محلية وframework-neutral، ولا تعتمد sandbox/container technology أو تجمد OS mechanism كعقد عام أو تضيف dependency أمنية خارجية.
+- يصبح البحث إلزاميًا قبل اعتماد أو تجميد أي تقنية خارجية أو OS-specific public contract وفق Stage 8 Entry Gate.
+- `STAGE8_STATUS=IN_PROGRESS_DESIGN_RESEARCH_ONLY` و`STAGE8_STARTED=YES_DESIGN_RESEARCH_ONLY` و`IMPLEMENTATION_STARTED=NO`.
+- `SLICE8_1_RED_STARTED=NO` و`SLICE8_1_GREEN_STARTED=NO`؛ لا تعتبر Slice 8.1 بدأت تنفيذيًا.
+
+<!-- STAGE8_SLICE8_1_CONTRACT_END -->
 
 
 <!-- CONTRACT_ADVERSARIAL_REVIEW_GATE_BEGIN -->
