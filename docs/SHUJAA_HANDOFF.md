@@ -4,7 +4,7 @@
 
 > **الوظيفة:** هذا القسم هو المالك البشري الوحيد لحالة المشروع الحالية ونقطة الاستئناف. Git/Codespace يملكان Runtime truth، وActive Roadmap تعكس الحالة المختصرة فقط، وADR تحفظ القرارات طويلة العمر.
 >
-> **آخر تحديث موثق:** 3 سبتمبر 2026 بعد نجاح Final Verify لـSlice 8.1؛ الشريحة محققة ومتحققة وغير ملتزمة أو مدفوعة بعد.
+> **آخر تحديث موثق:** 3 سبتمبر 2026 بعد Stage 8 Exit Gap Audit؛ Slice 8.1 محققة ومتحققة وملتزمة ومدفوعة، وStage 8 ما زالت غير مكتملة.
 
 <!-- SHUJAA_CURRENT_STATE_BEGIN -->
 | الحقل | القيمة |
@@ -22,11 +22,11 @@
 | SLICE_7_2 | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | SLICE_7_3 | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | FIRST_ACTION | TASK_CANCEL |
-| CURRENT_ACTION | STAGE8_SLICE8_1_VERIFIED_PENDING_COMMIT_PUSH |
+| CURRENT_ACTION | STAGE8_EXIT_GAP_AUDIT_DOCUMENTED |
 | RED_STARTED | YES |
 | GREEN_STARTED | YES |
 | PRODUCTION_STARTED | YES_FOR_SLICE8_1 |
-| IMPLEMENTATION_STARTED | YES_FOR_SLICE8_1_UNCOMMITTED |
+| IMPLEMENTATION_STARTED | YES_FOR_SLICE8_1_COMMITTED_AND_SYNCED |
 | TARGETED_EVIDENCE | SLICE8_1_TARGETED=53_PASSED; MIGRATED_LEGACY_NODES=11_PASSED; API_COMPOSITION_TARGETED=6_PASSED; TARGETED_FAILURES=0 |
 | FULL_REGRESSION | FINAL_FULL_REGRESSION=736_COLLECTED_736_PASSED_0_FAILED_0_ERRORS; PRE_CORRECTION_FULL_REGRESSION=735_COLLECTED_723_PASSED_12_FAILED |
 | IMPLEMENTATION_CHECKPOINT | 6609a9899c1ebcc7573c33b30fee64c8fb4fe159 |
@@ -34,7 +34,7 @@
 | OTHER_STAGE7_SLICES | DEFERRED_NON_BLOCKING_NO_PRODUCTION_CONSUMER |
 | STAGE8_ENTRY_GATE_CONTRACT | SAVED_COMMITTED_AND_SYNCED |
 | STAGE8_ENTRY_GATE | GO_TO_DESIGN_RESEARCH_ONLY |
-| STAGE8_STATUS | IN_PROGRESS_SLICE8_1_VERIFIED_PENDING_COMMIT_PUSH |
+| STAGE8_STATUS | IN_PROGRESS_SLICE8_1_VERIFIED_EXIT_GAPS_OPEN |
 | STAGE8_STARTED | YES |
 | FIRST_SLICE_STATUS | VERIFIED |
 | FIRST_SLICE_STARTED | YES_RED_GREEN_TARGETED_VERIFY |
@@ -63,7 +63,7 @@
 | FINAL_FULL_REGRESSION_DURATION | 16.61s |
 | FINAL_FULL_REGRESSION_EXIT_CODE | 0 |
 | RED_SHA256 | affdc17067938d7e74ab44c1b3359b7ed1daff56499e929cfad64ac8fa7ac341 |
-| STATE_SYNC_REQUIRED_BEFORE_COMMIT | YES |
+| STATE_SYNC_REQUIRED_BEFORE_COMMIT | SATISFIED_FOR_SLICE8_1_CLOSURE_COMMIT |
 | IMPLEMENTED_GUARANTEE | At most one admitted local termination attempt per exact process-ownership generation among concurrent in-process callers. |
 | NON_GUARANTEES | EXACTLY_ONCE=NO; DISTRIBUTED_COORDINATION=NO; RESTART_DURABILITY=NO; CRASH_RECOVERY=NO; SAFE_AUTOMATIC_RETRY_ON_UNKNOWN_OUTCOME=NO |
 | PRODUCTION_COMPOSITION_WIRING | VERIFIED |
@@ -71,21 +71,76 @@
 | LEGACY_FALLBACK | ABSENT |
 | STAGE5_STAGE7_REGRESSIONS | PASS |
 | PREVIOUS_STATE_SYNC | PASS |
-| SLICE8_1_CLOSURE | IMPLEMENTED_AND_VERIFIED_UNCOMMITTED_UNPUSHED |
+| SLICE8_1_CLOSURE | IMPLEMENTED_AND_VERIFIED_COMMITTED_AND_SYNCED |
 | SLICE_CLOSED | YES |
 | VERIFY_FINALIZED | YES |
-| CURRENT_IMPLEMENTATION_COMMIT | NO |
-| CURRENT_IMPLEMENTATION_PUSH | NO |
-| COMMIT | NO |
-| PUSH | NO |
+| CURRENT_IMPLEMENTATION_COMMIT | bb4e2f7fa4111f1e3ca9a220dc1b39788bac5239 |
+| CURRENT_IMPLEMENTATION_PUSH | VERIFIED_AT_bb4e2f7fa4111f1e3ca9a220dc1b39788bac5239 |
+| COMMIT | YES_FOR_SLICE8_1_AT_bb4e2f7fa4111f1e3ca9a220dc1b39788bac5239 |
+| PUSH | YES_FOR_SLICE8_1_REMOTE_VERIFIED_AT_bb4e2f7fa4111f1e3ca9a220dc1b39788bac5239 |
 | SAFETY_CLEANUP_AUDIT_DECISION | CONTAINMENT_PRESERVING_EXECUTION_WITH_STRUCTURED_AUDIT_FAILURE |
 | STAGE8_EXIT_ACCOUNTABILITY | MANDATORY |
+| STAGE8_CLOSURE | BLOCKED_PENDING_FINAL_EXIT_DISPOSITIONS_WITH_IMPLEMENTATION_AND_VERIFICATION_EVIDENCE |
+| SLICE8_2_AUTHORIZED | NO |
+| NEXT_DIRECTION | LOCAL_PROCESS_LAUNCH_CONTAINMENT |
+| NEXT_DIRECTION_STATUS | APPROVED_FOR_STUDY_ONLY |
+| NEXT_DIRECTION_SCOPE | SANDBOX_ISOLATION_AND_RESOURCE_LIMITS_AT_LOCAL_PROCESS_LAUNCH_ONLY |
+| NEXT_DIRECTION_FINAL_CONTRACT | NO |
+| NEXT_DIRECTION_RED | NO |
+| NEXT_DIRECTION_GREEN | NO |
+| SANDBOX_ISOLATION_CURRENT_STATUS | OPEN_REQUIRED |
+| SANDBOX_ISOLATION_FINAL_DISPOSITION_RECORDED | NO |
+| SANDBOX_ISOLATION_PROPOSED_DISPOSITION_IF_COMPLETED_AND_VERIFIED | IMPLEMENTED_AND_VERIFIED |
+| RESOURCE_LIMITS_CURRENT_STATUS | OPEN_REQUIRED |
+| RESOURCE_LIMITS_FINAL_DISPOSITION_RECORDED | NO |
+| RESOURCE_LIMITS_PROPOSED_DISPOSITION_IF_COMPLETED_AND_VERIFIED | IMPLEMENTED_AND_VERIFIED |
+| SECRETS_SAFETY_CURRENT_STATUS | PARTIAL_CANCEL_PATH_ONLY |
+| SECRETS_SAFETY_FINAL_DISPOSITION_RECORDED | NO |
+| SECRETS_SAFETY_PROPOSED_DISPOSITION_IF_COMPLETED_AND_VERIFIED | IMPLEMENTED_AND_VERIFIED |
+| SAFE_PAUSE_RESUME_CURRENT_STATUS | OPEN_REQUIRED |
+| SAFE_PAUSE_RESUME_FINAL_DISPOSITION_RECORDED | NO |
+| SAFE_PAUSE_RESUME_PROPOSED_DISPOSITION_IF_COMPLETED_AND_VERIFIED | IMPLEMENTED_AND_VERIFIED |
+| THREAT_MODEL_DECISION_STATUS | OWNER_APPROVED_FOR_CURRENT_LOCAL_PROCESS_LAUNCH_CONTAINMENT_SCOPE |
+| WORKLOAD_TRUST | SEMI_TRUSTED_RUNTIME_WITH_UNTRUSTED_INPUTS_AND_POTENTIALLY_COMPROMISED_TOOLS |
+| USERSPACE_MALICIOUS_OR_COMPROMISED_BEHAVIOR | IN_SCOPE |
+| ARBITRARY_HOSTILE_USER_CODE | OUT_OF_CURRENT_SCOPE |
+| KERNEL_ESCAPE_RESISTANCE | NOT_CLAIMED |
+| FILESYSTEM_POLICY | READ_MINIMUM_REQUIRED_WRITE_DEDICATED_PER_EXECUTION_RUNTIME_PATHS_ONLY |
+| HOME_DIRECTORY_ACCESS | DENIED_BY_DEFAULT |
+| SSH_AND_GIT_CREDENTIAL_ACCESS | DENIED |
+| SYSTEM_WRITABLE_PATH_ACCESS | DENIED_BY_DEFAULT |
+| NETWORK_POLICY | OUTBOUND_ONLY_WHEN_EXPLICITLY_REQUIRED_NO_INBOUND_BY_DEFAULT |
+| EGRESS_ALLOWLIST_GUARANTEE | NOT_CLAIMED_IN_CURRENT_SCOPE |
+| TARGET_SECURITY_RUNTIME | MANAGED_LINUX |
+| CODESPACES_ROLE | DEVELOPMENT_NOT_REFERENCE_SECURITY_RUNTIME |
+| EXTERNAL_RUNTIME_DEPENDENCY | ALLOWED_IF_PINNED_REPLACEABLE_AND_BEHIND_SHUJAA_CONTRACT |
+| PROCESS_TREE_CONTAINMENT | REQUIRED |
+| RESOURCE_LIMIT_DIMENSIONS | CPU,MEMORY,PIDS,FDS,OUTPUT,WALL_CLOCK |
+| RESOURCE_LIMIT_VALUES | CONFIGURABLE_NOT_ARCHITECTURALLY_FROZEN |
+| FUTURE_HOSTILE_CODE_TRIGGER | REOPEN_THREAT_MODEL_AND_STRONGER_ISOLATION_RESEARCH |
+| PLATFORM_DECISION_STATUS | NOT_FINALIZED |
+| CONTAINMENT_MECHANISM_DECISION_STATUS | NOT_ADOPTED |
+| CONTAINMENT_CONTRACT_FROZEN | NO |
+| REFERENCE_SECURITY_ENVIRONMENT_PROVISIONED | NO |
+| EXTERNAL_COST_AUTHORIZED | NO |
+| PRIMARY_FEASIBILITY_CANDIDATE | SYSTEMD_TRANSIENT_UNIT_WITH_EXPLICIT_HARDENING_AND_CGROUP_V2 |
+| PRIMARY_CANDIDATE_STATUS | RECOMMENDED_FOR_FEASIBILITY_NOT_ADOPTED |
+| BACKUP_CANDIDATE | ROOTLESS_OCI |
+| BACKUP_CANDIDATE_STATUS | RESERVE_ALTERNATIVE_NOT_ADOPTED |
+| RAW_NAMESPACES_CGROUPS_PYTHON_IMPLEMENTATION | NOT_RECOMMENDED |
+| RESEARCH_SATURATION_GENERAL | NO |
+| RESEARCH_SATURATION_CURRENT_SEMI_TRUSTED_SHARED_KERNEL_SCOPE | YES |
+| STRONGER_HOSTILE_CODE_ISOLATION_RESEARCH_TRIGGERED | NO |
+| RUNTIME_KILL_SWITCH_PRIMITIVE | IMPLEMENTED_AND_VERIFIED |
+| FULL_SYSTEM_OR_HIERARCHICAL_KILL_SWITCH | NOT_CLAIMED |
 | RESEARCH_GATE_REQUIRED | CONDITIONAL |
 | RESEARCH_GATE_TRIGGERED | NO |
 | EXTERNAL_RESEARCH_RUN | NO |
-| NEXT | WAIT_FOR_OWNER_STAGE8_POST_SLICE8_1_DECISION |
-| LAST_TRUSTED_CHECKPOINT | BASE_HEAD=`d57016a2dc8048af1f4c2473450f15d2fd385c42` متطابق مع upstream وcached remote-tracking ref؛ Final Verify نجحت والدلتا غير ملتزمة وغير مدفوعة. |
-| EVIDENCE_REFERENCES | RED SHA-256=`affdc17067938d7e74ab44c1b3359b7ed1daff56499e929cfad64ac8fa7ac341`؛ `FINAL_FULL_REGRESSION=736_COLLECTED_736_PASSED_0_FAILED_0_ERRORS`؛ `FINAL_FULL_REGRESSION_DURATION=16.61s`؛ `FINAL_FULL_REGRESSION_EXIT_CODE=0`؛ `FILES_CHANGED_DURING_VERIFY=NONE`؛ `GIT_DIFF_CHECK=PASS`. |
+| NEXT | WAIT_FOR_OWNER_STAGE8_REFERENCE_SECURITY_RUNTIME_ENVIRONMENT_DECISION |
+| DOCUMENTATION_CHECKPOINT_TASK_ID | SHUJAA-STAGE8-LOCAL-LAUNCH-CONTAINMENT-DOCUMENTATION-CHECKPOINT |
+| DOCUMENTATION_CHECKPOINT_PHASE | DOCUMENTATION_CHECKPOINT |
+| LAST_TRUSTED_CHECKPOINT | BASE_HEAD=`bb4e2f7fa4111f1e3ca9a220dc1b39788bac5239` متطابق مع HEAD وupstream وcached remote-tracking ref وقراءة remote مستقلة؛ ahead/behind=`0/0`. |
+| EVIDENCE_REFERENCES | Slice 8.1 closure commit=`bb4e2f7fa4111f1e3ca9a220dc1b39788bac5239`؛ RED SHA-256=`affdc17067938d7e74ab44c1b3359b7ed1daff56499e929cfad64ac8fa7ac341`؛ `FINAL_FULL_REGRESSION=736_COLLECTED_736_PASSED_0_FAILED_0_ERRORS`؛ `FINAL_FULL_REGRESSION_DURATION=16.61s`؛ `FINAL_FULL_REGRESSION_EXIT_CODE=0`؛ `FILES_CHANGED_DURING_VERIFY=NONE`؛ `GIT_DIFF_CHECK=PASS`. |
 <!-- SHUJAA_CURRENT_STATE_END -->
 
 ### Evidence summary
@@ -102,8 +157,9 @@
 - لا يدعي الإغلاق Access Graph أو RBAC/ABAC/ReBAC أو Policy DSL/Framework/Engine أو approvals أو retry authorization أو Runtime integration أو lifecycle mutation أو durability/recovery.
 - Runtime Adapter وsandbox وresource isolation والتنفيذ الحقيقي لـpause/resume/terminate تبقى Stage 8؛ غيابها ليس نقصًا في إغلاق Stage 7.
 - عقد Stage 8 Entry Gate محفوظ وملتزم ومزامن عند `a861b1f91a950b8b9abd3604869633b03f22419b`، وتنفيذه أعطى `GO_TO_DESIGN_RESEARCH_ONLY`.
-- Stage 8 في التنفيذ، وحالة Slice 8.1 هي `VERIFIED`؛ الشريحة محققة ومتحققة لكنها غير ملتزمة أو مدفوعة بعد، ولا يعني ذلك اكتمال Stage 8.
-- لا Sandbox أو Isolation أو Resource Limits أو Secrets Boundary أو Kill Switch primitive مكتملة.
+- Stage 8 في التنفيذ، وحالة Slice 8.1 هي `VERIFIED`؛ الشريحة محققة ومتحققة وملتزمة ومدفوعة عند `bb4e2f7fa4111f1e3ca9a220dc1b39788bac5239`، ولا يعني ذلك اكتمال Stage 8.
+- لا توجد Slice 8.2 معتمدة. Stage 8 غير مكتملة وإغلاقها `BLOCKED` حتى تحصل التزامات الخروج المفتوحة على dispositions نهائية مدعومة بالتنفيذ والتحقق.
+- Sandbox/Isolation وResource Limits وsafe runtime-specific pause/resume ما زالت `OPEN_REQUIRED`؛ Secrets safety هي `PARTIAL_CANCEL_PATH_ONLY`. لا تسجل أي منها حاليًا `IMPLEMENTED_AND_VERIFIED` ولا final disposition.
 - عقد Slice 8.1 المعدل محفوظ سابقًا، وRED اكتملت وصُححت؛ SHA-256 الحالية لملف RED هي `affdc17067938d7e74ab44c1b3359b7ed1daff56499e929cfad64ac8fa7ac341`.
 - GREEN الأساسية وbounded local atomic claim/finalize/quarantine وProduction composition wiring في `apps/api/app.py` منفذة ومتحققة، ولا توجد legacy fallback في المسار المرحّل.
 - رُحلت الـ11 legacy fixtures، وصُححت anti-bypass RED، وأضيف اختبار composition/API.
@@ -118,9 +174,17 @@
 - `SAFETY_CLEANUP_AUDIT_DECISION=CONTAINMENT_PRESERVING_EXECUTION_WITH_STRUCTURED_AUDIT_FAILURE` و`STAGE8_EXIT_ACCOUNTABILITY=MANDATORY`؛ لا تقليص أو تأجيل صامت لالتزامات الخارطة.
 - `PRE_CORRECTION_FULL_REGRESSION=735_COLLECTED_723_PASSED_12_FAILED` دليل تاريخي قبل التصحيحات، وموانعه عولجت ثم نجحت Final Regression.
 - `FINAL_VERIFY_GATE=PASS`؛ `FINAL_FULL_REGRESSION=736_COLLECTED_736_PASSED_0_FAILED_0_ERRORS`؛ المدة `16.61s` وexit code=`0`، وStage 5 وStage 7 regressions ناجحة.
-- State Sync السابقة نجحت، و`STATE_SYNC_REQUIRED_BEFORE_COMMIT=YES` لهذه المزامنة السلطوية.
-- Delta التنفيذ الحالية غير ملتزمة وغير مدفوعة؛ `COMMIT=NO` و`PUSH=NO`.
-- `NEXT=WAIT_FOR_OWNER_STAGE8_POST_SLICE8_1_DECISION`.
+- State Sync السابقة نجحت قبل إغلاق Slice 8.1، وCommit/Push مثبتان عند `bb4e2f7fa4111f1e3ca9a220dc1b39788bac5239` مع تطابق HEAD والـremote الفعلي.
+- Threat Model معتمدة من المالك للنطاق الحالي: runtime شبه موثوقة تتلقى inputs غير موثوقة وقد تستخدم tools مخترقة؛ السلوك الخبيث أو المخترق في userspace داخل النطاق، بينما arbitrary hostile user code خارج النطاق الحالي ولا تُدعى مقاومة kernel escape.
+- سياسة filesystem هي أقل قراءة لازمة وكتابة إلى مسارات runtime مخصصة لكل Execution فقط؛ الوصول إلى home مرفوض افتراضيًا، والوصول إلى SSH/Git credentials مرفوض، ومسارات النظام القابلة للكتابة مرفوضة افتراضيًا. الشبكة outbound فقط عند الحاجة الصريحة، بلا inbound افتراضيًا ولا ادعاء egress allowlist في النطاق الحالي.
+- بيئة الأمن المستهدفة `MANAGED_LINUX`، وCodespaces للتطوير وليست Reference Security Runtime. process-tree containment مطلوبة، وحدود CPU/memory/PIDs/FDs/output/wall-clock قابلة للضبط وغير مجمدة معماريًا.
+- أصغر اتجاه تالٍ معتمد للدراسة هو `LOCAL_PROCESS_LAUNCH_CONTAINMENT`. systemd transient unit مع hardening صريح وcgroup v2 هو المرشح الأول لاختبار feasibility فقط؛ ليس آلية معتمدة ولا منفذة ولا متحققة، ولا يحمل `IMPLEMENTED_AND_VERIFIED`.
+- Rootless OCI بديل احتياطي جدي يعاد تقييمه إذا لم تحقق systemd الحدود المطلوبة، أو لزم فصل filesystem/runtime أقوى، أو أصبحت portability بين المضيفين أولوية أعلى. التنفيذ المباشر الخام لـnamespaces/cgroups في Python غير موصى به.
+- لا mechanism معتمدة ولا عقد containment مجمد ولا Reference Security Environment منشأة ولا تكلفة خارجية مأذونة. الاعتماد الخارجي مسموح فقط إذا كان pinned وقابلًا للاستبدال وخلف عقد يملكه شجاع.
+- Research Saturation ليست عامة؛ هي محققة فقط للنطاق الحالي شبه الموثوق ذي shared kernel، ولم يبدأ بحث عزل أقوى للكود العدائي. دخول hostile code مستقبلًا يعيد فتح Threat Model وبحث العزل الأقوى.
+- Runtime Kill Switch primitive منفذة ومتحققة ضمن نطاقها؛ لا يُدعى Full System أو Hierarchical Kill Switch.
+- لا عقد نهائي ولا RED ولا GREEN لهذا الاتجاه، ولا يجيز هذا الـDocumentation Checkpoint بدء Slice جديدة أو اعتماد Slice 8.2.
+- `NEXT=WAIT_FOR_OWNER_STAGE8_REFERENCE_SECURITY_RUNTIME_ENVIRONMENT_DECISION`.
 
 #### أدلة Slices المرحلية — سجل تاريخي داخل Stage 7
 

@@ -2,7 +2,7 @@
 
 > **الصفة:** خارطة التنفيذ الرسمية النشطة لمشروع شجاع
 > **الإصدار:** 1.3
-> **آخر تحديث موثق:** 3 سبتمبر 2026 بعد نجاح Final Verify لـSlice 8.1؛ الشريحة محققة ومتحققة وغير ملتزمة أو مدفوعة بعد.
+> **آخر تحديث موثق:** 3 سبتمبر 2026 بعد Stage 8 Exit Gap Audit؛ Slice 8.1 محققة ومتحققة وملتزمة ومدفوعة، وStage 8 ما زالت غير مكتملة.
 > **النطاق:** 19 مرحلة مترابطة بالاعتماديات، من Stage 0 إلى Stage 18
 
 ---
@@ -27,11 +27,11 @@
 | SLICE_7_2 | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | SLICE_7_3 | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | FIRST_ACTION | TASK_CANCEL |
-| CURRENT_ACTION | STAGE8_SLICE8_1_VERIFIED_PENDING_COMMIT_PUSH |
+| CURRENT_ACTION | STAGE8_EXIT_GAP_AUDIT_DOCUMENTED |
 | RED_STARTED | YES |
 | GREEN_STARTED | YES |
 | PRODUCTION_STARTED | YES_FOR_SLICE8_1 |
-| IMPLEMENTATION_STARTED | YES_FOR_SLICE8_1_UNCOMMITTED |
+| IMPLEMENTATION_STARTED | YES_FOR_SLICE8_1_COMMITTED_AND_SYNCED |
 | TARGETED_EVIDENCE | SLICE8_1_TARGETED=53_PASSED; MIGRATED_LEGACY_NODES=11_PASSED; API_COMPOSITION_TARGETED=6_PASSED; TARGETED_FAILURES=0 |
 | FULL_REGRESSION | FINAL_FULL_REGRESSION=736_COLLECTED_736_PASSED_0_FAILED_0_ERRORS; PRE_CORRECTION_FULL_REGRESSION=735_COLLECTED_723_PASSED_12_FAILED |
 | IMPLEMENTATION_CHECKPOINT | 6609a9899c1ebcc7573c33b30fee64c8fb4fe159 |
@@ -39,7 +39,7 @@
 | OTHER_STAGE7_SLICES | DEFERRED_NON_BLOCKING_NO_PRODUCTION_CONSUMER |
 | STAGE8_ENTRY_GATE_CONTRACT | SAVED_COMMITTED_AND_SYNCED |
 | STAGE8_ENTRY_GATE | GO_TO_DESIGN_RESEARCH_ONLY |
-| STAGE8_STATUS | IN_PROGRESS_SLICE8_1_VERIFIED_PENDING_COMMIT_PUSH |
+| STAGE8_STATUS | IN_PROGRESS_SLICE8_1_VERIFIED_EXIT_GAPS_OPEN |
 | STAGE8_STARTED | YES |
 | FIRST_SLICE_STATUS | VERIFIED |
 | FIRST_SLICE_STARTED | YES_RED_GREEN_TARGETED_VERIFY |
@@ -66,7 +66,7 @@
 | FINAL_FULL_REGRESSION_DURATION | 16.61s |
 | FINAL_FULL_REGRESSION_EXIT_CODE | 0 |
 | RED_SHA256 | affdc17067938d7e74ab44c1b3359b7ed1daff56499e929cfad64ac8fa7ac341 |
-| STATE_SYNC_REQUIRED_BEFORE_COMMIT | YES |
+| STATE_SYNC_REQUIRED_BEFORE_COMMIT | SATISFIED_FOR_SLICE8_1_CLOSURE_COMMIT |
 | IMPLEMENTED_GUARANTEE | At most one admitted local termination attempt per exact process-ownership generation among concurrent in-process callers. |
 | NON_GUARANTEES | EXACTLY_ONCE=NO; DISTRIBUTED_COORDINATION=NO; RESTART_DURABILITY=NO; CRASH_RECOVERY=NO; SAFE_AUTOMATIC_RETRY_ON_UNKNOWN_OUTCOME=NO |
 | PRODUCTION_COMPOSITION_WIRING | VERIFIED |
@@ -74,34 +74,90 @@
 | LEGACY_FALLBACK | ABSENT |
 | STAGE5_STAGE7_REGRESSIONS | PASS |
 | PREVIOUS_STATE_SYNC | PASS |
-| SLICE8_1_CLOSURE | IMPLEMENTED_AND_VERIFIED_UNCOMMITTED_UNPUSHED |
+| SLICE8_1_CLOSURE | IMPLEMENTED_AND_VERIFIED_COMMITTED_AND_SYNCED |
 | SLICE_CLOSED | YES |
 | VERIFY_FINALIZED | YES |
-| CURRENT_IMPLEMENTATION_COMMIT | NO |
-| CURRENT_IMPLEMENTATION_PUSH | NO |
-| COMMIT | NO |
-| PUSH | NO |
+| CURRENT_IMPLEMENTATION_COMMIT | bb4e2f7fa4111f1e3ca9a220dc1b39788bac5239 |
+| CURRENT_IMPLEMENTATION_PUSH | VERIFIED_AT_bb4e2f7fa4111f1e3ca9a220dc1b39788bac5239 |
+| COMMIT | YES_FOR_SLICE8_1_AT_bb4e2f7fa4111f1e3ca9a220dc1b39788bac5239 |
+| PUSH | YES_FOR_SLICE8_1_REMOTE_VERIFIED_AT_bb4e2f7fa4111f1e3ca9a220dc1b39788bac5239 |
 | SAFETY_CLEANUP_AUDIT_DECISION | CONTAINMENT_PRESERVING_EXECUTION_WITH_STRUCTURED_AUDIT_FAILURE |
 | STAGE8_EXIT_ACCOUNTABILITY | MANDATORY |
+| STAGE8_CLOSURE | BLOCKED_PENDING_FINAL_EXIT_DISPOSITIONS_WITH_IMPLEMENTATION_AND_VERIFICATION_EVIDENCE |
+| SLICE8_2_AUTHORIZED | NO |
+| NEXT_DIRECTION | LOCAL_PROCESS_LAUNCH_CONTAINMENT |
+| NEXT_DIRECTION_STATUS | APPROVED_FOR_STUDY_ONLY |
+| NEXT_DIRECTION_SCOPE | SANDBOX_ISOLATION_AND_RESOURCE_LIMITS_AT_LOCAL_PROCESS_LAUNCH_ONLY |
+| NEXT_DIRECTION_FINAL_CONTRACT | NO |
+| NEXT_DIRECTION_RED | NO |
+| NEXT_DIRECTION_GREEN | NO |
+| SANDBOX_ISOLATION_CURRENT_STATUS | OPEN_REQUIRED |
+| SANDBOX_ISOLATION_FINAL_DISPOSITION_RECORDED | NO |
+| SANDBOX_ISOLATION_PROPOSED_DISPOSITION_IF_COMPLETED_AND_VERIFIED | IMPLEMENTED_AND_VERIFIED |
+| RESOURCE_LIMITS_CURRENT_STATUS | OPEN_REQUIRED |
+| RESOURCE_LIMITS_FINAL_DISPOSITION_RECORDED | NO |
+| RESOURCE_LIMITS_PROPOSED_DISPOSITION_IF_COMPLETED_AND_VERIFIED | IMPLEMENTED_AND_VERIFIED |
+| SECRETS_SAFETY_CURRENT_STATUS | PARTIAL_CANCEL_PATH_ONLY |
+| SECRETS_SAFETY_FINAL_DISPOSITION_RECORDED | NO |
+| SECRETS_SAFETY_PROPOSED_DISPOSITION_IF_COMPLETED_AND_VERIFIED | IMPLEMENTED_AND_VERIFIED |
+| SAFE_PAUSE_RESUME_CURRENT_STATUS | OPEN_REQUIRED |
+| SAFE_PAUSE_RESUME_FINAL_DISPOSITION_RECORDED | NO |
+| SAFE_PAUSE_RESUME_PROPOSED_DISPOSITION_IF_COMPLETED_AND_VERIFIED | IMPLEMENTED_AND_VERIFIED |
+| THREAT_MODEL_DECISION_STATUS | OWNER_APPROVED_FOR_CURRENT_LOCAL_PROCESS_LAUNCH_CONTAINMENT_SCOPE |
+| WORKLOAD_TRUST | SEMI_TRUSTED_RUNTIME_WITH_UNTRUSTED_INPUTS_AND_POTENTIALLY_COMPROMISED_TOOLS |
+| USERSPACE_MALICIOUS_OR_COMPROMISED_BEHAVIOR | IN_SCOPE |
+| ARBITRARY_HOSTILE_USER_CODE | OUT_OF_CURRENT_SCOPE |
+| KERNEL_ESCAPE_RESISTANCE | NOT_CLAIMED |
+| FILESYSTEM_POLICY | READ_MINIMUM_REQUIRED_WRITE_DEDICATED_PER_EXECUTION_RUNTIME_PATHS_ONLY |
+| HOME_DIRECTORY_ACCESS | DENIED_BY_DEFAULT |
+| SSH_AND_GIT_CREDENTIAL_ACCESS | DENIED |
+| SYSTEM_WRITABLE_PATH_ACCESS | DENIED_BY_DEFAULT |
+| NETWORK_POLICY | OUTBOUND_ONLY_WHEN_EXPLICITLY_REQUIRED_NO_INBOUND_BY_DEFAULT |
+| EGRESS_ALLOWLIST_GUARANTEE | NOT_CLAIMED_IN_CURRENT_SCOPE |
+| TARGET_SECURITY_RUNTIME | MANAGED_LINUX |
+| CODESPACES_ROLE | DEVELOPMENT_NOT_REFERENCE_SECURITY_RUNTIME |
+| EXTERNAL_RUNTIME_DEPENDENCY | ALLOWED_IF_PINNED_REPLACEABLE_AND_BEHIND_SHUJAA_CONTRACT |
+| PROCESS_TREE_CONTAINMENT | REQUIRED |
+| RESOURCE_LIMIT_DIMENSIONS | CPU,MEMORY,PIDS,FDS,OUTPUT,WALL_CLOCK |
+| RESOURCE_LIMIT_VALUES | CONFIGURABLE_NOT_ARCHITECTURALLY_FROZEN |
+| FUTURE_HOSTILE_CODE_TRIGGER | REOPEN_THREAT_MODEL_AND_STRONGER_ISOLATION_RESEARCH |
+| PLATFORM_DECISION_STATUS | NOT_FINALIZED |
+| CONTAINMENT_MECHANISM_DECISION_STATUS | NOT_ADOPTED |
+| CONTAINMENT_CONTRACT_FROZEN | NO |
+| REFERENCE_SECURITY_ENVIRONMENT_PROVISIONED | NO |
+| EXTERNAL_COST_AUTHORIZED | NO |
+| PRIMARY_FEASIBILITY_CANDIDATE | SYSTEMD_TRANSIENT_UNIT_WITH_EXPLICIT_HARDENING_AND_CGROUP_V2 |
+| PRIMARY_CANDIDATE_STATUS | RECOMMENDED_FOR_FEASIBILITY_NOT_ADOPTED |
+| BACKUP_CANDIDATE | ROOTLESS_OCI |
+| BACKUP_CANDIDATE_STATUS | RESERVE_ALTERNATIVE_NOT_ADOPTED |
+| RAW_NAMESPACES_CGROUPS_PYTHON_IMPLEMENTATION | NOT_RECOMMENDED |
+| RESEARCH_SATURATION_GENERAL | NO |
+| RESEARCH_SATURATION_CURRENT_SEMI_TRUSTED_SHARED_KERNEL_SCOPE | YES |
+| STRONGER_HOSTILE_CODE_ISOLATION_RESEARCH_TRIGGERED | NO |
+| RUNTIME_KILL_SWITCH_PRIMITIVE | IMPLEMENTED_AND_VERIFIED |
+| FULL_SYSTEM_OR_HIERARCHICAL_KILL_SWITCH | NOT_CLAIMED |
 | RESEARCH_GATE_REQUIRED | CONDITIONAL |
 | RESEARCH_GATE_TRIGGERED | NO |
 | EXTERNAL_RESEARCH_RUN | NO |
-| NEXT | WAIT_FOR_OWNER_STAGE8_POST_SLICE8_1_DECISION |
+| NEXT | WAIT_FOR_OWNER_STAGE8_REFERENCE_SECURITY_RUNTIME_ENVIRONMENT_DECISION |
 <!-- SHUJAA_CURRENT_STATE_MIRROR_END -->
 
 ### Stage 8 entry boundary
 
-- Stage 8 في التنفيذ، وحالة Slice 8.1 هي `VERIFIED`؛ الشريحة محققة ومتحققة لكنها غير ملتزمة أو مدفوعة بعد، ولا يعني ذلك اكتمال Stage 8.
-- لا Sandbox أو Isolation أو Resource Limits أو Secrets Boundary أو Kill Switch primitive مكتملة.
+- Stage 8 في التنفيذ، وحالة Slice 8.1 هي `VERIFIED`؛ الشريحة محققة ومتحققة وملتزمة ومدفوعة عند `bb4e2f7fa4111f1e3ca9a220dc1b39788bac5239`، ولا يعني ذلك اكتمال Stage 8.
+- لا توجد Slice 8.2 معتمدة. Stage 8 غير مكتملة وإغلاقها `BLOCKED` حتى تحصل التزامات الخروج المفتوحة على dispositions نهائية مدعومة بالتنفيذ والتحقق.
+- Sandbox/Isolation وResource Limits وsafe runtime-specific pause/resume ما زالت `OPEN_REQUIRED`؛ Secrets safety هي `PARTIAL_CANCEL_PATH_ONLY`. لا تسجل أي منها حاليًا `IMPLEMENTED_AND_VERIFIED` ولا final disposition.
 - عقد Slice 8.1 المعدل لمسار `task.cancel` المحلي محفوظ، وRED/GREEN والتصحيحات الموجهة وFinal Verify مكتملة.
 - bounded local atomic claim/finalize/quarantine وProduction composition wiring منفذة ومتحققة، والـ11 legacy fixtures وanti-bypass واختبار composition/API ناجحة، ولا توجد legacy fallback في المسار المرحّل.
 - الأدلة الحالية: `53 passed` لملف Slice، و`11 passed` للعقد المهاجرة، و`6 passed` لـAPI/composition، مع `TARGETED_FAILURES=0`.
 - Full Regression السابقة `735 collected / 723 passed / 12 failed` تاريخية قبل التصحيحات؛ Final Regression نجحت: `736 collected / 736 passed / 0 failed / 0 errors` خلال `16.61s` مع exit code=`0`، وتشمل نجاح Stage 5 وStage 7 regressions.
-- State Sync السابقة نجحت، وهذه المزامنة مطلوبة قبل Commit؛ `COMMIT=NO` و`PUSH=NO`.
+- State Sync السابقة نجحت قبل إغلاق Slice 8.1، وCommit/Push مثبتان عند `bb4e2f7fa4111f1e3ca9a220dc1b39788bac5239` مع تطابق HEAD والـremote الفعلي.
 - `At most one admitted local termination attempt per exact process-ownership generation among concurrent in-process callers.` ولا يضمن ذلك exactly-once أو distributed coordination أو restart durability أو crash recovery أو safe automatic retry عند outcome مجهولة.
 - المستهلك الدقيق هو `TASK_CANCEL_LOCAL_PROCESS_CLEANUP_PATH_ONLY`؛ وتبقى timeout/error/startup/shutdown/owner-conflict خارج هذه الشريحة ومجرودة ومؤجلة صراحة.
 - Safety-cleanup Audit semantics لهذه الشريحة هي `CONTAINMENT_PRESERVING_EXECUTION_WITH_STRUCTURED_AUDIT_FAILURE` مع بقاء pre-action evidence fail-closed وفق Stage 7.
 - Stage 8 Exit Accountability إلزامية، ولا تقليص أو تأجيل صامت لالتزامات الخارطة.
+- أصغر اتجاه تالٍ معتمد للدراسة هو `LOCAL_PROCESS_LAUNCH_CONTAINMENT`، ويقتصر على Sandbox/Isolation وResource Limits عند launch لعملية محلية؛ لا عقد نهائي ولا RED ولا GREEN ولا Slice 8.2 معتمدة.
+- Threat Model معتمدة من المالك للنطاق الحالي شبه الموثوق؛ اختيار containment mechanism غير معتمد. systemd transient unit مع hardening صريح وcgroup v2 مرشح feasibility أول فقط، وRootless OCI بديل احتياطي، ولا يُدعى تنفيذ أو تحقق أي منهما.
 
 ---
 
@@ -180,7 +236,7 @@
 | 5 | Event Model + Audit Foundation | `VERIFIED COMPLETE — LOCAL/MOCK SCOPE` | Event/Audit منفصلان ومختبران مع Local stores خلف Protocols. |
 | 6 | Catalog Foundation | `VERIFIED COMPLETE — LOCAL/IN-MEMORY CATALOG & EXPLICIT BINDING FOUNDATION` | Capability Catalog بهوية وإصدار وDescriptor وLifecycle واعتماديات وصفية، وDependency Graph وimpact/candidate read models، وExplicit Binding validation/registry محلية؛ دون automatic selection أو Policy Enforcement أو Runtime integration. |
 | 7 | Policy & Access Control | `VERIFIED COMPLETE — LOCAL ACTION-SPECIFIC AUTHORIZATION FOUNDATION AND CURRENT COMMAND ENFORCEMENT` | إنفاذ fail-closed لمسار `task.cancel` الحالي ومساري `work.submit` الحاليين، مع prerequisite مستقلة وقابلة للاستهلاك لـpause/resume/terminate؛ دون Security Model عام أو Runtime integration. |
-| 8 | Runtime Isolation & Safety | `IN PROGRESS — DESIGN/RESEARCH ONLY` | Entry Gate=`GO_TO_DESIGN_RESEARCH_ONLY`؛ لا Implementation أو First Slice أو Runtime capability جديدة، وتبقى Runtime Adapters والعزل وSandbox وحدود الموارد والأسرار وKill Switch ضمن مساءلة Exit. |
+| 8 | Runtime Isolation & Safety | `IN PROGRESS — SLICE 8.1 VERIFIED; EXIT GAPS OPEN` | Slice 8.1 ملتزمة ومزامنة؛ لا توجد Slice 8.2 معتمدة، وإغلاق المرحلة محجوب حتى final dispositions مدعومة بالتنفيذ والتحقق. اتجاه الدراسة التالي فقط: `LOCAL_PROCESS_LAUNCH_CONTAINMENT`. |
 | 9 | Durable Workflows | `PLANNED` | Durable Engine خلف عقد شجاع للاستئناف والتعافي وRetry وReplay وCompensation وJournal، مع خطة خروج من المزود. |
 | 10 | Observability | `PLANNED` | Adapters مستقلة لـMetrics وLogs وTraces والتنبيهات مع portability وprivacy والتكاليف. |
 | 11 | Evaluation Framework | `PLANNED` | واجهات مستقلة لمشغلات ونماذج وبيانات التقييم، مع regression وقياس الجودة وقابلية استبدال المزود. |
@@ -2564,13 +2620,43 @@ Runtime Adapter لا تقرر Policy أو Authorization أو lifecycle، ولا 
 - `FINAL_FULL_REGRESSION_DURATION=16.61s`
 - `FINAL_FULL_REGRESSION_EXIT_CODE=0`
 
-### 12. التزامات Stage 8 المؤجلة وExit Accountability
+### 12. Stage 8 Exit Gap Audit وExit Accountability
 
 `STAGE8_EXIT_ACCOUNTABILITY=MANDATORY`
 
-- إغلاق Slice 8.1 مستقبلًا لا يغلق Stage 8 ولا يسقط Runtime Adapters المتبقية أو Isolation/Sandbox أو Resource limits أو Secrets safety أو Runtime-level Kill Switch primitive أو safe runtime-specific pause/resume.
+- Slice 8.1 مكتملة ومتحققة وملتزمة ومزامنة عند `bb4e2f7fa4111f1e3ca9a220dc1b39788bac5239` ضمن نطاقها، لكنها لا تغلق Stage 8.
+- `SLICE8_2_AUTHORIZED=NO` و`STAGE8_CLOSURE=BLOCKED_PENDING_FINAL_EXIT_DISPOSITIONS_WITH_IMPLEMENTATION_AND_VERIFICATION_EVIDENCE`.
 - تخضع هذه البنود لـExit Gap Review مستقل، ويحصل كل بند على حكم واحد فقط: `IMPLEMENTED_AND_VERIFIED` أو `NOT_REQUIRED_IN_CURRENT_SCOPE_WITH_EVIDENCE` أو `DEFERRED_OR_REALLOCATED_BY_EXPLICIT_OWNER_DECISION`.
 - لا silent deferral ولا implicit roadmap scope reduction.
+
+```text
+SANDBOX_ISOLATION_CURRENT_STATUS=OPEN_REQUIRED
+SANDBOX_ISOLATION_FINAL_DISPOSITION_RECORDED=NO
+SANDBOX_ISOLATION_PROPOSED_DISPOSITION_IF_COMPLETED_AND_VERIFIED=IMPLEMENTED_AND_VERIFIED
+
+RESOURCE_LIMITS_CURRENT_STATUS=OPEN_REQUIRED
+RESOURCE_LIMITS_FINAL_DISPOSITION_RECORDED=NO
+RESOURCE_LIMITS_PROPOSED_DISPOSITION_IF_COMPLETED_AND_VERIFIED=IMPLEMENTED_AND_VERIFIED
+
+SECRETS_SAFETY_CURRENT_STATUS=PARTIAL_CANCEL_PATH_ONLY
+SECRETS_SAFETY_FINAL_DISPOSITION_RECORDED=NO
+SECRETS_SAFETY_PROPOSED_DISPOSITION_IF_COMPLETED_AND_VERIFIED=IMPLEMENTED_AND_VERIFIED
+
+SAFE_PAUSE_RESUME_CURRENT_STATUS=OPEN_REQUIRED
+SAFE_PAUSE_RESUME_FINAL_DISPOSITION_RECORDED=NO
+SAFE_PAUSE_RESUME_PROPOSED_DISPOSITION_IF_COMPLETED_AND_VERIFIED=IMPLEMENTED_AND_VERIFIED
+```
+
+- أصغر اتجاه تالٍ معتمد للدراسة هو `LOCAL_PROCESS_LAUNCH_CONTAINMENT` ضمن Sandbox/Isolation وResource Limits عند launch فقط.
+- `NEXT_DIRECTION_FINAL_CONTRACT=NO` و`NEXT_DIRECTION_RED=NO` و`NEXT_DIRECTION_GREEN=NO`؛ لا يبدأ هذا السجل Slice جديدة.
+- Threat Model معتمدة للنطاق الحالي فقط، ولا يعني ذلك تنفيذ Sandbox أو Resource Limits. تشمل userspace behavior الخبيث أو المخترق، وتستبعد arbitrary hostile user code، ولا تدعي kernel escape resistance.
+- filesystem مقيدة بأقل قراءة لازمة وكتابة إلى runtime paths مخصصة لكل Execution، مع رفض home وSSH/Git credentials ومسارات النظام القابلة للكتابة افتراضيًا. الشبكة outbound عند الحاجة الصريحة فقط، بلا inbound افتراضيًا ولا ادعاء egress allowlist.
+- الهدف `MANAGED_LINUX` وCodespaces بيئة تطوير لا Reference Security Runtime. process-tree containment مطلوبة، وأبعاد الحدود CPU/memory/PIDs/FDs/output/wall-clock وقيمها قابلة للضبط وغير مجمدة معماريًا.
+- systemd transient unit مع hardening صريح وcgroup v2 هو مرشح feasibility الأول فقط؛ ليس آلية معتمدة ولا منفذة ولا متحققة، ولا يحمل `IMPLEMENTED_AND_VERIFIED`.
+- Rootless OCI بديل احتياطي جدي يعاد تقييمه عند فشل systemd في الحدود المطلوبة، أو الحاجة إلى فصل filesystem/runtime أقوى، أو ارتفاع أولوية portability بين المضيفين. التنفيذ الخام لـnamespaces/cgroups في Python غير موصى به.
+- لا mechanism معتمدة ولا عقد containment مجمد ولا Reference Security Environment منشأة ولا تكلفة خارجية مأذونة. أي dependency خارجية يجب أن تكون pinned وقابلة للاستبدال وخلف عقد شجاع.
+- Research Saturation مقيدة بالنطاق الحالي شبه الموثوق ذي shared kernel وليست عامة؛ لم يبدأ بحث العزل الأقوى، ويعاد فتح Threat Model إذا دخل hostile code مستقبلًا.
+- Runtime Kill Switch primitive منفذة ومتحققة ضمن نطاقها، ولا يُدعى Full System أو Hierarchical Kill Switch.
 
 ### 13. Research Gate والحالة
 
@@ -2580,13 +2666,13 @@ Runtime Adapter لا تقرر Policy أو Authorization أو lifecycle، ولا 
 
 - لا يلزم بحث خارجي لحفظ هذا العقد؛ الشريحة محلية وframework-neutral، ولا تعتمد sandbox/container technology أو تجمد OS mechanism كعقد عام أو تضيف dependency أمنية خارجية.
 - يصبح البحث إلزاميًا قبل اعتماد أو تجميد أي تقنية خارجية أو OS-specific public contract وفق Stage 8 Entry Gate.
-- `STAGE8_STATUS=IN_PROGRESS_SLICE8_1_VERIFIED_PENDING_COMMIT_PUSH` و`STAGE8_STARTED=YES` و`IMPLEMENTATION_STARTED=YES_FOR_SLICE8_1_UNCOMMITTED`؛ لا يعني إغلاق الشريحة اكتمال Stage 8.
+- `STAGE8_STATUS=IN_PROGRESS_SLICE8_1_VERIFIED_EXIT_GAPS_OPEN` و`STAGE8_STARTED=YES` و`IMPLEMENTATION_STARTED=YES_FOR_SLICE8_1_COMMITTED_AND_SYNCED`؛ لا يعني إغلاق الشريحة اكتمال Stage 8.
 - `SLICE8_1_RED_STARTED=YES` و`RED_GATE=PASS_CORRECTED` و`RED_AMENDMENT_REQUIRED=NO_COMPLETED`.
 - `SLICE8_1_GREEN_STARTED=YES`، وbounded local atomic claim/finalize/quarantine وProduction composition wiring منفذة ومتحققة.
 - الـ11 legacy fixtures مرحّلة، وanti-bypass RED مصححة، واختبار composition/API ناجح، ولا توجد legacy fallback في المسار المرحّل؛ Stage 5 وStage 7 regressions ناجحة.
-- State Sync السابقة نجحت، و`STATE_SYNC_REQUIRED_BEFORE_COMMIT=YES`.
-- `SLICE_CLOSED=YES` و`VERIFY_FINALIZED=YES` و`FINAL_FULL_REGRESSION=736_COLLECTED_736_PASSED_0_FAILED_0_ERRORS` و`COMMIT=NO` و`PUSH=NO`.
-- `NEXT=WAIT_FOR_OWNER_STAGE8_POST_SLICE8_1_DECISION`.
+- State Sync السابقة نجحت قبل إغلاق Slice 8.1، و`STATE_SYNC_REQUIRED_BEFORE_COMMIT=SATISFIED_FOR_SLICE8_1_CLOSURE_COMMIT`.
+- `SLICE_CLOSED=YES` و`VERIFY_FINALIZED=YES` و`FINAL_FULL_REGRESSION=736_COLLECTED_736_PASSED_0_FAILED_0_ERRORS` و`COMMIT=YES_FOR_SLICE8_1_AT_bb4e2f7fa4111f1e3ca9a220dc1b39788bac5239` و`PUSH=YES_FOR_SLICE8_1_REMOTE_VERIFIED_AT_bb4e2f7fa4111f1e3ca9a220dc1b39788bac5239`.
+- `NEXT=WAIT_FOR_OWNER_STAGE8_REFERENCE_SECURITY_RUNTIME_ENVIRONMENT_DECISION`.
 
 <!-- STAGE8_SLICE8_1_CONTRACT_END -->
 
