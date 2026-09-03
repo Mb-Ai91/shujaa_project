@@ -14,6 +14,10 @@ from core.policy.contracts import (
 )
 from core.policy.evaluator import SinglePrincipalCancelEvaluator
 from core.runtime.process_registry import ProcessRegistry
+from core.runtime.owned_local_process_termination_contract import (
+    OwnedLocalProcessTerminationDisposition,
+    OwnedLocalProcessTerminationResult,
+)
 from core.runtime.process_registry_contract import (
     CleanupDisposition,
     CleanupResult,
@@ -28,6 +32,20 @@ from core.work.models import Execution, ExecutionStatus
 class UnusedRunner:
     def start(self, command):
         raise AssertionError("Runner must not be called.")
+
+
+class TerminationAdapterFake:
+    def __init__(self):
+        self.commands = []
+
+    def terminate(self, command):
+        self.commands.append(command)
+        return OwnedLocalProcessTerminationResult(
+            disposition=(
+                OwnedLocalProcessTerminationDisposition
+                .GRACEFUL_TERMINATION
+            )
+        )
 
 
 _CANCEL_ACTOR = ActorRef(
@@ -218,14 +236,15 @@ def test_cleanup_event_matches_canonical_contract_for_all_dispositions(
 
 def test_cancel_exposes_cleanup_event_receipt_and_cancel_trigger(
     tmp_path,
-    monkeypatch,
 ):
     registry = ProcessRegistry(tmp_path / "processes.json")
     store = InMemoryEventStore()
+    adapter = TerminationAdapterFake()
     manager = ShujaaManager(
         crew_runner=UnusedRunner(),
         process_registry=registry,
         event_store=store,
+        owned_local_process_termination_adapter=adapter,
     )
     task_id = "task-cancel-cleanup-contract"
     execution_id = "exec-cancel-cleanup-contract"
@@ -238,14 +257,6 @@ def test_cancel_exposes_cleanup_event_receipt_and_cancel_trigger(
         execution_id=execution_id,
         work_id=work_id,
     )
-    manager._read_process_start_time_ticks = lambda pid: 7301
-    monkeypatch.setattr(
-        service_module.os,
-        "getpgid",
-        lambda pid: 7201,
-    )
-    manager._terminate_process_group_by_id = lambda pgid: None
-
     response = _authorized_cancel(
         manager,
         task_id,
@@ -261,6 +272,7 @@ def test_cancel_exposes_cleanup_event_receipt_and_cancel_trigger(
     assert response["cleanup_disposition"] == (
         CleanupDisposition.TERMINATED_AND_RELEASED.value
     )
+    assert len(adapter.commands) == 1
 
 
 def test_registered_cleanup_returns_compatible_outcome_per_task(

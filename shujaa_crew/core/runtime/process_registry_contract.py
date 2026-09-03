@@ -91,6 +91,11 @@ class CleanupDisposition(str, Enum):
     TERMINATION_FAILED_RETAINED = (
         "termination_failed_retained"
     )
+    CLAIMED_BY_OTHER_OPERATION = (
+        "claimed_by_other_operation"
+    )
+    SAME_OPERATION_REPLAY = "same_operation_replay"
+    OUTCOME_UNKNOWN_BLOCKED = "outcome_unknown_blocked"
 
 
 @dataclass(frozen=True)
@@ -98,6 +103,33 @@ class CleanupResult:
     disposition: CleanupDisposition
     ownership: ProcessOwnership | None
     error: str | None = None
+
+
+class TerminationClaimDisposition(str, Enum):
+    ACQUIRED = "acquired"
+    NOT_FOUND = "not_found"
+    OWNERSHIP_MISMATCH = "ownership_mismatch"
+    CLAIMED_BY_OTHER_OPERATION = "claimed_by_other_operation"
+    SAME_OPERATION_REPLAY = "same_operation_replay"
+    FINALIZED_AND_RELEASED = "finalized_and_released"
+    OUTCOME_UNKNOWN_BLOCKED = "outcome_unknown_blocked"
+    CLAIM_RELEASED = "claim_released"
+
+
+@dataclass(frozen=True)
+class TerminationClaimResult:
+    disposition: TerminationClaimDisposition
+    ownership: ProcessOwnership | None
+
+
+class TerminationFinalizeDecision(str, Enum):
+    RELEASE_OWNERSHIP = "release_ownership"
+    RETAIN_OWNERSHIP_AND_RELEASE_CLAIM = (
+        "retain_ownership_and_release_claim"
+    )
+    RETAIN_OWNERSHIP_AND_QUARANTINE = (
+        "retain_ownership_and_quarantine"
+    )
 
 
 @runtime_checkable
@@ -120,6 +152,23 @@ class ProcessRegistryProtocol(Protocol):
         *,
         expected_execution_id: str,
     ) -> ReleaseResult:
+        ...
+
+    def claim_termination(
+        self,
+        ownership: ProcessOwnership,
+        *,
+        cleanup_operation_id: str,
+    ) -> TerminationClaimResult:
+        ...
+
+    def finalize_termination_claim(
+        self,
+        ownership: ProcessOwnership,
+        *,
+        cleanup_operation_id: str,
+        decision: TerminationFinalizeDecision,
+    ) -> TerminationClaimResult:
         ...
 
     def all(self) -> dict[str, ProcessOwnership]:

@@ -13,6 +13,10 @@ from core.policy.contracts import (
 )
 from core.policy.evaluator import SinglePrincipalCancelEvaluator
 from core.runtime.process_registry import ProcessRegistry
+from core.runtime.owned_local_process_termination_contract import (
+    OwnedLocalProcessTerminationDisposition,
+    OwnedLocalProcessTerminationResult,
+)
 from core.runtime.process_registry_contract import (
     CleanupDisposition,
     CleanupResult,
@@ -27,6 +31,20 @@ from core.work.models import Execution, ExecutionStatus
 class UnusedRunner:
     def start(self, command):
         raise AssertionError("Runner must not be called.")
+
+
+class TerminationAdapterFake:
+    def __init__(self):
+        self.commands = []
+
+    def terminate(self, command):
+        self.commands.append(command)
+        return OwnedLocalProcessTerminationResult(
+            disposition=(
+                OwnedLocalProcessTerminationDisposition
+                .GRACEFUL_TERMINATION
+            )
+        )
 
 
 _CANCEL_ACTOR = ActorRef(
@@ -445,7 +463,9 @@ def test_concurrent_cleanup_event_conflicting_emissions_preserve_one_winner():
     assert len(matching) == 1
 
 
-def test_cleanup_event_write_failure_does_not_rewrite_cleanup_outcome(tmp_path, monkeypatch):
+def test_cleanup_event_write_failure_does_not_rewrite_cleanup_outcome(
+    tmp_path,
+):
     def failing_hasher(data):
         raise OSError("simulated write failure")
 
@@ -453,17 +473,13 @@ def test_cleanup_event_write_failure_does_not_rewrite_cleanup_outcome(tmp_path, 
     store = InMemoryEventStore(
         integrity_hasher=failing_hasher,
     )
+    adapter = TerminationAdapterFake()
     manager = ShujaaManager(
         crew_runner=UnusedRunner(),
         process_registry=registry,
         event_store=store,
+        owned_local_process_termination_adapter=adapter,
     )
-    manager._read_process_start_time_ticks = lambda pid: 4301
-    monkeypatch.setattr(
-        "core.manager.service.os.getpgid",
-        lambda pid: 4201,
-    )
-    manager._terminate_process_group_by_id = lambda pgid: None
 
     task_id = "task-cleanup-write-failure-1"
     execution_id = "exec-cleanup-write-failure-1"
@@ -484,6 +500,7 @@ def test_cleanup_event_write_failure_does_not_rewrite_cleanup_outcome(tmp_path, 
     assert response["status"] == "cancelled"
     assert registry.get(task_id) is None
     assert store.list() == ()
+    assert len(adapter.commands) == 1
 
 def test_independent_cleanup_attempts_require_distinct_operation_ids():
     store = InMemoryEventStore()

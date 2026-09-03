@@ -12,6 +12,10 @@ from core.policy.contracts import (
 )
 from core.policy.evaluator import SinglePrincipalCancelEvaluator
 from core.runtime.process_registry import ProcessRegistry
+from core.runtime.owned_local_process_termination_contract import (
+    OwnedLocalProcessTerminationDisposition,
+    OwnedLocalProcessTerminationResult,
+)
 from core.runtime.process_registry_contract import (
     ProcessOwnership,
 )
@@ -22,6 +26,18 @@ from core.work.models import Execution, ExecutionStatus
 class UnusedRunner:
     def start(self, topic):
         raise AssertionError("Runner must not start.")
+
+
+class TerminationAdapterFake:
+    def __init__(self, disposition):
+        self.disposition = disposition
+        self.commands = []
+
+    def terminate(self, command):
+        self.commands.append(command)
+        return OwnedLocalProcessTerminationResult(
+            disposition=self.disposition
+        )
 
 
 _CANCEL_ACTOR = ActorRef(
@@ -139,24 +155,19 @@ def test_winning_cancel_terminates_and_releases_owner(
     tmp_path,
 ):
     registry = ProcessRegistry(tmp_path / "processes.json")
+    adapter = TerminationAdapterFake(
+        OwnedLocalProcessTerminationDisposition.GRACEFUL_TERMINATION
+    )
     manager = ShujaaManager(
         crew_runner=UnusedRunner(),
         process_registry=registry,
+        owned_local_process_termination_adapter=adapter,
     )
-    task_id, _, _ = _seed(
+    task_id, _, owner = _seed(
         manager,
         registry,
         suffix="winning-cancel",
     )
-    signals = []
-
-    manager._read_process_start_time_ticks = (
-        lambda pid: 4301
-    )
-    manager._terminate_process_group_by_id = (
-        lambda pgid: signals.append(pgid)
-    )
-
     response = _authorized_cancel(
         manager,
         task_id,
@@ -170,7 +181,7 @@ def test_winning_cancel_terminates_and_releases_owner(
         == "terminated_and_released"
     )
     assert response["cleanup_error"] is None
-    assert signals == [4201]
+    assert [command.ownership for command in adapter.commands] == [owner]
     assert registry.get(task_id) is None
 
 
@@ -178,25 +189,20 @@ def test_idempotent_cancel_retries_pending_cleanup(
     tmp_path,
 ):
     registry = ProcessRegistry(tmp_path / "processes.json")
+    adapter = TerminationAdapterFake(
+        OwnedLocalProcessTerminationDisposition.GRACEFUL_TERMINATION
+    )
     manager = ShujaaManager(
         crew_runner=UnusedRunner(),
         process_registry=registry,
+        owned_local_process_termination_adapter=adapter,
     )
-    task_id, _, _ = _seed(
+    task_id, _, owner = _seed(
         manager,
         registry,
         suffix="cancel-replay",
         terminal_cancelled=True,
     )
-    signals = []
-
-    manager._read_process_start_time_ticks = (
-        lambda pid: 4301
-    )
-    manager._terminate_process_group_by_id = (
-        lambda pgid: signals.append(pgid)
-    )
-
     response = _authorized_cancel(
         manager,
         task_id,
@@ -209,7 +215,7 @@ def test_idempotent_cancel_retries_pending_cleanup(
         response["cleanup_disposition"]
         == "terminated_and_released"
     )
-    assert signals == [4201]
+    assert [command.ownership for command in adapter.commands] == [owner]
     assert registry.get(task_id) is None
 
 
@@ -217,24 +223,19 @@ def test_already_exited_process_releases_without_signal(
     tmp_path,
 ):
     registry = ProcessRegistry(tmp_path / "processes.json")
+    adapter = TerminationAdapterFake(
+        OwnedLocalProcessTerminationDisposition.ALREADY_EXITED
+    )
     manager = ShujaaManager(
         crew_runner=UnusedRunner(),
         process_registry=registry,
+        owned_local_process_termination_adapter=adapter,
     )
-    task_id, _, _ = _seed(
+    task_id, _, owner = _seed(
         manager,
         registry,
         suffix="already-exited",
     )
-    signals = []
-
-    manager._read_process_start_time_ticks = (
-        lambda pid: None
-    )
-    manager._terminate_process_group_by_id = (
-        lambda pgid: signals.append(pgid)
-    )
-
     response = _authorized_cancel(
         manager,
         task_id,
@@ -247,7 +248,7 @@ def test_already_exited_process_releases_without_signal(
         response["cleanup_disposition"]
         == "already_exited_and_released"
     )
-    assert signals == []
+    assert [command.ownership for command in adapter.commands] == [owner]
     assert registry.get(task_id) is None
 
 
@@ -255,24 +256,19 @@ def test_process_identity_mismatch_retains_owner(
     tmp_path,
 ):
     registry = ProcessRegistry(tmp_path / "processes.json")
+    adapter = TerminationAdapterFake(
+        OwnedLocalProcessTerminationDisposition.IDENTITY_MISMATCH
+    )
     manager = ShujaaManager(
         crew_runner=UnusedRunner(),
         process_registry=registry,
+        owned_local_process_termination_adapter=adapter,
     )
     task_id, _, owner = _seed(
         manager,
         registry,
         suffix="identity-mismatch",
     )
-    signals = []
-
-    manager._read_process_start_time_ticks = (
-        lambda pid: 9999
-    )
-    manager._terminate_process_group_by_id = (
-        lambda pgid: signals.append(pgid)
-    )
-
     response = _authorized_cancel(
         manager,
         task_id,
@@ -285,7 +281,7 @@ def test_process_identity_mismatch_retains_owner(
         response["cleanup_disposition"]
         == "identity_mismatch"
     )
-    assert signals == []
+    assert [command.ownership for command in adapter.commands] == [owner]
     assert registry.get(task_id) == owner
 
 
@@ -293,24 +289,19 @@ def test_termination_failure_retains_owner_and_winner(
     tmp_path,
 ):
     registry = ProcessRegistry(tmp_path / "processes.json")
+    adapter = TerminationAdapterFake(
+        OwnedLocalProcessTerminationDisposition.TERMINATION_FAILURE
+    )
     manager = ShujaaManager(
         crew_runner=UnusedRunner(),
         process_registry=registry,
+        owned_local_process_termination_adapter=adapter,
     )
     task_id, execution_id, owner = _seed(
         manager,
         registry,
         suffix="termination-failure",
     )
-
-    manager._read_process_start_time_ticks = (
-        lambda pid: 4301
-    )
-
-    def fail_termination(pgid):
-        raise PermissionError("termination denied")
-
-    manager._terminate_process_group_by_id = fail_termination
 
     response = _authorized_cancel(
         manager,
@@ -328,7 +319,9 @@ def test_termination_failure_retains_owner_and_winner(
         response["cleanup_disposition"]
         == "termination_failed_retained"
     )
-    assert response["cleanup_error"] == "termination denied"
+    assert response["cleanup_error"] is None
+    assert "termination denied" not in repr(response)
+    assert [command.ownership for command in adapter.commands] == [owner]
     assert registry.get(task_id) == owner
     assert execution is not None
     assert execution.status == ExecutionStatus.CANCELLED
@@ -437,27 +430,20 @@ def test_identity_read_failure_retains_owner_and_winner(
     tmp_path,
 ):
     registry = ProcessRegistry(tmp_path / "processes.json")
+    adapter = TerminationAdapterFake(
+        OwnedLocalProcessTerminationDisposition
+        .OWNERSHIP_VERIFICATION_FAILURE
+    )
     manager = ShujaaManager(
         crew_runner=UnusedRunner(),
         process_registry=registry,
+        owned_local_process_termination_adapter=adapter,
     )
     task_id, execution_id, owner = _seed(
         manager,
         registry,
         suffix="identity-read-failure",
     )
-    signals = []
-
-    def fail_identity_read(pid):
-        raise PermissionError("proc identity unreadable")
-
-    manager._read_process_start_time_ticks = (
-        fail_identity_read
-    )
-    manager._terminate_process_group_by_id = (
-        lambda pgid: signals.append(pgid)
-    )
-
     response = _authorized_cancel(
         manager,
         task_id,
@@ -474,11 +460,9 @@ def test_identity_read_failure_retains_owner_and_winner(
         response["cleanup_disposition"]
         == "identity_check_failed_retained"
     )
-    assert (
-        response["cleanup_error"]
-        == "proc identity unreadable"
-    )
-    assert signals == []
+    assert response["cleanup_error"] is None
+    assert "proc identity unreadable" not in repr(response)
+    assert [command.ownership for command in adapter.commands] == [owner]
     assert registry.get(task_id) == owner
     assert execution is not None
     assert execution.status == ExecutionStatus.CANCELLED
@@ -488,32 +472,21 @@ def test_identity_read_failure_retains_owner_and_winner(
 
 def test_cleanup_refuses_process_group_mismatch(
     tmp_path,
-    monkeypatch,
 ):
     registry = ProcessRegistry(tmp_path / "processes.json")
+    adapter = TerminationAdapterFake(
+        OwnedLocalProcessTerminationDisposition.PROCESS_GROUP_MISMATCH
+    )
     manager = ShujaaManager(
         crew_runner=UnusedRunner(),
         process_registry=registry,
+        owned_local_process_termination_adapter=adapter,
     )
     task_id, _, owner = _seed(
         manager,
         registry,
         suffix="process-group-mismatch",
     )
-    signals = []
-
-    manager._read_process_start_time_ticks = (
-        lambda pid: 4301
-    )
-    monkeypatch.setattr(
-        service_module.os,
-        "getpgid",
-        lambda pid: 9999,
-    )
-    manager._terminate_process_group_by_id = (
-        lambda pgid: signals.append(pgid)
-    )
-
     response = _authorized_cancel(
         manager,
         task_id,
@@ -526,7 +499,7 @@ def test_cleanup_refuses_process_group_mismatch(
         response["cleanup_disposition"]
         == "process_group_mismatch"
     )
-    assert signals == []
+    assert [command.ownership for command in adapter.commands] == [owner]
     assert registry.get(task_id) == owner
 
 

@@ -16,6 +16,10 @@ from core.policy.contracts import (
 )
 from core.policy.evaluator import SinglePrincipalCancelEvaluator
 from core.runtime.process_registry import ProcessRegistry
+from core.runtime.owned_local_process_termination_contract import (
+    OwnedLocalProcessTerminationDisposition,
+    OwnedLocalProcessTerminationResult,
+)
 from core.runtime.process_registry_contract import (
     CleanupDisposition,
     CleanupResult,
@@ -34,6 +38,20 @@ from core.work.models import Execution, ExecutionStatus
 class UnusedRunner:
     def start(self, command):
         raise AssertionError("Runtime execution is not expected.")
+
+
+class TerminationAdapterFake:
+    def __init__(self):
+        self.commands = []
+
+    def terminate(self, command):
+        self.commands.append(command)
+        return OwnedLocalProcessTerminationResult(
+            disposition=(
+                OwnedLocalProcessTerminationDisposition
+                .GRACEFUL_TERMINATION
+            )
+        )
 
 
 class FailingAuditStore:
@@ -155,6 +173,7 @@ def _manager(
     process_registry=None,
     event_store=None,
     audit_store=None,
+    adapter=None,
 ) -> ShujaaManager:
     return ShujaaManager(
         crew_runner=UnusedRunner(),
@@ -162,6 +181,7 @@ def _manager(
         event_store=(event_store or InMemoryEventStore()),
         audit_store=(audit_store or InMemoryAuditStore()),
         cancel_authorization_evaluator=_CANCEL_EVALUATOR,
+        owned_local_process_termination_adapter=adapter,
     )
 
 
@@ -313,13 +333,14 @@ def test_cleanup_audit_is_minimal_linked_for_all_dispositions(
 
 def test_cancel_exposes_separate_cleanup_audit_receipt(
     tmp_path,
-    monkeypatch,
 ):
     registry = ProcessRegistry(tmp_path / "processes.json")
     audit_store = InMemoryAuditStore()
+    adapter = TerminationAdapterFake()
     manager = _manager(
         process_registry=registry,
         audit_store=audit_store,
+        adapter=adapter,
     )
     task_id = "task-cancel-cleanup-audit"
     execution_id = "exec-cancel-cleanup-audit"
@@ -331,14 +352,6 @@ def test_cancel_exposes_separate_cleanup_audit_receipt(
         execution_id=execution_id,
         work_id="work-cancel-cleanup-audit",
     )
-    manager._read_process_start_time_ticks = lambda pid: 8301
-    monkeypatch.setattr(
-        service_module.os,
-        "getpgid",
-        lambda pid: 8201,
-    )
-    manager._terminate_process_group_by_id = lambda pgid: None
-
     response = _authorized_cancel(
         manager,
         task_id,
@@ -356,6 +369,7 @@ def test_cancel_exposes_separate_cleanup_audit_receipt(
     )
     assert audit.reason_code == "terminated_and_released"
     assert len(audit_store.list()) == 3
+    assert len(adapter.commands) == 1
 
 
 def test_registered_cleanup_exposes_audited_outcome(
@@ -410,12 +424,13 @@ def test_registered_cleanup_exposes_audited_outcome(
 
 def test_cleanup_audit_write_failure_does_not_change_cancel(
     tmp_path,
-    monkeypatch,
 ):
     registry = ProcessRegistry(tmp_path / "processes.json")
+    adapter = TerminationAdapterFake()
     manager = _manager(
         process_registry=registry,
         audit_store=FailingAuditStore(),
+        adapter=adapter,
     )
     task_id = "task-cancel-cleanup-audit-failure"
     execution_id = "exec-cancel-cleanup-audit-failure"
@@ -426,14 +441,6 @@ def test_cleanup_audit_write_failure_does_not_change_cancel(
         execution_id=execution_id,
         work_id="work-cancel-cleanup-audit-failure",
     )
-    manager._read_process_start_time_ticks = lambda pid: 8301
-    monkeypatch.setattr(
-        service_module.os,
-        "getpgid",
-        lambda pid: 8201,
-    )
-    manager._terminate_process_group_by_id = lambda pgid: None
-
     response = _authorized_cancel(
         manager,
         task_id,
@@ -457,6 +464,7 @@ def test_cleanup_audit_write_failure_does_not_change_cancel(
     assert manager.execution_registry.get(execution_id).status is (
         ExecutionStatus.CANCELLED
     )
+    assert len(adapter.commands) == 1
 
 
 def test_cleanup_audit_write_failure_does_not_change_bulk_cleanup(

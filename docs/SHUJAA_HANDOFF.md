@@ -4,14 +4,14 @@
 
 > **الوظيفة:** هذا القسم هو المالك البشري الوحيد لحالة المشروع الحالية ونقطة الاستئناف. Git/Codespace يملكان Runtime truth، وActive Roadmap تعكس الحالة المختصرة فقط، وADR تحفظ القرارات طويلة العمر.
 >
-> **آخر تحديث موثق:** 2 سبتمبر 2026 بعد اعتماد تعديل عقد Slice 8.1 لإضافة bounded local atomic ownership claim؛ RED مثبتة ومتوقفة عند فجوة concurrency، ولا GREEN أو Implementation بدأ.
+> **آخر تحديث موثق:** 3 سبتمبر 2026 بعد نجاح Final Verify لـSlice 8.1؛ الشريحة محققة ومتحققة وغير ملتزمة أو مدفوعة بعد.
 
 <!-- SHUJAA_CURRENT_STATE_BEGIN -->
 | الحقل | القيمة |
 |---|---|
-| CURRENT_STAGE | Stage 8 — Runtime Isolation & Safety |
-| CURRENT_SLICE | Slice 8.1 — RED HOLD / CONTRACT AMENDMENT |
-| SLICE_STATUS | CONTRACT_AMENDMENT_COMMIT_APPROVED_RED_AMENDMENT_PENDING |
+| CURRENT_STAGE | 8 |
+| CURRENT_SLICE | 8.1 |
+| SLICE_STATUS | VERIFIED |
 | SLICE7_1_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | SLICE7_2_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | SLICE7_3_STATUS | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
@@ -22,42 +22,70 @@
 | SLICE_7_2 | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | SLICE_7_3 | IMPLEMENTED_AND_TARGETED_VERIFIED_COMMITTED_AND_SYNCED |
 | FIRST_ACTION | TASK_CANCEL |
-| CURRENT_ACTION | STAGE8_SLICE8_1_RED_AMENDMENT_PENDING_OWNER_APPROVAL |
+| CURRENT_ACTION | STAGE8_SLICE8_1_VERIFIED_PENDING_COMMIT_PUSH |
 | RED_STARTED | YES |
-| GREEN_STARTED | NO |
-| PRODUCTION_STARTED | NO_FOR_STAGE8 |
-| IMPLEMENTATION_STARTED | NO |
-| TARGETED_EVIDENCE | SLICE7_3_NEW=30_PASSED; SHARED_STAGE7_1_7_2=61_PASSED; DEPENDENCY=136_PASSED; EXPLICITLY_DISJOINT_TOTAL=227_PASSED_0_FAILED_0_ERRORS; RED_UNCHANGED_SHA256=1913c4ef87640d4626095bd40ec9f3f7dab7c10f73cded8102fbcd9d424ad9a0; CONTRACT_CONFORMANCE=PASS; SCOPE_DIFF=PASS |
-| FULL_REGRESSION | 683_PASSED_0_FAILED_0_ERRORS |
+| GREEN_STARTED | YES |
+| PRODUCTION_STARTED | YES_FOR_SLICE8_1 |
+| IMPLEMENTATION_STARTED | YES_FOR_SLICE8_1_UNCOMMITTED |
+| TARGETED_EVIDENCE | SLICE8_1_TARGETED=53_PASSED; MIGRATED_LEGACY_NODES=11_PASSED; API_COMPOSITION_TARGETED=6_PASSED; TARGETED_FAILURES=0 |
+| FULL_REGRESSION | FINAL_FULL_REGRESSION=736_COLLECTED_736_PASSED_0_FAILED_0_ERRORS; PRE_CORRECTION_FULL_REGRESSION=735_COLLECTED_723_PASSED_12_FAILED |
 | IMPLEMENTATION_CHECKPOINT | 6609a9899c1ebcc7573c33b30fee64c8fb4fe159 |
 | STAGE7_EXIT_GATE_CHECKPOINT | af94f932ae1eef9f0376f14001abe880ecbe633c |
 | OTHER_STAGE7_SLICES | DEFERRED_NON_BLOCKING_NO_PRODUCTION_CONSUMER |
 | STAGE8_ENTRY_GATE_CONTRACT | SAVED_COMMITTED_AND_SYNCED |
 | STAGE8_ENTRY_GATE | GO_TO_DESIGN_RESEARCH_ONLY |
-| STAGE8_STATUS | IN_PROGRESS_DESIGN_RESEARCH_ONLY |
-| STAGE8_STARTED | YES_DESIGN_RESEARCH_ONLY |
-| FIRST_SLICE_STATUS | CONTRACT_AMENDMENT_COMMIT_APPROVED_RED_AMENDMENT_PENDING |
-| FIRST_SLICE_STARTED | YES_RED_ONLY |
+| STAGE8_STATUS | IN_PROGRESS_SLICE8_1_VERIFIED_PENDING_COMMIT_PUSH |
+| STAGE8_STARTED | YES |
+| FIRST_SLICE_STATUS | VERIFIED |
+| FIRST_SLICE_STARTED | YES_RED_GREEN_TARGETED_VERIFY |
 | FIRST_SLICE_EXACT_CONSUMER | TASK_CANCEL_LOCAL_PROCESS_CLEANUP_PATH_ONLY |
 | FIRST_SLICE_RECOMMENDATION | ADOPTED_AS_SLICE8_1_CONTRACT_BOUNDARY |
-| SLICE8_1_STATUS | CONTRACT_AMENDMENT_COMMIT_APPROVED_RED_AMENDMENT_PENDING |
+| SLICE8_1_STATUS | VERIFIED |
 | SLICE8_1_EXACT_CONSUMER | TASK_CANCEL_LOCAL_PROCESS_CLEANUP_PATH_ONLY |
 | SLICE8_1_RED_STARTED | YES |
-| SLICE8_1_GREEN_STARTED | NO |
-| SLICE8_1_RED_EVIDENCE | SHA256=ad2c89b834f69ee03aa734aecbd14b6c067e191d06166378b917a1ac0cb52344; COLLECTED=32; PASSED=3; FAILED=29; ERRORS=0; CONCURRENT_SIDE_EFFECT_ATTEMPTS=2 |
-| RED_GATE | HOLD_WITH_CONCURRENCY_GAP |
-| RED_AMENDMENT_REQUIRED | YES_BEFORE_GREEN |
-| RED_AMENDMENT_STARTED | NO |
+| SLICE8_1_GREEN_STARTED | YES |
+| SLICE8_1_RED_EVIDENCE | SHA256=affdc17067938d7e74ab44c1b3359b7ed1daff56499e929cfad64ac8fa7ac341; FINAL_REGRESSION=736_COLLECTED_736_PASSED_0_FAILED_0_ERRORS |
+| RED_GATE | PASS_CORRECTED |
+| RED_AMENDMENT_REQUIRED | NO_COMPLETED |
+| RED_AMENDMENT_STARTED | YES_COMPLETED |
 | CONTRACT_AMENDMENT_COMMIT_APPROVAL | APPROVED |
 | CONCURRENCY_MECHANISM | BOUNDED_LOCAL_ATOMIC_OWNERSHIP_CLAIM |
+| BOUNDED_LOCAL_ATOMIC_OWNERSHIP_CLAIM | IMPLEMENTED_AND_VERIFIED |
+| EXPLICIT_ADAPTER_WIRING | IMPLEMENTED_AND_VERIFIED_IN_APPS_API_APP |
+| LEGACY_FIXTURES_MIGRATED | 11_PASSED |
+| RED_ANTI_BYPASS | CORRECTED_AND_TARGETED_VERIFIED |
+| API_COMPOSITION_TEST | ADDED_AND_PASSED |
+| PRE_CORRECTION_FULL_REGRESSION | 735_COLLECTED_723_PASSED_12_FAILED |
+| PRE_CORRECTION_BLOCKERS | ADDRESSED_AND_FINAL_REGRESSION_PASSED |
+| SLICE8_1_IMPLEMENTATION_VERIFIED | YES |
+| FINAL_VERIFY_GATE | PASS |
+| FINAL_FULL_REGRESSION | 736_COLLECTED_736_PASSED_0_FAILED_0_ERRORS |
+| FINAL_FULL_REGRESSION_DURATION | 16.61s |
+| FINAL_FULL_REGRESSION_EXIT_CODE | 0 |
+| RED_SHA256 | affdc17067938d7e74ab44c1b3359b7ed1daff56499e929cfad64ac8fa7ac341 |
+| STATE_SYNC_REQUIRED_BEFORE_COMMIT | YES |
+| IMPLEMENTED_GUARANTEE | At most one admitted local termination attempt per exact process-ownership generation among concurrent in-process callers. |
+| NON_GUARANTEES | EXACTLY_ONCE=NO; DISTRIBUTED_COORDINATION=NO; RESTART_DURABILITY=NO; CRASH_RECOVERY=NO; SAFE_AUTOMATIC_RETRY_ON_UNKNOWN_OUTCOME=NO |
+| PRODUCTION_COMPOSITION_WIRING | VERIFIED |
+| BOUNDED_LOCAL_ATOMIC_CLAIM_FINALIZE_QUARANTINE | VERIFIED |
+| LEGACY_FALLBACK | ABSENT |
+| STAGE5_STAGE7_REGRESSIONS | PASS |
+| PREVIOUS_STATE_SYNC | PASS |
+| SLICE8_1_CLOSURE | IMPLEMENTED_AND_VERIFIED_UNCOMMITTED_UNPUSHED |
+| SLICE_CLOSED | YES |
+| VERIFY_FINALIZED | YES |
+| CURRENT_IMPLEMENTATION_COMMIT | NO |
+| CURRENT_IMPLEMENTATION_PUSH | NO |
+| COMMIT | NO |
+| PUSH | NO |
 | SAFETY_CLEANUP_AUDIT_DECISION | CONTAINMENT_PRESERVING_EXECUTION_WITH_STRUCTURED_AUDIT_FAILURE |
 | STAGE8_EXIT_ACCOUNTABILITY | MANDATORY |
 | RESEARCH_GATE_REQUIRED | CONDITIONAL |
 | RESEARCH_GATE_TRIGGERED | NO |
 | EXTERNAL_RESEARCH_RUN | NO |
-| NEXT | WAIT_FOR_OWNER_STAGE8_SLICE8_1_RED_AMENDMENT_APPROVAL |
-| LAST_TRUSTED_CHECKPOINT | أحدث HEAD ملتزم ومزامن لعقد Slice 8.1 هو checkpoint السلطوي؛ concurrency amendment معتمدة للـCommit، وملف RED المتوقع يبقى غير متتبع وبصمته محفوظة. |
-| EVIDENCE_REFERENCES | Entry Gate contract SHA-256=`d26e2d66ac6c28709fa71a54949615376c91ffb63938097ba4531ebf2c415460`؛ Slice 8.1 contract commit=`826f5343dfaf375be06c464091679cd770d2cfe0`؛ RED SHA-256=`ad2c89b834f69ee03aa734aecbd14b6c067e191d06166378b917a1ac0cb52344`؛ RED=`32 collected / 3 passed / 29 failed / 0 errors`؛ concurrent side-effect attempts=`2`؛ DESIGN_GATE=`APPROVE_BOUNDED_LOCAL_ATOMIC_CLAIM`؛ لا Production أو GREEN delta. |
+| NEXT | WAIT_FOR_OWNER_STAGE8_POST_SLICE8_1_DECISION |
+| LAST_TRUSTED_CHECKPOINT | BASE_HEAD=`d57016a2dc8048af1f4c2473450f15d2fd385c42` متطابق مع upstream وcached remote-tracking ref؛ Final Verify نجحت والدلتا غير ملتزمة وغير مدفوعة. |
+| EVIDENCE_REFERENCES | RED SHA-256=`affdc17067938d7e74ab44c1b3359b7ed1daff56499e929cfad64ac8fa7ac341`؛ `FINAL_FULL_REGRESSION=736_COLLECTED_736_PASSED_0_FAILED_0_ERRORS`؛ `FINAL_FULL_REGRESSION_DURATION=16.61s`؛ `FINAL_FULL_REGRESSION_EXIT_CODE=0`؛ `FILES_CHANGED_DURING_VERIFY=NONE`؛ `GIT_DIFF_CHECK=PASS`. |
 <!-- SHUJAA_CURRENT_STATE_END -->
 
 ### Evidence summary
@@ -74,22 +102,25 @@
 - لا يدعي الإغلاق Access Graph أو RBAC/ABAC/ReBAC أو Policy DSL/Framework/Engine أو approvals أو retry authorization أو Runtime integration أو lifecycle mutation أو durability/recovery.
 - Runtime Adapter وsandbox وresource isolation والتنفيذ الحقيقي لـpause/resume/terminate تبقى Stage 8؛ غيابها ليس نقصًا في إغلاق Stage 7.
 - عقد Stage 8 Entry Gate محفوظ وملتزم ومزامن عند `a861b1f91a950b8b9abd3604869633b03f22419b`، وتنفيذه أعطى `GO_TO_DESIGN_RESEARCH_ONLY`.
-- Stage 8 بدأت إداريًا في نطاق `DESIGN/RESEARCH` فقط؛ `IMPLEMENTATION_STARTED=NO`، ولا Runtime capability جديدة نُفذت بهذا الانتقال.
+- Stage 8 في التنفيذ، وحالة Slice 8.1 هي `VERIFIED`؛ الشريحة محققة ومتحققة لكنها غير ملتزمة أو مدفوعة بعد، ولا يعني ذلك اكتمال Stage 8.
 - لا Sandbox أو Isolation أو Resource Limits أو Secrets Boundary أو Kill Switch primitive مكتملة.
-- تعديل عقد Slice 8.1 داخل markers نفسها معتمد للـCommit؛ `RED_AMENDMENT_STARTED=NO` وGREEN ما زالت HOLD.
-- ملف RED المتوقع غير متتبع وبصمته SHA-256=`ad2c89b834f69ee03aa734aecbd14b6c067e191d06166378b917a1ac0cb52344`؛ الدليل `32 collected / 3 passed / 29 failed / 0 errors` وأثبت `CONCURRENT_SIDE_EFFECT_ATTEMPTS=2`.
-- `RED_GATE=HOLD_WITH_CONCURRENCY_GAP` و`RED_AMENDMENT_REQUIRED=YES_BEFORE_GREEN`؛ لم يبدأ GREEN أو Production implementation.
+- عقد Slice 8.1 المعدل محفوظ سابقًا، وRED اكتملت وصُححت؛ SHA-256 الحالية لملف RED هي `affdc17067938d7e74ab44c1b3359b7ed1daff56499e929cfad64ac8fa7ac341`.
+- GREEN الأساسية وbounded local atomic claim/finalize/quarantine وProduction composition wiring في `apps/api/app.py` منفذة ومتحققة، ولا توجد legacy fallback في المسار المرحّل.
+- رُحلت الـ11 legacy fixtures، وصُححت anti-bypass RED، وأضيف اختبار composition/API.
+- الأدلة الموجهة الحالية: `SLICE8_1_TARGETED=53_PASSED` و`MIGRATED_LEGACY_NODES=11_PASSED` و`API_COMPOSITION_TARGETED=6_PASSED` و`TARGETED_FAILURES=0`.
 - القرار المعتمد `DESIGN_GATE=APPROVE_BOUNDED_LOCAL_ATOMIC_CLAIM` وآليته `CONCURRENCY_MECHANISM=BOUNDED_LOCAL_ATOMIC_OWNERSHIP_CLAIM` داخل `ProcessRegistry` وبنطاق in-process/per-registry-path غير durable.
-- الضمان محدود إلى winner محلي واحد لكل exact ownership generation بين concurrent in-process callers؛ `EXACTLY_ONCE_GUARANTEE=NO` و`DISTRIBUTED_COORDINATION=NO` و`RESTART_DURABILITY=NO`.
+- `At most one admitted local termination attempt per exact process-ownership generation among concurrent in-process callers.`
+- لا يضمن ذلك exactly-once أو distributed coordination أو restart durability أو crash recovery أو safe automatic retry عند outcome مجهولة.
 - lock ممسوك أثناء claim/finalize فقط وليس أثناء Adapter call؛ loser لا يستدعي Adapter.
 - exception أو malformed/untrusted result يذهب افتراضيًا إلى `OUTCOME_UNKNOWN_BLOCKED` مع ownership retained وclaim quarantined ودون signal أو automatic retry لاحق للgeneration نفسها.
 - المستهلك الدقيق هو `TASK_CANCEL_LOCAL_PROCESS_CLEANUP_PATH_ONLY`؛ timeout/error/startup/shutdown/owner-conflict ليست عائلة مستهلك واحدة في هذه الشريحة وتبقى مجرودة ومؤجلة صراحة.
 - authority provenance إلزامية عند Manager/orchestration boundary، ولا تحمل Runtime Adapter authority reference افتراضيًا؛ `operation_id` اختيارية للربط التقني فقط وليست permit.
 - `SAFETY_CLEANUP_AUDIT_DECISION=CONTAINMENT_PRESERVING_EXECUTION_WITH_STRUCTURED_AUDIT_FAILURE` و`STAGE8_EXIT_ACCOUNTABILITY=MANDATORY`؛ لا تقليص أو تأجيل صامت لالتزامات الخارطة.
-- `RESEARCH_GATE_REQUIRED=CONDITIONAL` و`EXTERNAL_RESEARCH_RUN=NO`؛ لم تُعتمد تقنية.
-- لا Production أو existing Tests delta؛ amendment الحالية وثائقية فقط، وملف RED السابق لم يتغير.
-- وافق المالك على Commit وPush للعقد فقط ضمن المهمة الحالية؛ لا تشمل الموافقة تعديل RED أو بدء GREEN.
-- `NEXT=WAIT_FOR_OWNER_STAGE8_SLICE8_1_RED_AMENDMENT_APPROVAL` بعد نجاح Push.
+- `PRE_CORRECTION_FULL_REGRESSION=735_COLLECTED_723_PASSED_12_FAILED` دليل تاريخي قبل التصحيحات، وموانعه عولجت ثم نجحت Final Regression.
+- `FINAL_VERIFY_GATE=PASS`؛ `FINAL_FULL_REGRESSION=736_COLLECTED_736_PASSED_0_FAILED_0_ERRORS`؛ المدة `16.61s` وexit code=`0`، وStage 5 وStage 7 regressions ناجحة.
+- State Sync السابقة نجحت، و`STATE_SYNC_REQUIRED_BEFORE_COMMIT=YES` لهذه المزامنة السلطوية.
+- Delta التنفيذ الحالية غير ملتزمة وغير مدفوعة؛ `COMMIT=NO` و`PUSH=NO`.
+- `NEXT=WAIT_FOR_OWNER_STAGE8_POST_SLICE8_1_DECISION`.
 
 #### أدلة Slices المرحلية — سجل تاريخي داخل Stage 7
 

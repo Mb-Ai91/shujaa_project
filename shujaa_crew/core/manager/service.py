@@ -21,6 +21,12 @@ from core.policy.contracts import (
     CancelAuthorizationEvaluatorProtocol,
     SubmitAuthorizationEvaluatorProtocol,
 )
+from core.runtime.owned_local_process_termination_contract import (
+    OwnedLocalProcessTerminationAdapterProtocol,
+    OwnedLocalProcessTerminationCommand,
+    OwnedLocalProcessTerminationDisposition,
+    OwnedLocalProcessTerminationResult,
+)
 from core.runtime.process_registry import ProcessRegistry
 from core.runtime.process_registry_contract import (
     CleanupDisposition,
@@ -29,6 +35,9 @@ from core.runtime.process_registry_contract import (
     ProcessRegistryProtocol,
     RegistrationDisposition,
     ReleaseDisposition,
+    TerminationClaimDisposition,
+    TerminationClaimResult,
+    TerminationFinalizeDecision,
 )
 from core.runtime.runner_contract import RunnerProtocol
 from core.tasks.contracts import TaskStoreProtocol
@@ -262,6 +271,9 @@ class ShujaaManager:
         submit_authorization_evaluator: (
             SubmitAuthorizationEvaluatorProtocol | None
         ) = None,
+        owned_local_process_termination_adapter: (
+            OwnedLocalProcessTerminationAdapterProtocol | None
+        ) = None,
     ) -> None:
         self.crew_runner = crew_runner
         self.task_store = task_store or InMemoryTaskStore()
@@ -292,6 +304,9 @@ class ShujaaManager:
         )
         self.submit_authorization_evaluator = (
             submit_authorization_evaluator
+        )
+        self.owned_local_process_termination_adapter = (
+            owned_local_process_termination_adapter
         )
 
     _TERMINAL_EXECUTION_STATUSES = frozenset(
@@ -889,6 +904,12 @@ class ShujaaManager:
                     CleanupDisposition
                     .TERMINATION_FAILED_RETAINED
                 ),
+                (
+                    CleanupDisposition
+                    .CLAIMED_BY_OTHER_OPERATION
+                ),
+                CleanupDisposition.SAME_OPERATION_REPLAY,
+                CleanupDisposition.OUTCOME_UNKNOWN_BLOCKED,
             }
         )
 
@@ -2300,6 +2321,270 @@ class ShujaaManager:
             ownership=None,
         )
 
+    def _finalize_cancel_termination_claim(
+        self,
+        ownership: ProcessOwnership,
+        *,
+        cleanup_operation_id: str,
+        decision: TerminationFinalizeDecision,
+    ) -> TerminationClaimResult:
+        return self.process_registry.finalize_termination_claim(
+            ownership,
+            cleanup_operation_id=cleanup_operation_id,
+            decision=decision,
+        )
+
+    def _quarantine_cancel_termination_claim(
+        self,
+        ownership: ProcessOwnership,
+        *,
+        cleanup_operation_id: str,
+        exception_type: str | None = None,
+    ) -> CleanupResult:
+        self._finalize_cancel_termination_claim(
+            ownership,
+            cleanup_operation_id=cleanup_operation_id,
+            decision=(
+                TerminationFinalizeDecision
+                .RETAIN_OWNERSHIP_AND_QUARANTINE
+            ),
+        )
+        logger.warning(
+            "local_process_termination_outcome_unknown",
+            extra={
+                "diagnostic_code": (
+                    "LOCAL_PROCESS_TERMINATION_OUTCOME_UNKNOWN"
+                ),
+                "exception_type": exception_type,
+                "operation_id": cleanup_operation_id,
+                "resource_type": "process_ownership",
+                "resource_id": ownership.task_id,
+            },
+        )
+        return CleanupResult(
+            disposition=CleanupDisposition.OUTCOME_UNKNOWN_BLOCKED,
+            ownership=ownership,
+        )
+
+    def _cleanup_owned_local_process_for_cancel(
+        self,
+        task_id: str,
+        *,
+        expected_execution_id: str,
+        cleanup_operation_id: str,
+        adapter: OwnedLocalProcessTerminationAdapterProtocol | None,
+    ) -> CleanupResult:
+        ownership = self.process_registry.get(task_id)
+
+        if ownership is None:
+            return CleanupResult(
+                disposition=CleanupDisposition.NOT_OWNED,
+                ownership=None,
+            )
+
+        if ownership.execution_id != expected_execution_id:
+            return CleanupResult(
+                disposition=CleanupDisposition.OWNER_MISMATCH,
+                ownership=ownership,
+            )
+
+        try:
+            claim_result = self.process_registry.claim_termination(
+                ownership,
+                cleanup_operation_id=cleanup_operation_id,
+            )
+        except Exception as error:
+            logger.warning(
+                "local_process_termination_claim_failed",
+                extra={
+                    "diagnostic_code": (
+                        "LOCAL_PROCESS_TERMINATION_CLAIM_FAILED"
+                    ),
+                    "exception_type": type(error).__name__,
+                    "operation_id": cleanup_operation_id,
+                    "resource_type": "process_ownership",
+                    "resource_id": task_id,
+                },
+            )
+            return CleanupResult(
+                disposition=CleanupDisposition.OUTCOME_UNKNOWN_BLOCKED,
+                ownership=ownership,
+            )
+
+        claim_disposition = claim_result.disposition
+        if claim_disposition is TerminationClaimDisposition.NOT_FOUND:
+            return CleanupResult(
+                disposition=CleanupDisposition.NOT_OWNED,
+                ownership=None,
+            )
+        if claim_disposition is (
+            TerminationClaimDisposition.OWNERSHIP_MISMATCH
+        ):
+            return CleanupResult(
+                disposition=CleanupDisposition.OWNER_MISMATCH,
+                ownership=claim_result.ownership,
+            )
+        if claim_disposition is (
+            TerminationClaimDisposition.CLAIMED_BY_OTHER_OPERATION
+        ):
+            return CleanupResult(
+                disposition=(
+                    CleanupDisposition.CLAIMED_BY_OTHER_OPERATION
+                ),
+                ownership=claim_result.ownership,
+            )
+        if claim_disposition is (
+            TerminationClaimDisposition.SAME_OPERATION_REPLAY
+        ):
+            return CleanupResult(
+                disposition=CleanupDisposition.SAME_OPERATION_REPLAY,
+                ownership=claim_result.ownership,
+            )
+        if claim_disposition is (
+            TerminationClaimDisposition.FINALIZED_AND_RELEASED
+        ):
+            return CleanupResult(
+                disposition=(
+                    CleanupDisposition.ALREADY_EXITED_AND_RELEASED
+                ),
+                ownership=claim_result.ownership,
+            )
+        if claim_disposition is (
+            TerminationClaimDisposition.OUTCOME_UNKNOWN_BLOCKED
+        ):
+            return CleanupResult(
+                disposition=CleanupDisposition.OUTCOME_UNKNOWN_BLOCKED,
+                ownership=claim_result.ownership,
+            )
+        if claim_disposition is not TerminationClaimDisposition.ACQUIRED:
+            return CleanupResult(
+                disposition=CleanupDisposition.OUTCOME_UNKNOWN_BLOCKED,
+                ownership=ownership,
+            )
+
+        if adapter is None:
+            return self._quarantine_cancel_termination_claim(
+                ownership,
+                cleanup_operation_id=cleanup_operation_id,
+                exception_type="AdapterUnavailable",
+            )
+
+        try:
+            result = adapter.terminate(
+                OwnedLocalProcessTerminationCommand(
+                    ownership=ownership
+                )
+            )
+        except Exception as error:
+            return self._quarantine_cancel_termination_claim(
+                ownership,
+                cleanup_operation_id=cleanup_operation_id,
+                exception_type=type(error).__name__,
+            )
+
+        if not isinstance(
+            result,
+            OwnedLocalProcessTerminationResult,
+        ):
+            return self._quarantine_cancel_termination_claim(
+                ownership,
+                cleanup_operation_id=cleanup_operation_id,
+                exception_type="MalformedAdapterResult",
+            )
+
+        disposition = result.disposition
+        if disposition in {
+            OwnedLocalProcessTerminationDisposition
+            .GRACEFUL_TERMINATION,
+            OwnedLocalProcessTerminationDisposition.FORCED_TERMINATION,
+            OwnedLocalProcessTerminationDisposition.ALREADY_EXITED,
+        }:
+            finalization = self._finalize_cancel_termination_claim(
+                ownership,
+                cleanup_operation_id=cleanup_operation_id,
+                decision=(
+                    TerminationFinalizeDecision.RELEASE_OWNERSHIP
+                ),
+            )
+            if finalization.disposition is not (
+                TerminationClaimDisposition.FINALIZED_AND_RELEASED
+            ):
+                return CleanupResult(
+                    disposition=CleanupDisposition.OWNER_MISMATCH,
+                    ownership=finalization.ownership,
+                )
+
+            self.process_registry.release(
+                task_id,
+                expected_execution_id=expected_execution_id,
+            )
+            cleanup_disposition = (
+                CleanupDisposition.ALREADY_EXITED_AND_RELEASED
+                if disposition is (
+                    OwnedLocalProcessTerminationDisposition
+                    .ALREADY_EXITED
+                )
+                else CleanupDisposition.TERMINATED_AND_RELEASED
+            )
+            return CleanupResult(
+                disposition=cleanup_disposition,
+                ownership=ownership,
+            )
+
+        pre_side_effect_mapping = {
+            OwnedLocalProcessTerminationDisposition.IDENTITY_MISMATCH: (
+                CleanupDisposition.IDENTITY_MISMATCH
+            ),
+            OwnedLocalProcessTerminationDisposition
+            .PROCESS_GROUP_MISMATCH: (
+                CleanupDisposition.PROCESS_GROUP_MISMATCH
+            ),
+            OwnedLocalProcessTerminationDisposition
+            .OWNERSHIP_VERIFICATION_FAILURE: (
+                CleanupDisposition.IDENTITY_CHECK_FAILED_RETAINED
+            ),
+            OwnedLocalProcessTerminationDisposition
+            .UNSUPPORTED_OPERATION: (
+                CleanupDisposition.IDENTITY_CHECK_FAILED_RETAINED
+            ),
+        }
+        if disposition in pre_side_effect_mapping:
+            self._finalize_cancel_termination_claim(
+                ownership,
+                cleanup_operation_id=cleanup_operation_id,
+                decision=(
+                    TerminationFinalizeDecision
+                    .RETAIN_OWNERSHIP_AND_RELEASE_CLAIM
+                ),
+            )
+            return CleanupResult(
+                disposition=pre_side_effect_mapping[disposition],
+                ownership=ownership,
+            )
+
+        if disposition is (
+            OwnedLocalProcessTerminationDisposition.TERMINATION_FAILURE
+        ):
+            self._finalize_cancel_termination_claim(
+                ownership,
+                cleanup_operation_id=cleanup_operation_id,
+                decision=(
+                    TerminationFinalizeDecision
+                    .RETAIN_OWNERSHIP_AND_QUARANTINE
+                ),
+            )
+            return CleanupResult(
+                disposition=(
+                    CleanupDisposition.TERMINATION_FAILED_RETAINED
+                ),
+                ownership=ownership,
+            )
+
+        return self._quarantine_cancel_termination_claim(
+            ownership,
+            cleanup_operation_id=cleanup_operation_id,
+        )
+
     def cancel_task(
         self,
         task_id: str,
@@ -2486,10 +2771,14 @@ class ShujaaManager:
         )
 
         if cancel_applied:
-            cleanup_result = self._cleanup_process_ownership(
+            cleanup_result = self._cleanup_owned_local_process_for_cancel(
                 task_id,
                 expected_execution_id=(
                     execution.execution_id
+                ),
+                cleanup_operation_id=cleanup_operation_id,
+                adapter=(
+                    self.owned_local_process_termination_adapter
                 ),
             )
             cleanup_event_append_receipt = (
@@ -2503,19 +2792,32 @@ class ShujaaManager:
                     work_id=task.work_id,
                 )
             )
-            cleanup_audit_append_receipt = (
-                self._append_cleanup_audit(
-                    cleanup_result,
-                    task_id=task_id,
-                    cleanup_operation_id=(
-                        cleanup_operation_id
-                    ),
-                    event_id=(
-                        cleanup_event_append_receipt
-                        .record_id
-                    ),
+            try:
+                cleanup_audit_append_receipt = (
+                    self._append_cleanup_audit(
+                        cleanup_result,
+                        task_id=task_id,
+                        cleanup_operation_id=(
+                            cleanup_operation_id
+                        ),
+                        event_id=(
+                            cleanup_event_append_receipt
+                            .record_id
+                        ),
+                    )
                 )
-            )
+            except Exception as error:
+                logger.warning(
+                    "post_action_audit_failed",
+                    extra={
+                        "diagnostic_code": "POST_ACTION_AUDIT_FAILED",
+                        "exception_type": type(error).__name__,
+                        "operation_id": cleanup_operation_id,
+                        "resource_type": "process_ownership",
+                        "resource_id": task_id,
+                    },
+                )
+                cleanup_audit_append_receipt = None
 
         updated = self.task_store.get(task_id)
 

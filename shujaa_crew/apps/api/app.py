@@ -12,6 +12,9 @@ from flask import Flask, jsonify, request
 from adapters.agents.factory import build_agent_executor
 from adapters.crewai.runner import CrewAIRunner
 from adapters.mock.runner import MockRunner
+from adapters.runtime.local_process_termination import (
+    LocalProcessTerminationAdapter,
+)
 from adapters.storage.sqlite_task_store import SQLiteTaskStore
 from core.agents.bootstrap import build_agent_registry
 from core.agents.executor_registry import AgentExecutorRegistry
@@ -77,6 +80,9 @@ submit_authorization_evaluator = SinglePrincipalSubmitEvaluator(
     principal=API_SERVICE_ACTOR,
     policy_version="stage7.2-local-api-v1",
 )
+owned_local_process_termination_adapter = (
+    LocalProcessTerminationAdapter()
+)
 
 for agent in agent_registry.list():
     agent_executor_registry.register(
@@ -94,6 +100,9 @@ manager = ShujaaManager(
     ),
     submit_authorization_evaluator=(
         submit_authorization_evaluator
+    ),
+    owned_local_process_termination_adapter=(
+        owned_local_process_termination_adapter
     ),
 )
 
